@@ -1,0 +1,4 @@
+<plugin>
+  <name>sessiontyping</name>
+  <classname>uk.ac.ic.doc.sessionscala.compiler.SessionTypingPlugin</classname>
+</plugin>

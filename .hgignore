@@ -1,0 +1,7 @@
+.DS_Store
+out
+.idea
+target/
+lib_managed/
+src_managed/
+project/boot/
