@@ -2,6 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import scala.actors.Actor._
 import actors.{DaemonActor, OutputChannel, Actor}
+import annotation.tailrec
 
 object sessionops {
   def createLocalChannel(awaiting: Set[String]): SharedChannel = {
@@ -64,19 +65,24 @@ class AcceptState(awaiting: Set[String],
 }
 
 class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
-  private def loop(s: AcceptState): Nothing = {
-    react {
-      case NewAccept(role: String, act: ActorFun) =>
-        val newS = s.received(role, act, sender)
-        if (newS.isComplete) {
-          loop(newS.createActorsAndReply)
-        } else {
-          loop(newS)
+
+  val coordinator = new DaemonActor {
+    def act = {
+      // This was tail-recursive before, but scalac won't optimize it.
+      var s = new AcceptState(awaiting)
+      loop {
+        react {
+          case NewAccept(role: String, act: ActorFun) =>
+            val newS = s.received(role, act, sender)
+            if (newS.isComplete) {
+              s = newS.createActorsAndReply
+            } else {
+              s = newS
+            }
         }
+      }
     }
   }
-
-  val coordinator = new DaemonActor {def act = loop(new AcceptState(awaiting))}
   coordinator.start
 
   def accept(role: String)(act: ActorFun): Actor = {

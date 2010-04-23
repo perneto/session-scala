@@ -8,7 +8,9 @@ import scala.concurrent.ops.spawn
 class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
   def timeout[T](b: => T) = withTimeoutAndWait(2000, 100)(b)
   def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
-  
+
+  val chan = createLocalChannel(Set("Foo"))
+
   test("complains if set of roles is empty") {
     intercept[IllegalArgumentException] {
       val chan = createLocalChannel(Set())
@@ -16,7 +18,6 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
   }
 
   test("complains if accept called with undefined role") {
-    val chan = createLocalChannel(Set("Foo"))
     var didRunBar = false
     intercept[IllegalArgumentException] {
       chan.accept("Bar") { _ => didRunBar = true }
@@ -51,5 +52,9 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
     }
     assert(didRunBar, "bar should have started")
     assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
+  }
+
+  ignored("shared channel doesn't blow the stack") {
+    for (i <- List.range(1,1000000)) chan.accept("Foo") { _ => }
   }
 }
