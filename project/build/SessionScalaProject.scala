@@ -12,5 +12,5 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
   lazy val runtime = project("runtime") // one argument: don't use default project
   lazy val compilerplugin = project("compilerplugin", "compilerplugin", runtime) // 2 arguments: default project
-  lazy val examples = project("examples", "examples", runtime) //, compiler-plugin when ready
+  lazy val examples = project("examples", runtime) //, compiler-plugin when ready
 }

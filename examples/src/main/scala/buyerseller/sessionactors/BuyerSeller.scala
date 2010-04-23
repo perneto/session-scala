@@ -17,17 +17,18 @@ object BuyerSeller extends Application {
   // To start Seller only once
   spawn {
     println("spawned")
+    Thread.sleep(200)
     sharedChannel.accept("Seller") { s =>
       println("Seller: started")
-      val o : Order = ?.asInstanceOf[Order]
-      s("Buyer") ! 2000
-      receive {
+      //val o : Order = ?.asInstanceOf[Order]
+      //s("Buyer") ! 2000
+      /*receive {
         case OK =>
           s("Buyer") ! new Invoice(5000)
           val payment = ?
         case NotOK =>
           val reason = ?
-      }
+      }*/
       println("Seller: finished")
     }
   }
@@ -35,7 +36,7 @@ object BuyerSeller extends Application {
 
   sharedChannel.accept("Buyer") { s =>
     println("Buyer: started")
-    s("Seller") ! new Order(100)
+    /*s("Seller") ! new Order(100)
     val price = ?.asInstanceOf[Int]
     if (price < 10000) {
       s("Seller") ! OK
@@ -44,7 +45,7 @@ object BuyerSeller extends Application {
     } else {
       s("Seller") ! NotOK
       s("Seller") ! "Too expensive"
-    }
+    } */
     println("Buyer: finished")
   }
 }

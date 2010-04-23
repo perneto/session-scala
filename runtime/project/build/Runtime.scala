@@ -1,6 +1,8 @@
 import sbt._
 
 class Runtime(info: ProjectInfo) extends DefaultProject(info) {
+  override def fork = forkRun
+
   val scalaToolsRepo = "Scala-Tools Maven Repository" at
       "http://nexus.scala-tools.org/content/repositories/snapshots/"
 

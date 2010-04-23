@@ -30,6 +30,7 @@ class AcceptState(awaiting: Set[String],
   def isComplete = roles == awaiting
 
   def received(role: String, act: SharedChannel#ActorFun, sender: OC) = {
+    println("received: " + role + " " +act + " " + sender)
     val newList = (act, sender) :: {
       if (s.contains(role)) s(role) else Nil
     }
@@ -88,6 +89,7 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
   def accept(role: String)(act: ActorFun): Actor = {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
+    println("about to !?: " + this)
     (coordinator !? NewAccept(role, act)).asInstanceOf[Actor]
   }
 

@@ -4,12 +4,14 @@ import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
 import uk.ac.ic.doc.sessionscala.sessionops._
 import scala.concurrent.ops.spawn
+import actors.Actor.?
 
 class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
-  def timeout[T](b: => T) = withTimeoutAndWait(2000, 100)(b)
+  def timeout[T](b: => T) = withTimeoutAndWait(3000, 100)(b)
   def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
 
-  val chan = createLocalChannel(Set("Foo"))
+  val chan1 = createLocalChannel(Set("Foo"))
+  val chan2= createLocalChannel(Set("Foo","Bar"))
 
   test("complains if set of roles is empty") {
     intercept[IllegalArgumentException] {
@@ -20,7 +22,7 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
   test("complains if accept called with undefined role") {
     var didRunBar = false
     intercept[IllegalArgumentException] {
-      chan.accept("Bar") { _ => didRunBar = true }
+      chan1.accept("Bar") { _ => didRunBar = true }
     }
     assert(!didRunBar)
   }
@@ -28,11 +30,10 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
   test("starts actors Foo and Bar after two calls to accept if expecting both") {
     var didRunFoo = false ; var didRunBar = false
     timeout {
-      val chan = createLocalChannel(Set("Foo", "Bar"))
       spawn {
-        chan.accept("Foo") { _ => didRunFoo = true }
+        chan2.accept("Foo") { _ => didRunFoo = true }
       }
-      chan.accept("Bar") { _ => didRunBar = true}
+      chan2.accept("Bar") { _ => didRunBar = true}
 
     }
     assert(didRunFoo) ; assert(didRunBar)
@@ -54,7 +55,29 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
     assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
   }
 
-  ignored("shared channel doesn't blow the stack") {
-    for (i <- List.range(1,1000000)) chan.accept("Foo") { _ => }
+  test("sets up the session properly") {
+    var fooRecv = false ; var barRecv = false
+    val chan = createLocalChannel(Set("Foo","Bar"))
+    
+    timeout {
+      spawn {
+        chan.accept("Foo") { s =>
+          s("Bar") ! 42
+          println("sent to Bar")
+          fooRecv = ? == 43
+        }
+      }
+      chan.accept("Bar") { s =>
+        s("Foo") ! 43
+        println("sent to Foo")
+        barRecv = ? == 42
+      }
+    }
+    assert(fooRecv)
+    assert(barRecv)
+  }
+
+  ignore("shared channel doesn't blow the stack") {
+    for (i <- List.range(1,1000000)) chan1.accept("Foo") { _ => }
   }
 }
