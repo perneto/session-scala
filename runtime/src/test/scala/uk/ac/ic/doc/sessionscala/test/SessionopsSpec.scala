@@ -77,6 +77,7 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
     assert(barRecv)
   }
 
+  // Too long for routine testing
   ignore("shared channel doesn't blow the stack") {
     for (i <- List.range(1,1000000)) chan1.accept("Foo") { _ => }
   }
