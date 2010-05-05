@@ -1,13 +1,16 @@
 package uk.ac.ic.doc.sessionscala.test
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FunSuite
 import uk.ac.ic.doc.sessionscala.AcceptState
 import actors.Actor
 
-class AcceptStateSpec extends FunSuite with ShouldMatchers {
-  
-  test("accept immediately with one participant") {
+class AcceptStateSpec extends Timeouts {
+
+  test("not complete at first") {
+    val state = new AcceptState(Set("Foo"))
+    assert(!state.isComplete)
+  }
+
+  test("isComplete after one receive with one participant") {
     val set = Set("Foo")
     val state = new AcceptState(set)
     val newState = state.received("Foo", null, null)
@@ -15,7 +18,7 @@ class AcceptStateSpec extends FunSuite with ShouldMatchers {
     assert(newState.isComplete)
   }
 
-  test("accept after both calls with 2 participants") {
+  test("isComplete after both calls with 2 participants") {
     val set = Set("Foo", "Bar")
     val state = new AcceptState(set)
     val newState1 = state.received("Foo",null,null)
@@ -25,21 +28,19 @@ class AcceptStateSpec extends FunSuite with ShouldMatchers {
     assert(newState2.isComplete, "should be complete")
   }
 
-  test("creates one actor and replies") {
+  test("creates session channel and replies") {
     val state = new AcceptState(Set("Foo"))
-    var actorRan = false
-    var proceedReceived = false
+    var sessionChanReceived = false
     val sender = Actor.actor {
       Actor.?
-      proceedReceived = true
+      sessionChanReceived = true
     }
-    val newState = state.received("Foo", (s => actorRan = true), sender)
-    newState.createActorsAndReply
+    val newState = state.received("Foo", Actor.self, sender)
+    val stateAfterCreate = newState.createSessionChanAndReply
 
-    Thread.sleep(100)
-    assert(actorRan, "actor should have started")
-    assert(proceedReceived, "sender should have received reply")
+    sleep
+    assert(sessionChanReceived, "sender should have received reply")
+    assert(!stateAfterCreate.isComplete, "state should not be complete anymore after actor creation")
   }
-
 
 }

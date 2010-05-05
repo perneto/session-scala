@@ -1,8 +1,7 @@
 package uk.ac.ic.doc.sessionscala
 
 import scala.actors.Actor._
-import actors.{DaemonActor, OutputChannel, Actor}
-import annotation.tailrec
+import scala.actors._
 
 object sessionops {
   def createLocalChannel(awaiting: Set[String]): SharedChannel = {
@@ -12,53 +11,74 @@ object sessionops {
   //def createAMQPChannel() : SharedChannel = new AMQPSharedChannel
 }
 
-trait SharedChannel {
-  type ActorFun = (String => Actor) => Unit
-  def accept(role: String)(act: ActorFun): Actor
+trait SessionChannel extends (String => Channel[Any]) with InputChannel[Any]
+private[sessionscala] class SessionChannelImpl(map: (String => Channel[Any]), var channel: Channel[Any])
+        extends SessionChannel
+{
+  def apply(role: String) = map.apply(role)
+
+  def ? = channel.?
+
+  def reactWithin(msec: Long)(f: PartialFunction[Any, Unit]) = channel.reactWithin(msec)(f)
+
+  def react(f: PartialFunction[Any, Unit]) = channel.react(f)
+
+  def receiveWithin[R](msec: Long)(f: PartialFunction[Any, R]) = channel.receiveWithin(msec)(f)
+
+  def receive[R](f: PartialFunction[Any, R]) = channel.receive(f)
+
+  override def toString = "SessionChannelImpl{map:"+map+", channel: "+channel+"}"
 }
 
-case class NewAccept(role: String, act: SharedChannel#ActorFun)
-case class Proceed(a: Actor)
+trait SharedChannel {
+  type ActorFun = SessionChannel => Unit
+  def accept(role: String)(act: ActorFun): Unit
+}
+
+case class NewAccept(role: String, srcActor: Actor)
 
 class AcceptState(awaiting: Set[String],
-                  s: Map[String, List[(SharedChannel#ActorFun, OutputChannel[Any])]] ) {
+                  s: Map[String, List[(Actor, OutputChannel[Any])]] ) {
   type OC = OutputChannel[Any]
+  type State = Map[String, List[(Actor, OutputChannel[Any])]]
   
   def this(awaiting: Set[String]) = this(awaiting, Map())
   
   def roles = s.map({case (role, _) => role}).toSet
   def isComplete = roles == awaiting
 
-  def received(role: String, act: SharedChannel#ActorFun, sender: OC) = {
-    val newList = (act, sender) :: {
+  def received(role: String, srcActor: Actor, sender: OC) = {
+    //println("received role: " + role + " srcActor: " + srcActor + ", sender: " + sender)
+    val newList = (srcActor, sender) :: {
       if (s.contains(role)) s(role) else Nil
     }
     val newS = s.updated(role, newList)
     new AcceptState(awaiting, newS)
   }
 
-  def dropHead = {
-    s.foldLeft(Map():Map[String, List[(SharedChannel#ActorFun, OC)]]) {
+  def dropHead: State = {
+    s.foldLeft(Map():State) {
       case (m, (role, list)) =>
-        m.updated(role, list drop 1)
+        val l = list drop 1
+        if (l.isEmpty) m - role
+        else m.updated(role, l)
     }
   }
 
-  def createActorsAndReply = {
+  def createSessionChanAndReply = {
     import scala.collection.mutable.{Map => MMap}
-    val mapping: MMap[String, Actor] = MMap()
+    val mapping: MMap[String, Channel[Any]] = MMap()
     val pairs = s map {
       // Incomplete pattern because we know the list has at least one element
       // (precondition to call this method: isComplete == true)
-      case (role, (actImpl, sender)::xs) =>
-        val newActor = new Actor {def act = actImpl(mapping)}
-        mapping += (role -> newActor)
-        (newActor, sender)
+      case (role, (srcActor, sender)::xs) =>
+        val chanToActor = new Channel[Any](srcActor)
+        val sessChan = new SessionChannelImpl(mapping, chanToActor)
+        mapping += (role -> chanToActor)
+        (sender, sessChan)
     }
-    pairs foreach {
-      p =>
-        p._1.start
-        p._2 ! p._1
+    pairs foreach { case (sender, sessChan) =>
+        sender ! sessChan
     }
     new AcceptState(awaiting, dropHead)
   }
@@ -72,10 +92,10 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
       var s = new AcceptState(awaiting)
       loop {
         react {
-          case NewAccept(role: String, act: ActorFun) =>
-            val newS = s.received(role, act, sender)
+          case NewAccept(role: String, srcActor: Actor) =>
+            val newS = s.received(role, srcActor, sender)
             if (newS.isComplete) {
-              s = newS.createActorsAndReply
+              s = newS.createSessionChanAndReply
             } else {
               s = newS
             }
@@ -85,10 +105,12 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
   }
   coordinator.start
 
-  def accept(role: String)(act: ActorFun): Actor = {
+  def accept(role: String)(act: ActorFun): Unit = {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
-    (coordinator !? NewAccept(role, act)).asInstanceOf[Actor]
+    //println("accept, awaiting: " + awaiting + ", role: " + role)
+    val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[SessionChannel]
+    act(sessChan)
   }
 
 }

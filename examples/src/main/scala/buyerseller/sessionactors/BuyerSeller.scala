@@ -2,7 +2,6 @@ package buyerseller.sessionactors
 
 import scala.actors.Actor, Actor._
 import buyerseller._
-import scala.concurrent.ops.spawn
 import uk.ac.ic.doc.sessionscala.sessionops
 
 object BuyerSeller {
@@ -15,36 +14,38 @@ object BuyerSeller {
     println("running...")
 
     // To start Seller only once
-    spawn {
+    actor {
       sharedChannel.accept("Seller") { s =>
         println("Seller: started")
-        val o : Order = ?.asInstanceOf[Order]
+        val o : Order = s.?.asInstanceOf[Order]
         s("Buyer") ! 2000
-        receive {
+        s.receive {
           case OK =>
             s("Buyer") ! new Invoice(5000)
-            val payment = ?
+            val payment = s.?
           case NotOK =>
-            val reason = ?
+            val reason = s.?
         }
         println("Seller: finished")
       }
     }
 
-    sharedChannel.accept("Buyer") { s =>
-      println("Buyer: started")
-      s("Seller") ! new Order(100)
-      val price = ?.asInstanceOf[Int]
-      if (price < 10000) {
-        s("Seller") ! OK
-        val invoice = ?
-        s("Seller") ! new Payment(price)
-      } else {
-        s("Seller") ! NotOK
-        s("Seller") ! "Too expensive"
+    actor {
+      sharedChannel.accept("Buyer") { s =>
+        println("Buyer: started")
+        s("Seller") ! new Order(100)
+        val price = s.?.asInstanceOf[Int]
+        if (price < 10000) {
+          s("Seller") ! OK
+          val invoice = s.?
+          s("Seller") ! new Payment(price)
+        } else {
+          s("Seller") ! NotOK
+          s("Seller") ! "Too expensive"
 
+        }
+        println("Buyer: finished")
       }
-      println("Buyer: finished")
     }
   }
 }

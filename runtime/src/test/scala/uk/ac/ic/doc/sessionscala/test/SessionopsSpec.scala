@@ -3,15 +3,13 @@ package uk.ac.ic.doc.sessionscala.test
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
 import uk.ac.ic.doc.sessionscala.sessionops._
-import scala.concurrent.ops.spawn
-import actors.Actor.?
+import actors.Actor._
 
 class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
-  def timeout[T](b: => T) = withTimeoutAndWait(3000, 100)(b)
   def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
-
+  
   val chan1 = createLocalChannel(Set("Foo"))
-  val chan2= createLocalChannel(Set("Foo","Bar"))
+  val chan2 = createLocalChannel(Set("Foo","Bar"))
 
   test("complains if set of roles is empty") {
     intercept[IllegalArgumentException] {
@@ -20,65 +18,83 @@ class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
   }
 
   test("complains if accept called with undefined role") {
-    var didRunBar = false
     intercept[IllegalArgumentException] {
-      chan1.accept("Bar") { _ => didRunBar = true }
+      chan1.accept("Quux") { _ => fail("Should not start Quux") }
     }
-    assert(!didRunBar)
   }
 
-  test("starts actors Foo and Bar after two calls to accept if expecting both") {
+  test("accepts Foo and Bar after two calls to accept if expecting both") {
     var didRunFoo = false ; var didRunBar = false
-    timeout {
-      spawn {
-        chan2.accept("Foo") { _ => didRunFoo = true }
-      }
-      chan2.accept("Bar") { _ => didRunBar = true}
-
+    actor {
+      chan2.accept("Foo") { _ => didRunFoo = true }
     }
-    assert(didRunFoo) ; assert(didRunBar)
+    actor {
+      chan2.accept("Bar") { _ => didRunBar = true}
+    }
+    sleep
+    assert(didRunFoo)
+    assert(didRunBar)
   }
 
-  test("starts one actor after one accept if expecting one but two calls to accept") {
+  test("allows encoding of race condition with 2 accept calls for same role") {
     val chan = createLocalChannel(Set("Foo","Bar"))
     var didRun1 = false ; var didRun2 = false ; var didRunBar = true
-    timeout {
-      spawn {
+    withTimeoutAndWait {
+      actor {
         chan.accept("Bar") { _ => didRunBar = true}
       }
-      spawn {
+      actor {
         chan.accept("Foo") { _ => didRun1 = true }
       }
-      chan.accept("Foo") { _ => didRun2 = true }
+      actor {
+        chan.accept("Foo") { _ => didRun2 = true }
+      }
     }
     assert(didRunBar, "bar should have started")
     assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
   }
 
-  test("sets up the session properly") {
+  test("sets up the session so actors can be messaged through session map") {
     var fooRecv = false ; var barRecv = false
     val chan = createLocalChannel(Set("Foo","Bar"))
     
-    timeout {
-      spawn {
+      actor {
         chan.accept("Foo") { s =>
           s("Bar") ! 42
-          println("sent to Bar")
-          fooRecv = ? == 43
+          fooRecv = s.? == 43
         }
       }
-      chan.accept("Bar") { s =>
-        s("Foo") ! 43
-        println("sent to Foo")
-        barRecv = ? == 42
+      actor {
+        chan.accept("Bar") { s =>
+          s("Foo") ! 43
+          barRecv = s.? == 42
+        }
+      }
+    sleep
+    assert(fooRecv, "Foo should have received message from Bar")
+    assert(barRecv, "Bar should have received message from Foo")
+  }
+
+  case object Foo      
+  test("doesn't interfere with standard actor messaging") {
+    var fooReceived = false
+    val fooActor = actor {
+      chan1.accept("Foo") { s =>
+        receive {
+          case Foo => fooReceived = true
+        }
       }
     }
-    assert(fooRecv)
-    assert(barRecv)
+
+    fooActor ! Foo
+    sleep
+    assert(fooReceived)
   }
 
   // Too long for routine testing
   ignore("shared channel doesn't blow the stack") {
-    for (i <- List.range(1,1000000)) chan1.accept("Foo") { _ => }
+    for (i <- List.range(1,1000000)) {
+      actor { chan1.accept("Foo") { _ => } }
+    }
   }
 }
