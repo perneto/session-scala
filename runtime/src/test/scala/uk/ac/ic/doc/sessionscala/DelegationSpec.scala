@@ -68,7 +68,7 @@ class DelegationSpec extends Timeouts {
   }
 
 
-  test("Simple delegation, ignoring lost messages") {
+  ignore("Simple delegation, ignoring lost messages") {
     val chanA = createLocalChannel(Set("Alice", "Bob"))
     val chanB = createLocalChannel(Set("Bob","Carol"))
     var helloOK = false ; var fortyTwoOK = false ; var fortyThreeOK = false
