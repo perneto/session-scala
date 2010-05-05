@@ -2,11 +2,11 @@ package buyerseller.sessionactors
 
 import scala.actors.Actor, Actor._
 import buyerseller._
-import uk.ac.ic.doc.sessionscala.sessionops
+import uk.ac.ic.doc.sessionscala.SharedChannel
 
 object BuyerSeller {
   def main(args: Array[String]) {
-    val sharedChannel = sessionops.createLocalChannel(Set("Buyer", "Seller"))
+    val sharedChannel = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
     // Will restart an accepting Seller every time a session is started.
     // Similar in behaviour to a listening server socket.
     //sharedChannel.registerAccept("Seller") { ... }

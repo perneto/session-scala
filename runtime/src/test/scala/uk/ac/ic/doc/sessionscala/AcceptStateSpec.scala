@@ -1,6 +1,5 @@
-package uk.ac.ic.doc.sessionscala.test
+package uk.ac.ic.doc.sessionscala
 
-import uk.ac.ic.doc.sessionscala.AcceptState
 import actors.Actor
 
 class AcceptStateSpec extends Timeouts {

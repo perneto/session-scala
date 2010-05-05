@@ -8,7 +8,7 @@ import scala.concurrent.ops.spawn
 
 object BuyerSellerRecursive extends Application {
 /*
-  val sharedChannel = sessionops.createLocalChannel(Set("Buyer", "Seller"))
+  val sharedChannel = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
   // Will restart an accepting Seller every time a session is started.
   // Similar in behaviour to a listening server socket.
   //sharedChannel.registerAccept("Seller") { ... }

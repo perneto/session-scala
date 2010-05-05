@@ -1,11 +1,11 @@
-package uk.ac.ic.doc.sessionscala.test
+package uk.ac.ic.doc.sessionscala
 
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
-import uk.ac.ic.doc.sessionscala.sessionops._
+import uk.ac.ic.doc.sessionscala.SharedChannel._
 import actors.Actor._
 
-class SessionopsSpec extends FunSuite with ShouldMatchers with Timeouts {
+class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
   def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
   
   val chan1 = createLocalChannel(Set("Foo"))

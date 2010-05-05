@@ -1,6 +1,6 @@
-package uk.ac.ic.doc.sessionscala.test
+package uk.ac.ic.doc.sessionscala
 
-import uk.ac.ic.doc.sessionscala.sessionops._
+import uk.ac.ic.doc.sessionscala.SharedChannel._
 import actors.Actor
 import Actor._
 
@@ -68,14 +68,16 @@ class DelegationSpec extends Timeouts {
   }
 
 
-  ignore("Delegation") {
+  test("Simple delegation, ignoring lost messages") {
     val chanA = createLocalChannel(Set("Alice", "Bob"))
     val chanB = createLocalChannel(Set("Bob","Carol"))
-    var helloOK = false ; var fortyTwoOk = false
+    var helloOK = false ; var fortyTwoOK = false ; var fortyThreeOK = false
+
     actor {
       chanA.accept("Alice") { sA =>
         sA("Bob") ! "Hello"
-        sA("Bob") ! 42
+        sA("Bob") ! 42 // Now magically redirected to Carol
+        fortyThreeOK = sA.? == 43
       }
     }
 
@@ -84,22 +86,26 @@ class DelegationSpec extends Timeouts {
         val hello = sA.?
         helloOK = hello == "Hello"
         chanB.accept("Bob") { sB =>
-          sB("Carol") !  sA("Alice")
+          sB("Carol").delegate(sA)
         }
       }
     }
 
     actor {
       chanB.accept("Carol") { sB =>
-        val alice = sB.?.asInstanceOf[Actor]
-        val msg = ?
-        fortyTwoOk = msg == 42
+        val sA = sB.receiveDelegated
+        println("Received session channel")
+        val msg = sA.?
+        println("Received delegated msg")
+        fortyTwoOK = msg == 42
+        sA("Alice") ! 43
       }
     }
 
     sleep
     assert(helloOK, "Should receive non-delegated message")
-    assert(fortyTwoOk, "Should receive delegated message transparently")
+    assert(fortyTwoOK, "Should receive delegated message transparently")
+    assert(fortyThreeOK)
 
   }
 
