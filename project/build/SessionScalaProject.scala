@@ -10,8 +10,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
   class Runtime(info: ProjectInfo) extends DefaultProject(info) {
     override def fork = forkRun
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "1.7.2"
-    val scalatest = "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.RC1-SNAPSHOT"
-
+    val scalatest = "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC6-SNAPSHOT"
   }
 
   class Examples(info: ProjectInfo) extends DefaultProject(info) {
@@ -19,7 +18,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
   }
 
   class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) {
-    val scalatest = "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.RC1-SNAPSHOT"
+    val scalatest = "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC6-SNAPSHOT"
 
   //val scribble_common = "org.scribble" % "scribble-common" % "1.0.0-SNAPSHOT"
   //val scribble_protocol = "org.scribble" % "scribble-protocol" % "1.0.0-SNAPSHOT"
