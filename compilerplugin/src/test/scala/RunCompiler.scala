@@ -12,7 +12,9 @@ class RunCompiler extends FunSuite {
 
     val settings = new Settings
     settings.classpath.tryToSet(List(
-        "runtime/target/scala_2.8.0.RC1/classes:compilerplugin/target/scala_2.8.0.RC1/classes" +
+        "project/boot/scala-2.8.0.RC6/lib/scala-compiler.jar" +
+        ":project/boot/scala-2.8.0.RC6/lib/scala-library.jar" +
+        ":runtime/target/scala_2.8.0.RC1/classes:compilerplugin/target/scala_2.8.0.RC1/classes" +
         ":examples/target/scala_2.8.0.RC1/classes"
     ))
     settings.showPlugins.tryToSet(List("true"))
