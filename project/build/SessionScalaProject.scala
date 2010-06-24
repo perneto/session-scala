@@ -19,6 +19,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
   class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) {
     val scalatest = "org.scalatest" % "scalatest" % "1.2-for-scala-2.8.0.RC6-SNAPSHOT"
+    override def testAction = super.testAction dependsOn(`package`)
 
   //val scribble_common = "org.scribble" % "scribble-common" % "1.0.0-SNAPSHOT"
   //val scribble_protocol = "org.scribble" % "scribble-protocol" % "1.0.0-SNAPSHOT"

@@ -8,18 +8,24 @@ import reporters.ConsoleReporter
  */
 
 class RunCompiler extends FunSuite {
+  val scalaVersion = "2.8.0.RC6"
   test("run compiler") {
 
     val settings = new Settings
     settings.classpath.tryToSet(List(
-        "project/boot/scala-2.8.0.RC6/lib/scala-compiler.jar" +
-        ":project/boot/scala-2.8.0.RC6/lib/scala-library.jar" +
-        ":runtime/target/scala_2.8.0.RC1/classes:compilerplugin/target/scala_2.8.0.RC1/classes" +
-        ":examples/target/scala_2.8.0.RC1/classes"
+        "project/boot/scala-"+scalaVersion+"/lib/scala-compiler.jar" +
+        ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar" +
+        ":runtime/target/scala_"+scalaVersion+"/classes" +
+        ":compilerplugin/target/scala_"+scalaVersion+"/classes" +
+        ":examples/target/scala_"+scalaVersion+"/classes"
     ))
-    settings.showPlugins.tryToSet(List("true"))
-    settings.plugin.tryToSet(List())
+    println("Classpath: " + settings.classpath)
+    //settings.showPlugins only works if you're not compiling a file, same as -help
+    settings.require.tryToSet(List("sessiontyping"))
+    settings.plugin.tryToSet(List(
+      "compilerplugin/target/scala_"+scalaVersion+"/compilerplugin_"+scalaVersion+"-0.1.jar"))
     settings.pluginOptions.tryToSet(List())
+    //settings.verbose.tryToSet(List())
     val tmpdir = System.getProperty("java.io.tmpdir")
     settings.d.tryToSet(List(tmpdir))
     val compiler = new Global(settings, new ConsoleReporter(settings))

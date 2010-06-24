@@ -2,7 +2,7 @@ package buyerseller.sessionactors
 
 import scala.actors.Actor, Actor._
 import buyerseller._
-import uk.ac.ic.doc.sessionscala.SharedChannel
+import _root_.uk.ac.ic.doc.sessionscala.SharedChannel
 
 object BuyerSeller {
   def main(args: Array[String]) {
