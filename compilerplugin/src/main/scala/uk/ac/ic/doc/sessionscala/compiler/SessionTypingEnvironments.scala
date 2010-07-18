@@ -39,7 +39,7 @@ trait SessionTypingEnvironments {
       throw new IllegalStateException("this should not happen")
     }
 
-    def enterBranch(label: Tree) : SessionTypingEnvironment = {
+    def enterBranch(label: Type) : SessionTypingEnvironment = {
       throw new IllegalStateException("this should not happen")
     }
 
@@ -58,6 +58,10 @@ trait SessionTypingEnvironments {
             parent.getGlobalTypeForChannel(name)
       }
     }
+
+    def send(sessChan: Name, role: String, msgType: Type) = {}
+    def receive(sessChan: Name, msgType: Type) = {}
+     
   }
 
   class TopLevelSessionTypingEnvironment extends SessionTypingEnvironment {
@@ -71,13 +75,13 @@ trait SessionTypingEnvironments {
       parent
     }
 
-    override def enterBranch(label: Tree) : SessionTypingEnvironment = {
+    override def enterBranch(label: Type) : SessionTypingEnvironment = {
       println("enter branch: " + label)
       new InBranchEnvironment(this, label)
     }
   }
 
-  class InBranchEnvironment(val parent: SessionTypingEnvironment, branchLabel: Tree) extends SessionTypingEnvironment {
+  class InBranchEnvironment(val parent: SessionTypingEnvironment, branchLabel: Type) extends SessionTypingEnvironment {
     override def leaveBranch = {
       println("leave branch: " + branchLabel)
       // Todo: check session type is completed

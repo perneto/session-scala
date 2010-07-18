@@ -19,12 +19,13 @@ class RunCompiler extends FunSuite {
         ":compilerplugin/target/scala_"+scalaVersion+"/classes" +
         ":examples/target/scala_"+scalaVersion+"/classes"
     ))
-    println("Classpath: " + settings.classpath)
+    //println("Classpath: " + settings.classpath)
     //settings.showPlugins only works if you're not compiling a file, same as -help
     settings.require.tryToSet(List("sessiontyping"))
     settings.plugin.tryToSet(List(
       "compilerplugin/target/scala_"+scalaVersion+"/compilerplugin_"+scalaVersion+"-0.1.jar"))
     settings.pluginOptions.tryToSet(List())
+    //settings.print.tryToSet(List("all"))
     //settings.verbose.tryToSet(List())
     val tmpdir = System.getProperty("java.io.tmpdir")
     settings.d.tryToSet(List(tmpdir))
