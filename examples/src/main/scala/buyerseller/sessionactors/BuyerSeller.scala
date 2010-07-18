@@ -2,10 +2,12 @@ package buyerseller.sessionactors
 
 import scala.actors.Actor, Actor._
 import buyerseller._
-import _root_.uk.ac.ic.doc.sessionscala.SharedChannel
+import uk.ac.ic.doc.sessionscala.{protocol, SharedChannel}
 
 object BuyerSeller {
   def main(args: Array[String]) {
+    @protocol("buyerseller.scribble") // Scribble file also contains roles, could
+    // generate set of roles automatically
     val sharedChannel = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
     // Will restart an accepting Seller every time a session is started.
     // Similar in behaviour to a listening server socket.
