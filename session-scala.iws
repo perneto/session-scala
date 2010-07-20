@@ -2,18 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="a98375ad-3259-4a67-bb8b-84987d93d409" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" afterPath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/session-scala.iws" afterPath="$PROJECT_DIR$/session-scala.iws" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build.properties" afterPath="$PROJECT_DIR$/project/build.properties" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala" />
     </list>
     <ignored path=".idea/workspace.xml" />
     <ignored path="session-scala.iws" />
@@ -76,7 +76,34 @@
       <file leaf-file-name="AcceptBlocksPass.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="102" column="18" selection-start="4702" selection-end="4702" vertical-scroll-proportion="0.0">
+            <state line="25" column="13" selection-start="973" selection-end="973" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Option.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/Option.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="72" column="6" selection-start="2523" selection-end="2523" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="RunCompiler.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="34" column="68" selection-start="1327" selection-end="1327" vertical-scroll-proportion="0.61083746">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Trees.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Trees.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="6" column="24" selection-start="122" selection-end="122" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -85,16 +112,7 @@
       <file leaf-file-name="SessionTypingEnvironments.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="78" column="6" selection-start="2661" selection-end="2661" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="BuyerSellerRecursive.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="9" column="29" selection-start="221" selection-end="221" vertical-scroll-proportion="0.098522164">
+            <state line="105" column="19" selection-start="3544" selection-end="3544" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -103,16 +121,7 @@
       <file leaf-file-name="BuyerSeller.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="6" column="7" selection-start="158" selection-end="158" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="buyersellerrec.scribble" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="8" column="87" selection-start="186" selection-end="186" vertical-scroll-proportion="0.0">
+            <state line="22" column="18" selection-start="813" selection-end="813" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -122,15 +131,6 @@
         <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyerseller.scribble">
           <provider selected="true" editor-type-id="text-editor">
             <state line="10" column="33" selection-start="252" selection-end="252" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Trees.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/ast/Trees.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="433" column="13" selection-start="18591" selection-end="18591" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -151,16 +151,16 @@
         <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerSymbol.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironment.scala" />
         <option value="$PROJECT_DIR$/project/build/SessionScalaProject.scala" />
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypeCheckerAccepts.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" />
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" />
       </list>
     </option>
   </component>
@@ -498,7 +498,7 @@
     <property name="options.splitter.main.proportions" value="0.3" />
     <property name="MemberChooser.sorted" value="false" />
     <property name="recentsLimit" value="5" />
-    <property name="options.lastSelected" value="Errors" />
+    <property name="options.lastSelected" value="preferences.keymap" />
     <property name="project.structure.side.proportion" value="0.2" />
     <property name="MemberChooser.copyJavadoc" value="false" />
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
@@ -738,11 +738,11 @@
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2006717" sideWeight="0.35410336" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23425692" sideWeight="0.5699088" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2006717" sideWeight="0.6352584" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23425692" sideWeight="0.41945288" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296875" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -790,108 +790,114 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/ast/Trees.scala">
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="433" column="13" selection-start="18591" selection-end="18591" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/symtab/SymbolTable.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="12" column="0" selection-start="196" selection-end="196" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/Global.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="33" column="69" selection-start="1257" selection-end="1257" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="4" column="0" selection-start="85" selection-end="85" vertical-scroll-proportion="0.07881773">
+        <state line="105" column="19" selection-start="3544" selection-end="3544" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/SubComponent.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Names.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="6" selection-start="340" selection-end="340" vertical-scroll-proportion="-0.039408866">
+        <state line="3" column="0" selection-start="39" selection-end="39" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/StdNames.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="77" selection-start="1340" selection-end="1340" vertical-scroll-proportion="0.0">
+        <state line="26" column="0" selection-start="874" selection-end="874" vertical-scroll-proportion="0.52971137">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/project/build/SessionScalaProject.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Universe.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="2" column="6" selection-start="20" selection-end="20" vertical-scroll-proportion="0.039408866">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="3" column="22" selection-start="107" selection-end="107" vertical-scroll-proportion="0.0591133">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="8" column="6" selection-start="203" selection-end="203" vertical-scroll-proportion="0.15763547">
+        <state line="8" column="36" selection-start="274" selection-end="274" vertical-scroll-proportion="0.15763547">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Trees.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="434" column="13" selection-start="14018" selection-end="14018" vertical-scroll-proportion="0.33224756">
+        <state line="6" column="24" selection-start="122" selection-end="122" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyerseller.scribble">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/LinearSeqOptimized.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="33" selection-start="252" selection-end="252" vertical-scroll-proportion="0.0">
+        <state line="118" column="6" selection-start="3059" selection-end="3059" vertical-scroll-proportion="0.33333334">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/Product.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="6" column="7" selection-start="158" selection-end="158" vertical-scroll-proportion="0.0">
+        <state line="19" column="6" selection-start="733" selection-end="733" vertical-scroll-proportion="0.24448217">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/annotation/unchecked/uncheckedVariance.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="8" column="87" selection-start="186" selection-end="186" vertical-scroll-proportion="0.0">
+        <state line="14" column="12" selection-start="708" selection-end="708" vertical-scroll-proportion="0.16871704">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/generic/GenericTraversableTemplate.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="78" column="6" selection-start="2661" selection-end="2661" vertical-scroll-proportion="0.0">
+        <state line="108" column="90" selection-start="4302" selection-end="4302" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/Option.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="102" column="18" selection-start="4702" selection-end="4702" vertical-scroll-proportion="0.0">
+        <state line="72" column="6" selection-start="2523" selection-end="2523" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="29" selection-start="221" selection-end="221" vertical-scroll-proportion="0.098522164">
+        <state line="9" column="29" selection-start="221" selection-end="221" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/immutable/List.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="44" column="22" selection-start="1725" selection-end="1725" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/TraversableLike.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="226" column="26" selection-start="9587" selection-end="9587" vertical-scroll-proportion="0.37373737">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="11" column="9" selection-start="229" selection-end="229" vertical-scroll-proportion="0.21674877">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="25" column="13" selection-start="973" selection-end="973" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="34" column="68" selection-start="1327" selection-end="1327" vertical-scroll-proportion="0.61083746">
           <folding />
         </state>
       </provider>

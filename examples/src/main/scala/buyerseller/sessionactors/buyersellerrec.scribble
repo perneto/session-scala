@@ -9,7 +9,7 @@ protocol BuyerSeller {
 
     Order from Buyer to Seller;
 
-    recur @ Buyer quoteloop: {            
+    recur quoteloop: {            
         Integer from Seller to Buyer;
         choice from Buyer to Seller {
             when OK {

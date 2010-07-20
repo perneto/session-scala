@@ -8,7 +8,7 @@ import reporters.ConsoleReporter
  */
 
 class RunCompiler extends FunSuite {
-  val scalaVersion = "2.8.0.RC6"
+  val scalaVersion = "2.8.0"
   test("run compiler") {
 
     val settings = new Settings
@@ -32,6 +32,6 @@ class RunCompiler extends FunSuite {
     val compiler = new Global(settings, new ConsoleReporter(settings))
 
     new compiler.Run().compile(List(
-      "examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala"))
+      "examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala"))
   }
 }

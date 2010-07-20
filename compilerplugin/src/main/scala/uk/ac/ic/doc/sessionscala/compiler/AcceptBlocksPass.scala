@@ -15,19 +15,19 @@ abstract class AcceptBlocksPass extends PluginComponent
     val scribbleParser = new ANTLRProtocolParser
     var sessionEnvironment: SessionTypingEnvironment = new TopLevelSessionTypingEnvironment
 
-    def isSessionChannelIdent(tree: Tree): Boolean = tree match {
-      case Ident(name) if sessionEnvironment.isSessionChannel(name) => true
-      case _ => false
+    def isSessionChannelIdent(tree: Tree): Boolean = getSessionChannelName(tree).isDefined
+
+    def getSessionChannelName(tree: Tree): Option[Name] = tree match {
+      case Ident(name) if sessionEnvironment.isSessionChannel(name) => Some(name)
+      case _ => None
     }
 
-    def getSessionChannels(args: List[Tree]): List[Name] = {
-      var chans: List[Name] = Nil
-      args foreach {
-        case Ident(name) if sessionEnvironment.isSessionChannel(name) =>
-          chans = name::chans
-        case _ =>
-      }
-      chans
+    def getSessionChannels(args: List[Tree]): List[Name] =
+      args.map(getSessionChannelName).flatten      
+
+    def linearityError(lhs: Any, rhs: Tree) {
+      reporter.error(rhs.pos, "Cannot assign " + rhs
+        + " to " + lhs + ": aliasing of session channels is forbidden")
     }
 
     override def traverse(tree: Tree) {
@@ -40,7 +40,7 @@ abstract class AcceptBlocksPass extends PluginComponent
           val filename = filenameTree.value.stringValue
           val is = new FileInputStream(new File(unitPath, filename))
           val globalModel = scribbleParser.parse(is, scribbleJournal)
-          //todo: validate model ?
+          //todo: validate model
           sessionEnvironment.registerSharedChannel(name, globalModel)
           traverse(rhs)
 
@@ -59,13 +59,13 @@ abstract class AcceptBlocksPass extends PluginComponent
         case Apply(Select(Apply(Select(Ident(session),_),Literal(role)::Nil),_),arg::Nil)
         if tree.symbol == bangMethod && sessionEnvironment.isSessionChannel(session) =>
           println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
-          sessionEnvironment.send(session, role.stringValue, arg.tpe)
+          sessionEnvironment = sessionEnvironment.send(session, role.stringValue, arg.tpe)
           traverse(arg)
 
         case TypeApply(Select(qm @ Select(Ident(session),_), _), _)
         if qm.symbol == qmarkMethod && sessionEnvironment.isSessionChannel(session) =>
           println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session)
-          sessionEnvironment.receive(session, tree.tpe)
+          sessionEnvironment = sessionEnvironment.receive(session, tree.tpe)
           super.traverse(tree)
 
         case Apply(TypeApply(Select(Ident(session),_),_),
@@ -94,13 +94,14 @@ abstract class AcceptBlocksPass extends PluginComponent
 
         case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
           //todo: forbid delegation to methods starting another thread. require annotation?
+          // starting another thread is actually ok, as long as this thread does not access
+          // the channel anymore.
           println("delegation of session channel: " + tree)
           sessionEnvironment = sessionEnvironment.delegation(fun.symbol, getSessionChannels(args))
           super.traverse(tree)
 
-        case Assign(_,rhs) if isSessionChannelIdent(rhs) =>
-          reporter.error(tree.pos, "Cannot assign " + rhs
-                  + " to another variable: aliasing of session channels is forbidden")
+        case Assign(lhs,rhs) if isSessionChannelIdent(rhs) => linearityError(lhs,rhs)
+        case ValDef(_,name,_,rhs) if isSessionChannelIdent(rhs) => linearityError(name,rhs)
 
         case _ =>
           super.traverse(tree)

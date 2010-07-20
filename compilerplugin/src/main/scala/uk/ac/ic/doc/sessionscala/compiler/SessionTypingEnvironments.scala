@@ -59,8 +59,8 @@ trait SessionTypingEnvironments {
       }
     }
 
-    def send(sessChan: Name, role: String, msgType: Type) {}
-    def receive(sessChan: Name, msgType: Type) {}
+    def send(sessChan: Name, role: String, msgType: Type) = this
+    def receive(sessChan: Name, msgType: Type) = this
     def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       //todo: forbid delegation to
       this
