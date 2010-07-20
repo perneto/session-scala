@@ -1,0 +1,25 @@
+import buyerseller.Order;
+import buyerseller.Invoice;
+import buyerseller.Payment;
+import buyerseller.OK;
+import buyerseller.NotOK;
+
+protocol BuyerSeller {
+    participant Buyer, Seller;
+
+    Order from Buyer to Seller;
+
+    recur @ Buyer quoteloop: {            
+        Integer from Seller to Buyer;
+        choice from Buyer to Seller {
+            when OK {
+                Invoice from Seller to Buyer;
+                Payment from Buyer to Seller;
+            }
+            when NotOK {
+                String from Buyer to Seller;
+                #quoteloop;
+            }
+        }
+    }
+}

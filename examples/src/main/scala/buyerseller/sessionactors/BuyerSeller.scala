@@ -19,11 +19,11 @@ object BuyerSeller {
     actor {
       sharedChannel.accept("Seller") { s =>
         println("Seller: started")
-        val o : Order = s.?.asInstanceOf[Order]
+        val o: Order = s.?.asInstanceOf[Order]
         s("Buyer") ! 2000
         s.receive {
           case OK =>
-            s("Buyer") ! new Invoice(5000)
+            s("Buyer") ! new Invoice(2000)
             val payment = s.?
           case NotOK =>
             val reason = s.?
