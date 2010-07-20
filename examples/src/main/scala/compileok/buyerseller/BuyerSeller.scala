@@ -1,7 +1,6 @@
-package buyerseller.sessionactors
+package compileok.buyerseller
 
 import scala.actors.Actor, Actor._
-import buyerseller._
 import uk.ac.ic.doc.sessionscala.{protocol, SharedChannel}
 
 object BuyerSeller {

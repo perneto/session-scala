@@ -1,3 +1,5 @@
+package uk.ac.ic.doc.sessionscala.compiler
+
 import org.scalatest.FunSuite
 
 import scala.tools.nsc._
@@ -32,6 +34,6 @@ class RunCompiler extends FunSuite {
     val compiler = new Global(settings, new ConsoleReporter(settings))
 
     new compiler.Run().compile(List(
-      "examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala"))
+      "examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala"))
   }
 }

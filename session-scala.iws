@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" readonly="true" id="a98375ad-3259-4a67-bb8b-84987d93d409" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" afterPath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" />
+    <list default="true" readonly="true" id="a98375ad-3259-4a67-bb8b-84987d93d409" name="Default" comment="much progress on compiler plugin">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileerror/BadBranching.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellermsg.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellerrec.scribble" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileerror/BadAssignment.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyerseller.scribble" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyerseller.scribble" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/RunCompiler.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/Order.scala" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/session-scala.iws" afterPath="$PROJECT_DIR$/session-scala.iws" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build.properties" afterPath="$PROJECT_DIR$/project/build.properties" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" afterPath="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala" />
     </list>
     <ignored path=".idea/workspace.xml" />
     <ignored path="session-scala.iws" />
@@ -82,10 +82,73 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="SessionTypingEnvironments.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="DefDefPass.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="28" column="19" selection-start="728" selection-end="728" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BadBranching.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileerror/BadBranching.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="4" column="20" selection-start="142" selection-end="142" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BadAssignment.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileerror/BadAssignment.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="21" column="28" selection-start="469" selection-end="469" vertical-scroll-proportion="0.4278438">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="buyersellermsg.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellermsg.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="6" column="6" selection-start="115" selection-end="115" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="SessionTypingEnvironments.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="64" column="6" selection-start="2228" selection-end="2228" vertical-scroll-proportion="1.1758958">
+            <state line="40" column="85" selection-start="1409" selection-end="1409" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="EnvironmentsTest.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="16" column="2" selection-start="223" selection-end="223" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BuyerSeller.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="5" column="7" selection-start="133" selection-end="133" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BuyerSellerRecursive.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="6" column="7" selection-start="110" selection-end="110" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -101,21 +164,22 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyerseller.scribble" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypecheckingTraverser.scala" />
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerSymbol.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironment.scala" />
-        <option value="$PROJECT_DIR$/project/build/SessionScalaProject.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionDefinitions.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypeCheckerAccepts.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingPlugin.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
-        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/AcceptBlocksPass.scala" />
         <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble" />
         <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala" />
         <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/buyersellermessages.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BadAssignment.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BadBranching.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellermsg.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/RunCompiler.scala" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/compileerror/BadBranching.scala" />
+        <option value="$PROJECT_DIR$/examples/src/main/scala/compileerror/BadAssignment.scala" />
       </list>
     </option>
   </component>
@@ -182,6 +246,100 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
+              <option name="myItemId" value="examples" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="session-scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="examples" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="session-scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="examples" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="main" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="buyerseller" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="session-scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="examples" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="main" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="compileerror" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="session-scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="examples" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="main" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="session-scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
               <option name="myItemId" value="compilerplugin" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -205,6 +363,10 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="compiler" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -348,7 +510,12 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors" />
     </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller" />
+    </key>
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="compileerror" />
+      <recent name="compileok.buyerseller" />
       <recent name="uk.ac.ic.doc.sessionscala.compiler" />
     </key>
   </component>
@@ -565,17 +732,17 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="40" y="22" width="1239" height="778" extended-state="0" />
-    <editor active="false" />
+    <editor active="true" />
     <layout>
-      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32978722" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.28379512" sideWeight="0.39817628" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.28379512" sideWeight="0.11398176" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.28379512" sideWeight="0.5911854" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.28379512" sideWeight="0.8753799" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296875" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -623,55 +790,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Universe.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="8" column="36" selection-start="274" selection-end="274" vertical-scroll-proportion="0.15763547">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/reflect/generic/Trees.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="6" column="24" selection-start="122" selection-end="122" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/LinearSeqOptimized.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="118" column="6" selection-start="3059" selection-end="3059" vertical-scroll-proportion="0.33333334">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/Product.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="6" selection-start="733" selection-end="733" vertical-scroll-proportion="0.24448217">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/annotation/unchecked/uncheckedVariance.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="14" column="12" selection-start="708" selection-end="708" vertical-scroll-proportion="0.16871704">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/generic/GenericTraversableTemplate.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="108" column="90" selection-start="4302" selection-end="4302" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSellerRecursive.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="29" selection-start="221" selection-end="221" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/immutable/List.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="44" column="22" selection-start="1725" selection-end="1725" vertical-scroll-proportion="0.0">
@@ -686,16 +804,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyersellerrec.scribble">
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellerrec.scribble">
       <provider selected="true" editor-type-id="text-editor">
         <state line="11" column="9" selection-start="229" selection-end="229" vertical-scroll-proportion="0.21674877">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/RunCompiler.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="68" selection-start="1327" selection-end="1327" vertical-scroll-proportion="0.61083746">
           <folding />
         </state>
       </provider>
@@ -707,16 +818,58 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/BuyerSeller.scala">
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyerseller.scribble">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="21" column="46" selection-start="794" selection-end="794" vertical-scroll-proportion="0.41379312">
+        <state line="10" column="33" selection-start="252" selection-end="252" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/buyerseller/sessionactors/buyerseller.scribble">
+    <entry file="jar://$PROJECT_DIR$/compilerplugin/lib_managed/scala_2.8.0.RC7/compile/scalatest-1.2-for-scala-2.8.0.RC6-SNAPSHOT.jar!/org/scalatest/FunSuite.class">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="33" selection-start="252" selection-end="252" vertical-scroll-proportion="0.0">
+        <state line="1" column="6" selection-start="28" selection-end="28" vertical-scroll-proportion="0.02020202">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="40" column="85" selection-start="1409" selection-end="1409" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="16" column="2" selection-start="223" selection-end="223" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyersellermsg.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="6" column="6" selection-start="115" selection-end="115" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="6" column="7" selection-start="110" selection-end="110" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="5" column="7" selection-start="133" selection-end="133" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/RunCompiler.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="36" column="41" selection-start="1344" selection-end="1344" vertical-scroll-proportion="0.7093596">
           <folding />
         </state>
       </provider>
@@ -728,9 +881,23 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/DefDefPass.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="64" column="6" selection-start="2228" selection-end="2228" vertical-scroll-proportion="1.1758958">
+        <state line="28" column="19" selection-start="728" selection-end="728" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileerror/BadBranching.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="4" column="20" selection-start="142" selection-end="142" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/src/main/scala/compileerror/BadAssignment.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="21" column="28" selection-start="469" selection-end="469" vertical-scroll-proportion="0.4278438">
           <folding />
         </state>
       </provider>
