@@ -20,7 +20,6 @@ object BuyerSeller {
       sharedChannel.accept("Seller") { s =>
         println("Seller: started")
         val o: Order = s.?.asInstanceOf[Order]
-        var s1 = s
         s("Buyer") ! 2000
         s.receive {
           case OK =>
