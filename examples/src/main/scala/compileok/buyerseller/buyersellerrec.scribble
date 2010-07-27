@@ -1,8 +1,8 @@
-import buyerseller.Order;
-import buyerseller.Invoice;
-import buyerseller.Payment;
-import buyerseller.OK;
-import buyerseller.NotOK;
+import Order;
+import Invoice;
+import Payment;
+import OK;
+import NotOK;
 
 protocol BuyerSeller {
     role Buyer, Seller;

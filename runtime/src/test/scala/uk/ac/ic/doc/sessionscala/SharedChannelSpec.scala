@@ -91,6 +91,31 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
     assert(fooReceived)
   }
 
+  test("sequence of two message receives out of order works") {
+    val chan = createLocalChannel(Set("Foo", "Bar", "Quux"))
+    var barOk = false; var quuxOk = false
+    actor {
+      chan.accept("Foo") { s =>
+        barOk = s("Bar").?[Int] == 42
+        quuxOk = s("Quux").?[Char] == 'a'
+      }
+
+    }
+
+    actor { chan.accept("Bar") { s =>
+      Thread.sleep(300)
+      s("Foo") ! 42
+    }}
+
+    actor { chan.accept("Quux") { s =>
+      s("Foo") ! 'a'
+    }}
+
+    Thread.sleep(500)
+    assert(barOk)
+    assert(quuxOk)
+  }
+
   // Too long for routine testing
   ignore("shared channel doesn't blow the stack") {
     for (i <- List.range(1,1000000)) {
