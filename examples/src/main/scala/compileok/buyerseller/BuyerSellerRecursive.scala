@@ -12,15 +12,15 @@ object BuyerSellerRecursive {
     actor {
       sharedChannel.accept("Seller") { s =>
         println("Seller: started")
-        val o: Order = s.?.asInstanceOf[Order]
+        val o = s("Buyer").?[Order]
         def quoteRecursion(s: SessionChannel, quote: Int) {
           s("Buyer") ! quote
-          s.receive {
+          s("Buyer").receive {
             case OK =>
               s("Buyer") ! new Invoice(quote)
-              val payment = s.?
+              val payment = s("Buyer").?[Payment]
             case NotOK =>
-              val reason = s.?
+              val reason = s("Buyer").?[String]
               quoteRecursion(s, quote - 100)
           }
         }
@@ -35,10 +35,10 @@ object BuyerSellerRecursive {
         println("Buyer: started")
         s("Seller") ! new Order(100)
         def quoteRecursion(s: SessionChannel) {
-          val price = s.?.asInstanceOf[Int]
+          val price = s("Seller").?[Int]
           if (price < 1950) {
             s("Seller") ! OK
-            val invoice = s.?
+            val invoice = s("Seller").?[Invoice]
             s("Seller") ! new Payment(price)
           } else {
             s("Seller") ! NotOK

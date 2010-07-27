@@ -5,7 +5,7 @@ import buyerseller.OK;
 import buyerseller.NotOK;
 
 protocol BuyerSeller {
-    participant Buyer, Seller;
+    role Buyer, Seller;
 
     Order from Buyer to Seller;
     Integer from Seller to Buyer;

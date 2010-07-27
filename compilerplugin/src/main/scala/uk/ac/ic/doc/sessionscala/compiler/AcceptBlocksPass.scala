@@ -32,6 +32,7 @@ abstract class AcceptBlocksPass extends PluginComponent
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol
+
       tree match {
         case ValDef(_,name,_,rhs)
         if sym.hasAnnotation(protocolAnnotation) && sym.tpe <:< sharedChannelTrait.tpe =>
@@ -40,6 +41,7 @@ abstract class AcceptBlocksPass extends PluginComponent
           val filename = filenameTree.value.stringValue
           val is = new FileInputStream(new File(unitPath, filename))
           val globalModel = scribbleParser.parse(is, scribbleJournal)
+          println("global model: " + globalModel.getProtocol)
           //todo: validate model
           sessionEnvironment.registerSharedChannel(name, globalModel)
           traverse(rhs)
@@ -50,28 +52,46 @@ abstract class AcceptBlocksPass extends PluginComponent
 
         case Apply(Apply(Select(Ident(chanIdent), _), Literal(role)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
-        if tree.symbol == acceptMethod =>
+        if sym == acceptMethod =>
           println("accept: " + role + ", sessChan: " + sessChan)
           sessionEnvironment = sessionEnvironment.enterAccept(chanIdent, role.stringValue, sessChan)
           traverse(block)
           sessionEnvironment = sessionEnvironment.leaveAccept
 
         case Apply(Select(Apply(Select(Ident(session),_),Literal(role)::Nil),_),arg::Nil)
-        if tree.symbol == bangMethod && sessionEnvironment.isSessionChannel(session) =>
+        if sym == bangMethod && sessionEnvironment.isSessionChannel(session) =>
           println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
           sessionEnvironment = sessionEnvironment.send(session, role.stringValue, arg.tpe)
           traverse(arg)
 
-        case TypeApply(Select(qm @ Select(Ident(session),_), _), _)
-        if qm.symbol == qmarkMethod && sessionEnvironment.isSessionChannel(session) =>
-          println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session)
+        case TypeApply(
+               Select(
+                 Apply(
+                   Select(Ident(session), _),
+                   Literal(role)::Nil
+                 ),
+               _),
+             _)
+        if sym == qmarkMethod && sessionEnvironment.isSessionChannel(session) =>
+          if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
+            reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
+          println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
           sessionEnvironment = sessionEnvironment.receive(session, tree.tpe)
           super.traverse(tree)
 
-        case Apply(TypeApply(Select(Ident(session),_),_),
-                   Function(_,Match(_,cases))::Nil)
-        if tree.symbol == receiveMethod && sessionEnvironment.isSessionChannel(session) =>
-            println("receiveMethod, session: " + session
+        case Apply(
+               TypeApply(
+                 Select(
+                   Apply(
+                     Select(Ident(session),_),
+                     Literal(role)::Nil
+                   ), _
+                 ), _
+               ),
+               Function(_,Match(_,cases))::Nil
+             )
+        if sym == receiveMethod && sessionEnvironment.isSessionChannel(session) =>
+            println("receiveMethod, session: " + session + ", role: " + role
                     + ", cases: " + cases)
             cases foreach { c: CaseDef =>
               if (! c.guard.isEmpty) {
@@ -93,12 +113,13 @@ abstract class AcceptBlocksPass extends PluginComponent
             }
 
         case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
-          //todo: forbid delegation to methods starting another thread. require annotation?
-          // starting another thread is actually ok, as long as this thread does not access
-          // the channel anymore.
           println("delegation of session channel: " + tree)
           sessionEnvironment = sessionEnvironment.delegation(fun.symbol, getSessionChannels(args))
           super.traverse(tree)
+
+        // todo: allow returning session channel from methods after they have advanced the session
+        // need to be assigned to new val, new val identifier need to be added to environment
+        //case ValDef(_,name,_,a @ Apply(fun,_)) if a.symbol.tpe == sessionChannelType =>
 
         case Assign(lhs,rhs) if isSessionChannelIdent(rhs) => linearityError(lhs,rhs)
         case ValDef(_,name,_,rhs) if isSessionChannelIdent(rhs) => linearityError(name,rhs)

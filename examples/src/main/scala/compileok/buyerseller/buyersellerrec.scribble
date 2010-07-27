@@ -5,11 +5,11 @@ import buyerseller.OK;
 import buyerseller.NotOK;
 
 protocol BuyerSeller {
-    participant Buyer, Seller;
+    role Buyer, Seller;
 
     Order from Buyer to Seller;
 
-    recur quoteloop: {            
+    recur Quoteloop: {
         Integer from Seller to Buyer;
         choice from Buyer to Seller {
             when OK {
@@ -18,7 +18,7 @@ protocol BuyerSeller {
             }
             when NotOK {
                 String from Buyer to Seller;
-                #quoteloop;
+                #Quoteloop;
             }
         }
     }

@@ -11,7 +11,7 @@ object SharedChannel {
 }
 
 trait SharedChannel {
-  type ActorFun = SessionChannel => Unit
+  type ActorFun = (String => ParticipantChannel) => Unit
   def accept(role: String)(act: ActorFun): Unit
 }
 

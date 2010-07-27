@@ -10,8 +10,8 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
       var s = new AcceptState(awaiting)
       loop {
         react {
-          case NewAccept(role: String, srcActor: Actor) =>
-            val newS = s.received(role, srcActor, sender)
+          case NewAccept(role: String, actorForRole: Actor) =>
+            val newS = s.received(role, actorForRole, sender)
             if (newS.isComplete) {
               s = newS.createSessionChanAndReply
             } else {
@@ -27,7 +27,7 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
     //println("accept, awaiting: " + awaiting + ", role: " + role)
-    val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[SessionChannel]
+    val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[String => ParticipantChannel]
     act(sessChan)
   }
 

@@ -15,7 +15,7 @@ object BadBranching {
 
     actor {
       sharedChan.accept("Buyer") { s =>
-        s.receive {
+        s("Seller").receive {
           case OK if (42 == 43) => // bad: guards not supported
           case Some(NotOK) => // bad: complex patterns not supported
           case _ => // bad: complex patterns not supported

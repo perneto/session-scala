@@ -31,9 +31,9 @@ class RunCompiler extends FunSuite {
     //settings.verbose.tryToSet(List())
     val tmpdir = System.getProperty("java.io.tmpdir")
     settings.d.tryToSet(List(tmpdir))
-    val compiler = new Global(settings, new ConsoleReporter(settings))
+    val compiler = new Global(settings)
 
     new compiler.Run().compile(List(
-      "examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala"))
+      "examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala"))
   }
 }

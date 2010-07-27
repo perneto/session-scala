@@ -1,7 +1,7 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{SessionChannel, protocol, SharedChannel}
+import uk.ac.ic.doc.sessionscala.{ParticipantChannel, protocol, SharedChannel}
 
 /**
  * Created by: omp08
@@ -19,7 +19,7 @@ object BadAssignment {
     }
 
     sharedChan.accept("Seller") { s =>
-      var s1: SessionChannel = null
+      var s1: (String => ParticipantChannel) = null
       s1 = s // wrong
     }
 

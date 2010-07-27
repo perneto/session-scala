@@ -20,7 +20,7 @@ abstract class DefDefPass extends PluginComponent
     def apply(unit: global.CompilationUnit): Unit = {
       println("DefDefPass starting")
 
-      //global.treeBrowsers.create().browse(unit.body)
+      global.treeBrowsers.create().browse(unit.body)
       val typeChecker = new SessionMethodDefTraverser
       typeChecker(unit.body)
     }

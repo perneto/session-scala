@@ -61,13 +61,13 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
       actor {
         chan.accept("Foo") { s =>
           s("Bar") ! 42
-          fooRecv = s.? == 43
+          fooRecv = s("Bar").? == 43
         }
       }
       actor {
         chan.accept("Bar") { s =>
           s("Foo") ! 43
-          barRecv = s.? == 42
+          barRecv = s("Foo").? == 42
         }
       }
     sleep
