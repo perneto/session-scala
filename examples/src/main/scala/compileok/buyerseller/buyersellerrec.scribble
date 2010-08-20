@@ -9,14 +9,14 @@ protocol BuyerSeller {
 
     Order from Buyer to Seller;
 
-    recur Quoteloop: {
+    Quoteloop: {
         Integer from Seller to Buyer;
         choice from Buyer to Seller {
-            when OK {
+            OK {
                 Invoice from Seller to Buyer;
                 Payment from Buyer to Seller;
             }
-            when NotOK {
+            NotOK {
                 String from Buyer to Seller;
                 #Quoteloop;
             }
