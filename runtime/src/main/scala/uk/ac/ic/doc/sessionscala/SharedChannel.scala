@@ -12,7 +12,7 @@ object SharedChannel {
 
 trait SharedChannel {
   type ActorFun = (String => ParticipantChannel) => Unit
-  def accept(role: String)(act: ActorFun): Unit
+  def join(role: String)(act: ActorFun): Unit
 }
 
 
@@ -21,7 +21,7 @@ object SessionAcceptorRegistry {
   def register(role: String, act,  channel: SharedChannel) {
     actor {
       loop {
-        channel.accept(role, act) // blocks until all participants have called openSession
+        channel.join(role, act) // blocks until all participants have called openSession
       }
     }
   }

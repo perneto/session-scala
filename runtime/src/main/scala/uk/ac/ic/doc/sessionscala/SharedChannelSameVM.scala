@@ -23,10 +23,10 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
   }
   coordinator.start
 
-  def accept(role: String)(act: ActorFun): Unit = {
+  def join(role: String)(act: ActorFun): Unit = {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
-    //println("accept, awaiting: " + awaiting + ", role: " + role)
+    //println("join, awaiting: " + awaiting + ", role: " + role)
     val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[String => ParticipantChannel]
     act(sessChan)
   }

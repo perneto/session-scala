@@ -17,7 +17,7 @@ class DelegationSpec extends Timeouts {
     var bobOK1 = false; var bobOK2 = false ; var bobOK3 = false 
 
     actor {
-      chanA.accept("Alice") { sA =>
+      chanA.join("Alice") { sA =>
         sA("Bob") ! "Hello from Alice"
         //println("Hello (1) from Alice sent to: " + sA("Bob"))
         aliceOK = sA("Bob").? == "Hello from Bob"
@@ -27,11 +27,11 @@ class DelegationSpec extends Timeouts {
     }
 
     actor {
-      chanA.accept("Bob") { sA =>
+      chanA.join("Bob") { sA =>
         // println("before first receive on: " + sA)
         bobOK1 = sA("Alice").? == "Hello from Alice"
 
-        chanB.accept("Bob") { sB =>
+        chanB.join("Bob") { sB =>
           bothAccepted = true
           //println("before send to Alice")
           sA("Alice") ! "Hello from Bob"
@@ -50,7 +50,7 @@ class DelegationSpec extends Timeouts {
     }
 
     actor {
-      chanB.accept("Carol") { sB =>
+      chanB.join("Carol") { sB =>
         sB("Bob") ! "Hello from Carol"
         //println("Hello from Carol sent to: " + sB("Bob"))
         carolOK = sB("Bob").? == "Hello from Bob"
@@ -74,7 +74,7 @@ class DelegationSpec extends Timeouts {
     var helloOK = false ; var fortyTwoOK = false ; var fortyThreeOK = false
 
     actor {
-      chanA.accept("Alice") { sA =>
+      chanA.join("Alice") { sA =>
         sA("Bob") ! "Hello"
         sA("Bob") ! 42 // Now magically redirected to Carol
         fortyThreeOK = sA("Bob").? == 43
@@ -82,17 +82,17 @@ class DelegationSpec extends Timeouts {
     }
 
     actor {
-      chanA.accept("Bob") { sA =>
+      chanA.join("Bob") { sA =>
         val hello = sA("Alice").?
         helloOK = hello == "Hello"
-        chanB.accept("Bob") { sB =>
+        chanB.join("Bob") { sB =>
           //sB("Carol").delegate(sA)
         }
       }
     }
 
     actor {
-      chanB.accept("Carol") { sB =>
+      chanB.join("Carol") { sB =>
         //val sA = sB.receiveDelegated
         println("Received session channel")
         //val msg = sA.?

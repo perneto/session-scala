@@ -17,37 +17,37 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
     }
   }
 
-  test("complains if accept called with undefined role") {
+  test("complains if join called with undefined role") {
     intercept[IllegalArgumentException] {
-      chan1.accept("Quux") { _ => fail("Should not start Quux") }
+      chan1.join("Quux") { _ => fail("Should not start Quux") }
     }
   }
 
-  test("accepts Foo and Bar after two calls to accept if expecting both") {
+  test("accepts Foo and Bar after two calls to join if expecting both") {
     var didRunFoo = false ; var didRunBar = false
     actor {
-      chan2.accept("Foo") { _ => didRunFoo = true }
+      chan2.join("Foo") { _ => didRunFoo = true }
     }
     actor {
-      chan2.accept("Bar") { _ => didRunBar = true}
+      chan2.join("Bar") { _ => didRunBar = true}
     }
     sleep
     assert(didRunFoo)
     assert(didRunBar)
   }
 
-  test("allows encoding of race condition with 2 accept calls for same role") {
+  test("allows encoding of race condition with 2 join calls for same role") {
     val chan = createLocalChannel(Set("Foo","Bar"))
     var didRun1 = false ; var didRun2 = false ; var didRunBar = true
     withTimeoutAndWait {
       actor {
-        chan.accept("Bar") { _ => didRunBar = true}
+        chan.join("Bar") { _ => didRunBar = true}
       }
       actor {
-        chan.accept("Foo") { _ => didRun1 = true }
+        chan.join("Foo") { _ => didRun1 = true }
       }
       actor {
-        chan.accept("Foo") { _ => didRun2 = true }
+        chan.join("Foo") { _ => didRun2 = true }
       }
     }
     assert(didRunBar, "bar should have started")
@@ -59,13 +59,13 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
     val chan = createLocalChannel(Set("Foo","Bar"))
     
       actor {
-        chan.accept("Foo") { s =>
+        chan.join("Foo") { s =>
           s("Bar") ! 42
           fooRecv = s("Bar").? == 43
         }
       }
       actor {
-        chan.accept("Bar") { s =>
+        chan.join("Bar") { s =>
           s("Foo") ! 43
           barRecv = s("Foo").? == 42
         }
@@ -79,7 +79,7 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
   test("doesn't interfere with standard actor messaging") {
     var fooReceived = false
     val fooActor = actor {
-      chan1.accept("Foo") { s =>
+      chan1.join("Foo") { s =>
         receive {
           case Foo => fooReceived = true
         }
@@ -95,19 +95,19 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
     val chan = createLocalChannel(Set("Foo", "Bar", "Quux"))
     var barOk = false; var quuxOk = false
     actor {
-      chan.accept("Foo") { s =>
+      chan.join("Foo") { s =>
         barOk = s("Bar").?[Int] == 42
         quuxOk = s("Quux").?[Char] == 'a'
       }
 
     }
 
-    actor { chan.accept("Bar") { s =>
+    actor { chan.join("Bar") { s =>
       Thread.sleep(300)
       s("Foo") ! 42
     }}
 
-    actor { chan.accept("Quux") { s =>
+    actor { chan.join("Quux") { s =>
       s("Foo") ! 'a'
     }}
 
@@ -119,7 +119,7 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
   // Too long for routine testing
   ignore("shared channel doesn't blow the stack") {
     for (i <- List.range(1,1000000)) {
-      actor { chan1.accept("Foo") { _ => } }
+      actor { chan1.join("Foo") { _ => } }
     }
   }
 }

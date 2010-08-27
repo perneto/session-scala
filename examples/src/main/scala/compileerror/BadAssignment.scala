@@ -13,12 +13,12 @@ object BadAssignment {
     val sharedChan = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
 
     actor {
-      sharedChan.accept("Buyer") { s =>
+      sharedChan.join("Buyer") { s =>
         val s1 = s // wrong
       }
     }
 
-    sharedChan.accept("Seller") { s =>
+    sharedChan.join("Seller") { s =>
       var s1: (String => ParticipantChannel) = null
       s1 = s // wrong
     }

@@ -14,7 +14,7 @@ object BadBranching {
     val sharedChan = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
 
     actor {
-      sharedChan.accept("Buyer") { s =>
+      sharedChan.join("Buyer") { s =>
         s("Seller").receive {
           case OK if (42 == 43) => // bad: guards not supported
           case Some(NotOK) => // bad: complex patterns not supported

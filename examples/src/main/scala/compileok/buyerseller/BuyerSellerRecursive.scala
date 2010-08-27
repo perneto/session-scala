@@ -10,7 +10,7 @@ object BuyerSellerRecursive {
     val sharedChannel = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
 
     actor {
-      sharedChannel.accept("Seller") { s =>
+      sharedChannel.join("Seller") { s =>
         println("Seller: started")
         val o = s("Buyer").?[Order]
         def quoteRecursion(s: SessionChannel, quote: Int) {
@@ -31,7 +31,7 @@ object BuyerSellerRecursive {
     }
 
     actor {
-      sharedChannel.accept("Buyer") { s =>
+      sharedChannel.join("Buyer") { s =>
         println("Buyer: started")
         s("Seller") ! new Order(100)
         def quoteRecursion(s: SessionChannel) {

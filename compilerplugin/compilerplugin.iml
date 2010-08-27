@@ -99,7 +99,9 @@
           <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/org.scribble.protocol-1.0.0-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../../scribble/tools/bundles/org.scribble.protocol/src/java" />
+        </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library" exported="">

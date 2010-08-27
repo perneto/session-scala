@@ -5,7 +5,7 @@ import tools.nsc.plugins.PluginComponent
 import tools.nsc.Phase
 import java.io.{File, FileInputStream}
 
-abstract class AcceptBlocksPass extends PluginComponent
+abstract class JoinBlocksPass extends PluginComponent
                                   with SessionTypingEnvironments
                                   with SessionDefinitions {
   import global._
@@ -43,7 +43,7 @@ abstract class AcceptBlocksPass extends PluginComponent
           val globalModel = scribbleParser.parse(is, scribbleJournal)
           println("global model: " + globalModel.getProtocol)
           //todo: validate model
-          sessionEnvironment.registerSharedChannel(name, globalModel)
+          sessionEnvironment = sessionEnvironment.registerSharedChannel(name, globalModel)
           traverse(rhs)
 
         case ValDef(_,_,_,_) if sym.hasAnnotation(protocolAnnotation) =>
@@ -53,10 +53,10 @@ abstract class AcceptBlocksPass extends PluginComponent
         case Apply(Apply(Select(Ident(chanIdent), _), Literal(role)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
         if sym == acceptMethod =>
-          println("accept: " + role + ", sessChan: " + sessChan)
-          sessionEnvironment = sessionEnvironment.enterAccept(chanIdent, role.stringValue, sessChan)
+          println("join: " + role + ", sessChan: " + sessChan)
+          sessionEnvironment = sessionEnvironment.enterJoin(chanIdent, role.stringValue, sessChan)
           traverse(block)
-          sessionEnvironment = sessionEnvironment.leaveAccept
+          sessionEnvironment = sessionEnvironment.leaveJoin
 
         case Apply(Select(Apply(Select(Ident(session),_),Literal(role)::Nil),_),arg::Nil)
         if sym == bangMethod && sessionEnvironment.isSessionChannel(session) =>

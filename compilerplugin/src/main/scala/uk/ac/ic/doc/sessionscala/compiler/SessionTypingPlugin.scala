@@ -11,7 +11,7 @@ class SessionTypingPlugin(val global: Global) extends Plugin {
   val description = "Multiparty Session Type checking for actors using the session-scala library"
   val _journal = new ConsoleJournal
 
-  val acceptBlockPass = new AcceptBlocksPass {
+  val acceptBlockPass = new JoinBlocksPass {
     val global = SessionTypingPlugin.this.global;
     val runsAfter = List[String]("sessiontyping_methoddefs");
     val phaseName = "sessiontyping_acceptblocks"
