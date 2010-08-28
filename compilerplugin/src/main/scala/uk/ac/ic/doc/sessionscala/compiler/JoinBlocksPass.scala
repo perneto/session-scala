@@ -76,7 +76,7 @@ abstract class JoinBlocksPass extends PluginComponent
           if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
             reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
           println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
-          sessionEnvironment = sessionEnvironment.receive(session, tree.tpe)
+          sessionEnvironment = sessionEnvironment.receive(session, role.stringValue, tree.tpe)
           super.traverse(tree)
 
         case Apply(

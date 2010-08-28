@@ -2,8 +2,10 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
 import org.scribble.common.logging.{ConsoleJournal, Journal}
-import tools.nsc.{Settings, Global}
 import org.scribble.protocol.model._
+import java.io.ByteArrayInputStream
+import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
+import tools.nsc.{NoPhase, Settings, Global}
 
 /**
  * Created by: omp08
@@ -11,10 +13,23 @@ import org.scribble.protocol.model._
 
 class EnvironmentsTest extends FunSuite with SessionTypingEnvironments {
   val scribbleJournal: Journal = new ConsoleJournal
-  val settings = new Settings
-  val global = new Global(settings)
-  import global.{Block => _, _}
+  val scribbleParser = new ANTLRProtocolParser
 
+  val settings = new Settings
+  val scalaVersion = "2.8.0"
+  settings.classpath.tryToSet(List(
+            "project/boot/scala-"+scalaVersion+"/lib/scala-compiler.jar" +
+            ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar"))
+
+  val global = new Global(settings)
+
+  import global.{Block => _, _}
+  new Run // to initialize standard definitions (basic types, etc)
+  /*  Possibly more lightweight, but crashes
+  val phase1 = syntaxAnalyzer.newPhase(NoPhase)
+  phase = phase1
+  definitions.init
+  */
   val topEnv = new TopLevelSessionTypingEnvironment
   val sharedChan = newTermName("foo")
   val sessChan = newTermName("s")
@@ -43,31 +58,46 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments {
     assert(env == envWithSharedChan)
   }
 
-  test("basic protocol") {
-    val block = new Block
+  val protoModel = {
+    val p = """protocol Foo {
+                 role Alice, Bob;"
+                 String from Alice to Bob; }"""
+    scribbleParser.parse(new ByteArrayInputStream(p.getBytes), scribbleJournal)
+  }
 
-    val roleA = new Role("Alice")
-    val roleB = new Role("Bob")
-    val roles = new RoleList
-    roles.getRoles.add(roleA)
-    roles.getRoles.add(roleB)
-    block.add(roles)
+  test("basic protocol properly implemented") {
+    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    val envInit = env
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.send(sessChan, "Bob", definitions.StringClass.tpe)
+    env = env.leaveJoin
+    assert(env == envInit)
+  }
 
-    val msg = new Interaction
-    val sig = new MessageSignature
-    sig.getTypeReferences.add(new TypeReference("String"))
-    msg.setMessageSignature(sig)
-    msg.setFromRole(roleA)
-    msg.getToRoles.add(roleB)
-    block.add(msg)
-
-    val proto = new Protocol
-    proto.setBlock(block)
-    val protoModel = new ProtocolModel
-    protoModel.setProtocol(proto)
-
+  test("basic protocol, wrong message type") {
     var env = topEnv.registerSharedChannel(sharedChan, protoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    //env = env.send(sessChan, "Bob", )
+    env = env.send(sessChan, "Bob", definitions.ObjectClass.tpe) // wrong message type
+    intercept[SessionEnvironmentException] {
+      env = env.leaveJoin // checks are delayed until whole session type should have been implemented
+    }
+  }
+
+  test("basic protocol, missing interaction") {
+    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    // missing send
+    intercept[SessionEnvironmentException] {
+      env = env.leaveJoin // checks are delayed until whole session type should have been implemented
+    }
+  }
+
+  test("basic protocol, receive side") {
+    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    val envInit = env
+    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.receive(sessChan, "Alice", definitions.StringClass.tpe)
+    env = env.leaveJoin
+    assert(env == envInit)
   }
 }

@@ -34,6 +34,6 @@ class RunCompiler extends FunSuite {
     val compiler = new Global(settings)
 
     new compiler.Run().compile(List(
-      "examples/src/main/scala/compileok/buyerseller/BuyerSellerRecursive.scala"))
+      "examples/src/main/scala/compileok/buyerseller/BuyerSeller.scala"))
   }
 }

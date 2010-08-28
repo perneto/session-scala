@@ -81,7 +81,9 @@
           <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/org.scribble.protocol.conformance-1.0.0-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../../scribble/tools/bundles/org.scribble.protocol.conformance/src/java" />
+        </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library" exported="">
@@ -128,7 +130,9 @@
           <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.0/compile/org.scribble.common-1.0.0-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../../scribble/tools/bundles/org.scribble.common/src/java" />
+        </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library" exported="">

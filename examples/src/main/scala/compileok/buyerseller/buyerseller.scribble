@@ -8,13 +8,13 @@ protocol BuyerSeller {
     role Buyer, Seller;
 
     Order from Buyer to Seller;
-    Integer from Seller to Buyer;
+    Int from Seller to Buyer;
     choice from Buyer to Seller {
-        OK {
+        when OK {
             Invoice from Seller to Buyer;
             Payment from Buyer to Seller;
         }
-        NotOK {
+        when NotOK {
             String from Buyer to Seller;
         }
     }

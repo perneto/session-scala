@@ -4,6 +4,10 @@ import tools.nsc.Global
 import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
+import org.scribble.protocol.conformance.ProtocolConformer
+import org.scribble.protocol.conformance.impl.{BehaviourList, ProtocolConformerImpl}
+import org.scribble.protocol.conformance.comparator.DefaultComparatorContext
+import java.lang.String
 
 trait SessionTypingEnvironments {
   val scribbleJournal: Journal
@@ -27,8 +31,6 @@ trait SessionTypingEnvironments {
     def isSessionChannel(c: Name) = false
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment = {
-      println("Putting in map: " + name -> globalType)
-      println(sharedChannels + (name -> globalType))
       createInstance(sharedChannels + (name -> globalType))
     }
 
@@ -37,7 +39,6 @@ trait SessionTypingEnvironments {
       val role = new Role(roleName)
       val globalModel = getGlobalTypeForChannel(sharedChannel)
       val projectedModel = projector.project(globalModel, role, scribbleJournal)
-      println(projectedModel)
       new InProcessEnvironment(sharedChannels, this, role, projectedModel, sessChan)
     }
 
@@ -66,7 +67,9 @@ trait SessionTypingEnvironments {
       throw new SessionEnvironmentException("trying to do a send operation, but not in join block yet")
     }
 
-    def receive(sessChan: Name, msgType: Type) = this
+    def receive(sessChan: Name, role: String, msgType: Type): SessionTypingEnvironment = {
+      throw new SessionEnvironmentException("trying to do a receive operation, but not in join block yet")
+    }
 
     def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       // todo: new env that forbids any use of s (delegated)
@@ -86,8 +89,21 @@ trait SessionTypingEnvironments {
   class InProcessEnvironment
   (sharedChans: Map[Name, ProtocolModel], override val parent: SessionTypingEnvironment, role: Role, localModel: ProtocolModel, sessChan: Name)
   extends TopLevelSessionTypingEnvironment(sharedChans) {
+
+    private def conforms(model: ProtocolModel, ref: ProtocolModel, journal: Journal): Boolean = {
+      val mainBehaviourList = BehaviourList.createBehaviourList(model.getProtocol.getBlock)
+		  val refBehaviourList = BehaviourList.createBehaviourList(ref.getProtocol.getBlock)
+
+		  val context = new DefaultComparatorContext(null, null)
+		  context.compare(mainBehaviourList, refBehaviourList, journal, true)
+    }
+
     override def leaveJoin: SessionTypingEnvironment = {
       println("leave join: " + role)
+
+      if (!conforms(protoModel, localModel, scribbleJournal))
+        throw new SessionEnvironmentException("session not implemented properly")
+
       parent
     }
 
@@ -105,15 +121,37 @@ trait SessionTypingEnvironments {
       new InProcessEnvironment(newSharedChans, parent, role, localModel, sessChan)
     }
 
-    override def send(sessChan: Name, dstRole: String, msgType: Type): SessionTypingEnvironment = {
+    def createInteraction(src: Role, dst: Role, msgType: String): Interaction = {
       val msg = new Interaction
-      msg.setFromRole(role)
-      msg.getToRoles.add(new Role(dstRole))
+      msg.setFromRole(src)
+      msg.getToRoles.add(dst)
       val sig = new MessageSignature
-      println("send: from " + role + " to " + dstRole + ": " + msgType)
-      sig.getTypeReferences.add(new TypeReference(msgType.toString))
+      sig.getTypeReferences.add(new TypeReference(msgType))
       msg.setMessageSignature(sig)
+      msg
+    }
+
+    def scalaToScribble(t: Type): String = {
+      val s = t.toString // hack
+      val end = {
+        val i = s.indexOf('(')
+        if (i > 0) i else s.length
+      }
+      val substring = s.substring(s.lastIndexOf('.')+1, end)
+      println(substring)
+      substring
+    }
+
+    override def send(sessChan: Name, dstRole: String, msgType: Type): SessionTypingEnvironment = {
+      println("send: from " + role + " to " + dstRole + ": " + msgType)
+      val msg = createInteraction(role, new Role(dstRole), scalaToScribble(msgType))
+      println("send: " + msg)
       protocol.getBlock.add(msg)
+      this
+    }
+
+    override def receive(sessChan: Name, srcRole: String, msgType: Type): SessionTypingEnvironment = {
+      protocol.getBlock.add(createInteraction(new Role(srcRole), role, scalaToScribble(msgType)))
       this
     }
   }
