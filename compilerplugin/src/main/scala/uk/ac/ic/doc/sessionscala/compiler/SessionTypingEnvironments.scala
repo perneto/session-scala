@@ -1,75 +1,122 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
-import tools.nsc.Global
 import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
-import org.scribble.protocol.conformance.ProtocolConformer
-import org.scribble.protocol.conformance.impl.{BehaviourList, ProtocolConformerImpl}
-import org.scribble.protocol.conformance.comparator.DefaultComparatorContext
-import java.lang.String
+import java.util.{List => JList}
+import tools.nsc.Global
+import tools.nsc.util.BatchSourceFile
 
 trait SessionTypingEnvironments {
   val scribbleJournal: Journal
   val global: Global
   import global._
 
-  val projector = new ProtocolProjectorImpl()
+  lazy val rootCtx = global.analyzer.rootContext(
+    new CompilationUnit(new BatchSourceFile("<sessiontyping>", "")))
 
-  class SessionEnvironmentException(msg: String) extends Exception(msg)
+  val projector = new ProtocolProjectorImpl
+
+  class ScalaTypeSystem extends HostTypeSystem {
+    def scalaToScribble(t: Type): TypeReference = {
+      val s = t.toString // fixme: temporary hack
+      val i = s.indexOf('(')
+      val end = if (i > 0) i else s.length
+      val substring = s.substring(s.lastIndexOf('.') + 1, end)
+      println("Converted Scala type: " + t + " to Scribble type: " + substring)
+      new TypeReference(substring)
+    }
+
+    def scribbleToScala(imports: Seq[ImportList], tref: TypeReference): Type = {
+      val found: Seq[Type] = imports.map({i: ImportList =>
+        val javaPackage = i.getLocation
+        assert(javaPackage != null)
+
+        val typeImport: TypeImport = i.getTypeImport(tref.getName)
+        if (typeImport != null) {
+          val dataType = typeImport.getDataType
+          assert(dataType.getFormat == "java")
+          val javaClassName = dataType.getDetails
+          Some(definitions.getClass(javaPackage + "." + javaClassName).tpe)
+        } else None
+      }).flatten
+      if (found.length == 1) found(0)
+      else if (found.length > 2) throw new IllegalStateException(
+        "Should not happen: found more than 1 matching import for " + tref)
+      else {
+        val l = rootCtx.imports.map(_.importedSymbol(newTypeName(tref.getName)))
+                .filter(_ != NoSymbol)
+        if (l.length >= 1) l(0).tpe // order: scala.Predef, scala, java.lang
+        else throw new SessionTypeCheckingException("Could not find pre-defined type: " + tref.getName)
+      }
+    }
+
+    import scalaj.collection.Imports._
+    def isSubtype(subtype: TypeReference, supertype: TypeReference, imports: JList[ImportList]) =
+      isSubType(scribbleToScala(imports.asScala, subtype),
+                scribbleToScala(imports.asScala, supertype))
+
+  }
+
+  val typeSystem = new ScalaTypeSystem
+
+  type SharedChannels = Map[Name, ProtocolModel]
+  type Sessions = Map[Name, Session]
+
+  def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
+    new Interaction(src, dst, new MessageSignature(msgType))
 
   trait SessionTypingEnvironment {
-    val sharedChannels: Map[Name, ProtocolModel]
+
+    val sharedChannels: SharedChannels
+    val sessions: Sessions
     val parent: SessionTypingEnvironment
 
     val protoModel = new ProtocolModel
     val protocol = new Protocol
     protoModel.setProtocol(protocol)
 
-    protected def createInstance(sharedChannels: Map[Name, ProtocolModel]): SessionTypingEnvironment
+    protected def createInstance(sharedChannels: SharedChannels, sessions: Sessions): SessionTypingEnvironment
 
     def isSessionChannel(c: Name) = false
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment = {
-      createInstance(sharedChannels + (name -> globalType))
+      createInstance(sharedChannels + (name -> globalType), sessions)
     }
 
     def enterJoin(sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = {
-      println("enterJoin:" + sharedChannels)
+      println("enterJoin, sharedChannels: " + sharedChannels + ", sessions: " + sessions)
       val role = new Role(roleName)
       val globalModel = getGlobalTypeForChannel(sharedChannel)
       val projectedModel = projector.project(globalModel, role, scribbleJournal)
-      new InProcessEnvironment(sharedChannels, this, role, projectedModel, sessChan)
+      new InProcessEnvironment(sharedChannels, this, role,
+        sessChan, sessions + (sessChan -> new Session(typeSystem, projectedModel)))
     }
 
-    def leaveJoin : SessionTypingEnvironment = {
-      throw new SessionEnvironmentException("trying to leave a join block, but was at top-level environment")
+    def leaveJoin: SessionTypingEnvironment = {
+      throw new SessionTypeCheckingException("trying to leave a join block, but was at top-level environment")
     }
 
-    def enterBranch(label: Type) : SessionTypingEnvironment = {
-      throw new SessionEnvironmentException("trying to enter a branch, but not in join block yet")
-    }
-
-    def leaveBranch : SessionTypingEnvironment = {
-      throw new SessionEnvironmentException("trying to leave a branch, but was not in branch yet")
-    }
-
-    protected def getGlobalTypeForChannel(name: Name): ProtocolModel = {
+    protected def getGlobalTypeForChannel(name: Name): ProtocolModel =
       sharedChannels.get(name).getOrElse(
         if (parent == null)
-            throw new SessionEnvironmentException("Channel: " + name + " is not in scope")
+          throw new SessionTypeCheckingException("Channel: " + name + " is not in scope")
         else
           parent.getGlobalTypeForChannel(name)
-      )
-    }
+        )    
 
     def send(sessChan: Name, role: String, msgType: Type): SessionTypingEnvironment = {
-      throw new SessionEnvironmentException("trying to do a send operation, but not in join block yet")
+      throw new SessionTypeCheckingException("trying to do a send operation, but not in join block yet")
     }
 
     def receive(sessChan: Name, role: String, msgType: Type): SessionTypingEnvironment = {
-      throw new SessionEnvironmentException("trying to do a receive operation, but not in join block yet")
+      throw new SessionTypeCheckingException("trying to do a receive operation, but not in join block yet")
     }
+
+    def enterBranchReceiveBlock(sessChan: Name, srcRole: String): SessionTypingEnvironment = this
+    def enterIndividualBranchReceive(labelType: Type) = this
+    def leaveIndividualBranchReceive = this
+    def leaveBranchReceiveBlock = this
 
     def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       // todo: new env that forbids any use of s (delegated)
@@ -77,88 +124,73 @@ trait SessionTypingEnvironments {
     }
   }
 
-  class TopLevelSessionTypingEnvironment(val sharedChannels: Map[Name, ProtocolModel]) extends SessionTypingEnvironment {
+  class TopLevelSessionTypingEnvironment(val sharedChannels: SharedChannels) extends SessionTypingEnvironment {
     val parent: SessionTypingEnvironment = null
-    def this() = this(Map())
+    val sessions: Sessions = Map.empty
 
-    def createInstance(sharedChans: Map[Name, ProtocolModel]): SessionTypingEnvironment = {
+    def this() = this(Map.empty)
+
+    def createInstance(sharedChans: SharedChannels, sessions: Sessions): SessionTypingEnvironment = {
+      assert(sessions.isEmpty);
       new TopLevelSessionTypingEnvironment(sharedChans)
     }
   }
 
   class InProcessEnvironment
-  (sharedChans: Map[Name, ProtocolModel], override val parent: SessionTypingEnvironment, role: Role, localModel: ProtocolModel, sessChan: Name)
-  extends TopLevelSessionTypingEnvironment(sharedChans) {
+  (sharedChans: SharedChannels, override val parent: SessionTypingEnvironment, role: Role, sessChanThisBlock: Name, override val sessions: Sessions)
+          extends TopLevelSessionTypingEnvironment(sharedChans) {
 
-    private def conforms(model: ProtocolModel, ref: ProtocolModel, journal: Journal): Boolean = {
-      val mainBehaviourList = BehaviourList.createBehaviourList(model.getProtocol.getBlock)
-		  val refBehaviourList = BehaviourList.createBehaviourList(ref.getProtocol.getBlock)
-
-		  val context = new DefaultComparatorContext(null, null)
-		  context.compare(mainBehaviourList, refBehaviourList, journal, true)
-    }
-
+    def session = sessions(sessChanThisBlock)
     override def leaveJoin: SessionTypingEnvironment = {
       println("leave join: " + role)
 
-      if (!conforms(protoModel, localModel, scribbleJournal))
-        throw new SessionEnvironmentException("session not implemented properly")
+      if (!session.isComplete)
+        throw new SessionTypeCheckingException(
+          "Session not completed, remaining activities: " + session.remaining)
 
       parent
     }
 
-    override def enterBranch(label: Type) : SessionTypingEnvironment = {
-      println("enter branch: " + label)
-      new InBranchEnvironment(sharedChannels, this, role, localModel, sessChan, label)
-    }
-
     override def isSessionChannel(ident: Name): Boolean = {
-      if (ident == sessChan) true
+      if (ident == sessChanThisBlock) true
       else parent.isSessionChannel(ident)
     }
 
-    override def createInstance(newSharedChans: Map[Name, ProtocolModel]): SessionTypingEnvironment = {
-      new InProcessEnvironment(newSharedChans, parent, role, localModel, sessChan)
+    override def createInstance(newSharedChans: SharedChannels, newSessions: Sessions): SessionTypingEnvironment = {
+      new InProcessEnvironment(newSharedChans, parent, role, sessChanThisBlock, newSessions)
     }
 
-    def createInteraction(src: Role, dst: Role, msgType: String): Interaction = {
-      val msg = new Interaction
-      msg.setFromRole(src)
-      msg.getToRoles.add(dst)
-      val sig = new MessageSignature
-      sig.getTypeReferences.add(new TypeReference(msgType))
-      msg.setMessageSignature(sig)
-      msg
-    }
+    override def send(sessChan: Name, dstRoleName: String, msgType: Type): SessionTypingEnvironment = {
+      val sess = sessions(sessChan)
+      val dstRole = new Role(dstRoleName)
 
-    def scalaToScribble(t: Type): String = {
-      val s = t.toString // hack
-      val end = {
-        val i = s.indexOf('(')
-        if (i > 0) i else s.length
-      }
-      val substring = s.substring(s.lastIndexOf('.')+1, end)
-      println(substring)
-      substring
-    }
+      val newSess = sess.interaction(
+        role, dstRole, typeSystem.scalaToScribble(msgType))
+      println(
+        "send: on " + sessChan + " from " + role + " to " +
+        dstRole + ": " + msgType + ". Updated session: " + newSess)
+      updated(sessChan, newSess)
 
-    override def send(sessChan: Name, dstRole: String, msgType: Type): SessionTypingEnvironment = {
-      println("send: from " + role + " to " + dstRole + ": " + msgType)
-      val msg = createInteraction(role, new Role(dstRole), scalaToScribble(msgType))
-      println("send: " + msg)
-      protocol.getBlock.add(msg)
-      this
     }
 
     override def receive(sessChan: Name, srcRole: String, msgType: Type): SessionTypingEnvironment = {
-      protocol.getBlock.add(createInteraction(new Role(srcRole), role, scalaToScribble(msgType)))
-      this
+      val sess = sessions(sessChan)
+
+      val newSess = sess.interaction(
+        new Role(srcRole), role, typeSystem.scalaToScribble(msgType))
+      println(
+        "receive: on " + sessChan + " from " + srcRole + " to " +
+        role + ": " + msgType + ". Updated session: " + newSess)
+      updated(sessChan, newSess)
     }
+
+    def updated(sessChan: Name, newSess: Session) =
+      createInstance(sharedChannels, sessions.updated(sessChan, newSess))
   }
 
-  class InBranchEnvironment(sharedChans: Map[Name, ProtocolModel], parent: SessionTypingEnvironment, role: Role, localModel: ProtocolModel, sessChan: Name, branchLabel: Type)
-  extends InProcessEnvironment(sharedChans, parent, role, localModel, sessChan) {
-    override def leaveBranch = {
+  class InBranchEnvironment(sharedChans: SharedChannels, parent: SessionTypingEnvironment, role: Role, sessChan: Name, branchLabel: Type, sessions: Sessions)
+          extends InProcessEnvironment(sharedChans, parent, role, sessChan, sessions) {
+    override def leaveIndividualBranchReceive = {
       println("leave branch: " + branchLabel)
       // Todo: check session type is completed
       parent
@@ -169,8 +201,8 @@ trait SessionTypingEnvironments {
       parent
     }
 
-    override def createInstance(newSharedChans: Map[Name, ProtocolModel]): SessionTypingEnvironment = {
-      new InBranchEnvironment(newSharedChans, parent, role, localModel, sessChan, branchLabel)
+    override def createInstance(newSharedChans: SharedChannels, newSessions: Sessions): SessionTypingEnvironment = {
+      new InBranchEnvironment(newSharedChans, parent, role, sessChan, branchLabel, newSessions)
     }
   }
 }

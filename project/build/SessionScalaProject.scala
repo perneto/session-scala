@@ -20,11 +20,14 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with Id
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
     override def testAction = super.testAction dependsOn(`package`)
 
-    val scribble_common = "org.scribble.tools" % "org.scribble.common" % "1.0.0-SNAPSHOT"
-    val scribble_protocol = "org.scribble.tools" % "org.scribble.protocol" % "1.0.0-SNAPSHOT"
-    val scribble_parser = "org.scribble.tools" % "org.scribble.protocol.parser" % "1.0.0-SNAPSHOT"
-    val scribble_projection = "org.scribble.tools" % "org.scribble.protocol.projection" % "1.0.0-SNAPSHOT"
-    val scribble_conformance = "org.scribble.tools" % "org.scribble.protocol.conformance" % "1.0.0-SNAPSHOT"    
+    val scribble_common = "org.scribble.bundles" % "org.scribble.common" % "2.0.0-SNAPSHOT"
+    val scribble_protocol = "org.scribble.bundles" % "org.scribble.protocol" % "2.0.0-SNAPSHOT"
+    val scribble_parser = "org.scribble.bundles" % "org.scribble.protocol.parser" % "2.0.0-SNAPSHOT"
+    val scribble_projection = "org.scribble.bundles" % "org.scribble.protocol.projection" % "2.0.0-SNAPSHOT"
+    val scribble_conformance = "org.scribble.bundles" % "org.scribble.protocol.conformance" % "2.0.0-SNAPSHOT"
+    val antlr = "org.antlr" % "antlr-runtime" % "3.2" // shouldn't be needed, something funny with scribble deps
+
+    val scalaj_collection = "org.scalaj" %% "scalaj-collection" % "1.0"
   }
 
   lazy val runtime = project("runtime", "runtime", new Runtime(_))

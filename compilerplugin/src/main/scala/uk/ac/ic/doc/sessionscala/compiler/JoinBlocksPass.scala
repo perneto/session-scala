@@ -93,14 +93,15 @@ abstract class JoinBlocksPass extends PluginComponent
         if sym == receiveMethod && sessionEnvironment.isSessionChannel(session) =>
             println("receiveMethod, session: " + session + ", role: " + role
                     + ", cases: " + cases)
+            sessionEnvironment = sessionEnvironment.enterBranchReceiveBlock(session, role.stringValue)
             cases foreach { c: CaseDef =>
               if (! c.guard.isEmpty) {
                 reporter.error(c.guard.pos, "Receive clauses on session channels (branching) do not support guards yet")
               } else {
                 def processBranch = {
-                  sessionEnvironment = sessionEnvironment.enterBranch(c.pat.tpe)
+                  sessionEnvironment = sessionEnvironment.enterIndividualBranchReceive(c.pat.tpe)
                   traverse(c.body)
-                  sessionEnvironment = sessionEnvironment.leaveBranch
+                  sessionEnvironment = sessionEnvironment.leaveIndividualBranchReceive
                 }
                 c.pat match {
                   case Select(_,name) => processBranch
@@ -111,6 +112,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
               }
             }
+            sessionEnvironment = sessionEnvironment.leaveBranchReceiveBlock
 
         case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
           println("delegation of session channel: " + tree)

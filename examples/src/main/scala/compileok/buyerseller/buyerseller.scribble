@@ -1,8 +1,9 @@
-import Order;
-import Invoice;
-import Payment;
-import OK;
-import NotOK;
+import from "compileok.buyerseller"
+       java "Order" as Order,
+       java "Invoice" as Invoice,
+       java "Payment" as Payment,
+       java "OK" as OK,
+       java "NotOK" as NotOK;
 
 protocol BuyerSeller {
     role Buyer, Seller;

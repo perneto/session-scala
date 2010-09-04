@@ -1,47 +1,33 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
-import org.scribble.common.logging.{ConsoleJournal, Journal}
 import org.scribble.protocol.model._
-import java.io.ByteArrayInputStream
-import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
-import tools.nsc.{NoPhase, Settings, Global}
+import org.scalatest.matchers.ShouldMatchers
 
 /**
  * Created by: omp08
  */
 
-class EnvironmentsTest extends FunSuite with SessionTypingEnvironments {
-  val scribbleJournal: Journal = new ConsoleJournal
-  val scribbleParser = new ANTLRProtocolParser
+class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
+                                        with ScalaCompilerSetup
+                                        with ScribbleParsing
+                                        with ShouldMatchers {
 
-  val settings = new Settings
-  val scalaVersion = "2.8.0"
-  settings.classpath.tryToSet(List(
-            "project/boot/scala-"+scalaVersion+"/lib/scala-compiler.jar" +
-            ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar"))
+  import global._
 
-  val global = new Global(settings)
-
-  import global.{Block => _, _}
-  new Run // to initialize standard definitions (basic types, etc)
-  /*  Possibly more lightweight, but crashes
-  val phase1 = syntaxAnalyzer.newPhase(NoPhase)
-  phase = phase1
-  definitions.init
-  */
   val topEnv = new TopLevelSessionTypingEnvironment
   val sharedChan = newTermName("foo")
   val sessChan = newTermName("s")
-
+  val string = definitions.StringClass.tpe
+    
   test("top-level enter join, unregistered channel") {
-    intercept[SessionEnvironmentException] {
+    intercept[SessionTypeCheckingException] {
       topEnv.enterJoin(sharedChan, "A", sessChan)
     }
   }
 
   test("top-level leave") {
-    intercept[SessionEnvironmentException] {
+    intercept[SessionTypeCheckingException] {
       topEnv.leaveJoin
     }
   }
@@ -55,49 +41,80 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments {
     val envWithSharedChan = topEnv.registerSharedChannel(sharedChan, emptyModel)
     var env = envWithSharedChan.enterJoin(sharedChan, "A", sessChan)
     env = env.leaveJoin
-    assert(env == envWithSharedChan)
+    env should be theSameInstanceAs (envWithSharedChan)
   }
 
-  val protoModel = {
-    val p = """protocol Foo {
-                 role Alice, Bob;"
-                 String from Alice to Bob; }"""
-    scribbleParser.parse(new ByteArrayInputStream(p.getBytes), scribbleJournal)
-  }
+  val basicProtoModel = parse(
+    """protocol Foo {
+         role Alice, Bob;
+         String from Alice to Bob;
+       }
+    """)
 
-  test("basic protocol properly implemented") {
-    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+  test("basic protocol, complete") {
+    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
     val envInit = env
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.send(sessChan, "Bob", definitions.StringClass.tpe)
+    env = env.send(sessChan, "Bob", string)
     env = env.leaveJoin
-    assert(env == envInit)
+    env should be === (envInit)
   }
 
   test("basic protocol, wrong message type") {
-    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.send(sessChan, "Bob", definitions.ObjectClass.tpe) // wrong message type
-    intercept[SessionEnvironmentException] {
-      env = env.leaveJoin // checks are delayed until whole session type should have been implemented
+    intercept[SessionTypeCheckingException] {
+      env = env.send(sessChan, "Bob", definitions.ObjectClass.tpe) // wrong message type
     }
   }
 
   test("basic protocol, missing interaction") {
-    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     // missing send
-    intercept[SessionEnvironmentException] {
-      env = env.leaveJoin // checks are delayed until whole session type should have been implemented
+    intercept[SessionTypeCheckingException] {
+      env = env.leaveJoin
     }
   }
 
   test("basic protocol, receive side") {
-    var env = topEnv.registerSharedChannel(sharedChan, protoModel)
+    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
     val envInit = env
     env = env.enterJoin(sharedChan, "Bob", sessChan)
-    env = env.receive(sessChan, "Alice", definitions.StringClass.tpe)
+    env = env.receive(sessChan, "Alice", string)
     env = env.leaveJoin
-    assert(env == envInit)
+    env should be theSameInstanceAs (envInit)
+  }
+
+  val choiceProtoModel = parse(
+    """protocol Foo {
+         role Alice, Bob;
+         choice from Alice to Bob {
+           String {}
+           Int {}
+         }
+       }
+    """)
+
+  test("protocol with choice, chooser side, complete") {
+    var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
+    val envInit = env
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.send(sessChan, "Bob", string)
+    env = env.leaveJoin
+    env should be theSameInstanceAs (envInit)
+  }
+
+  test("protocol with choice, receiver side, complete") {
+    var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
+    val envInit = env
+    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.enterBranchReceiveBlock(sessChan, "Alice")
+    env = env.enterIndividualBranchReceive(string)
+    env = env.leaveIndividualBranchReceive
+    env = env.enterIndividualBranchReceive(definitions.IntClass.tpe)
+    env = env.leaveIndividualBranchReceive
+    env = env.leaveJoin
+    env should be theSameInstanceAs (envInit)
   }
 }
