@@ -88,4 +88,24 @@ class SessionTest extends FunSuite with SessionTypingEnvironments
     }    
   }
 
+  val choiceDual = parse(
+    """protocol Foo@Bob {
+         role Alice;
+         choice from Alice {
+          String {
+            Int from Alice;
+          }
+          Int {}
+         }
+         Object from Alice;
+       }  
+    """)
+  
+  
+  test("visitBranch") {
+    var s = new Session(typeSystem, choiceDual)
+    s = s.visitBranch(new MessageSignature(new TypeReference("String")), alice)
+    s.remaining.size should be (1)
+  }
+
 }

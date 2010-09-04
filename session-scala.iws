@@ -3,10 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="a98375ad-3259-4a67-bb8b-84987d93d409" name="Default" comment="much progress on compiler plugin">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyerseller.scribble" afterPath="$PROJECT_DIR$/examples/src/main/scala/compileok/buyerseller/buyerseller.scribble" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala" />
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/ScalaCompilerSetup.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/JoinBlocksPass.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/JoinBlocksPass.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/compilerplugin/compilerplugin.iml" afterPath="$PROJECT_DIR$/compilerplugin/compilerplugin.iml" />
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/HostTypeSystem.java" />
@@ -15,7 +16,6 @@
       <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/ScribbleParsing.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" afterPath="$PROJECT_DIR$/project/build/SessionScalaProject.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/session-scala.iws" afterPath="$PROJECT_DIR$/session-scala.iws" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/session-scala.ipr" afterPath="$PROJECT_DIR$/session-scala.ipr" />
     </list>
     <ignored path="session-scala.iws" />
@@ -76,55 +76,37 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="EnvironmentsTest.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="15" column="16" selection-start="462" selection-end="462" vertical-scroll-proportion="0.2955665">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="SessionTypingEnvironments.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="19" column="16" selection-start="573" selection-end="573" vertical-scroll-proportion="0.0">
+            <state line="255" column="36" selection-start="9982" selection-end="9982" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Session.java" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="Session.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="83" column="82" selection-start="3607" selection-end="3607" vertical-scroll-proportion="1.5959595">
+            <state line="130" column="24" selection-start="5258" selection-end="5258" vertical-scroll-proportion="0.54213035">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Choice.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/Choice.java">
+      <file leaf-file-name="EnvironmentsTest.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="106" column="28" selection-start="2351" selection-end="2351" vertical-scroll-proportion="0.0">
+            <state line="98" column="89" selection-start="2992" selection-end="2992" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="When.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/When.java">
+      <file leaf-file-name="MessageSignature.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/MessageSignature.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="24" column="13" selection-start="766" selection-end="766" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="JoinBlocksPass.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/JoinBlocksPass.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="101" column="69" selection-start="4607" selection-end="4607" vertical-scroll-proportion="0.0">
+            <state line="102" column="19" selection-start="2871" selection-end="2871" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -133,7 +115,7 @@
       <file leaf-file-name="SessionTest.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="87" column="5" selection-start="2380" selection-end="2380" vertical-scroll-proportion="0.0">
+            <state line="91" column="85" selection-start="2441" selection-end="2441" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -168,11 +150,11 @@
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypeCheckingException.java" />
         <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/ScalaCompilerSetup.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/JoinBlocksPass.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/ScribbleParsing.scala" />
-        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java" />
         <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala" />
         <option value="$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala" />
+        <option value="$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java" />
       </list>
     </option>
   </component>
@@ -213,7 +195,7 @@
     <option name="STATE" value="0" />
   </component>
   <component name="ProjectView">
-    <navigator currentView="PackagesPane" proportions="" version="1" splitterProportion="0.5">
+    <navigator currentView="ProjectPane" proportions="" version="1" splitterProportion="0.5">
       <flattenPackages />
       <showMembers />
       <showModules />
@@ -619,7 +601,7 @@
     <property name="options.splitter.main.proportions" value="0.3" />
     <property name="MemberChooser.sorted" value="false" />
     <property name="recentsLimit" value="5" />
-    <property name="options.lastSelected" value="preferences.editor" />
+    <property name="options.lastSelected" value="preferences.pluginManager" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../scribble/tools/site/target/site/plugins" />
     <property name="project.structure.side.proportion" value="0.2" />
     <property name="MemberChooser.copyJavadoc" value="false" />
@@ -824,6 +806,7 @@
   <component name="ShelveChangesManager" show_recycled="false" />
   <component name="StructureViewFactory">
     <option name="AUTOSCROLL_FROM_SOURCE" value="true" />
+    <option name="ACTIVE_ACTIONS" value="SHOW_INHERITED" />
   </component>
   <component name="SvnConfiguration" maxAnnotateRevisions="500">
     <option name="USER" value="" />
@@ -849,11 +832,11 @@
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32978722" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2859546" sideWeight="0.5668693" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2859546" sideWeight="0.6641337" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2859546" sideWeight="0.4224924" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2859546" sideWeight="0.32522798" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296875" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -902,11 +885,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar:///opt/local/share/scala-2.8/src/scala-compiler-src.jar!/scala/tools/nsc/symtab/StdNames.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="509" column="26" selection-start="20054" selection-end="20054" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="jar://$PROJECT_DIR$/project/boot/scala-2.8.0.RC7/lib/scala-compiler.jar!/scala/tools/nsc/symtab/StdNames.class">
       <provider selected="true" editor-type-id="text-editor">
         <state line="306" column="39" selection-start="20429" selection-end="20429" vertical-scroll-proportion="0.0" />
@@ -1021,27 +999,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/Choice.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="106" column="28" selection-start="2351" selection-end="2351" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/When.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="24" column="13" selection-start="766" selection-end="766" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="83" column="82" selection-start="3607" selection-end="3607" vertical-scroll-proportion="1.5959595">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/JoinBlocksPass.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="101" column="69" selection-start="4607" selection-end="4607" vertical-scroll-proportion="0.0">
@@ -1049,23 +1006,72 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/immutable/HashMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="16" selection-start="573" selection-end="573" vertical-scroll-proportion="0.0">
+        <state line="73" column="16" selection-start="2444" selection-end="2444" vertical-scroll-proportion="0.33333334">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///opt/local/share/scala-2.8/src/scala-library-src.jar!/scala/collection/immutable/Map.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="28" column="0" selection-start="903" selection-end="903" vertical-scroll-proportion="0.21498372">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/Choice.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="116" column="43" selection-start="2593" selection-end="2593" vertical-scroll-proportion="0.33227345">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/When.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="61" column="14" selection-start="1560" selection-end="1560" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/Block.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="21" column="13" selection-start="711" selection-end="711" vertical-scroll-proportion="-1.4610493">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../scribble/tools/bundles/org.scribble.protocol/src/java/org/scribble/protocol/model/MessageSignature.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="102" column="19" selection-start="2871" selection-end="2871" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTest.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="87" column="5" selection-start="2380" selection-end="2380" vertical-scroll-proportion="0.0">
+        <state line="91" column="85" selection-start="2441" selection-end="2441" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/compilerplugin/src/test/scala/uk/ac/ic/doc/sessionscala/compiler/EnvironmentsTest.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="15" column="16" selection-start="462" selection-end="462" vertical-scroll-proportion="0.2955665">
+        <state line="98" column="89" selection-start="2992" selection-end="2992" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/SessionTypingEnvironments.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="255" column="36" selection-start="9982" selection-end="9982" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/compilerplugin/src/main/scala/uk/ac/ic/doc/sessionscala/compiler/Session.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="130" column="24" selection-start="5258" selection-end="5258" vertical-scroll-proportion="0.54213035">
           <folding />
         </state>
       </provider>

@@ -8,14 +8,23 @@ import java.util.List;
 
 public class Session {
     private final HostTypeSystem hostTypeSystem;
-    private final List<Activity> encountered;
     private final List<Activity> remaining;
     private final List<ImportList> imports;
 
     public Session(HostTypeSystem hostTypeSystem, ProtocolModel specified) {
-        this(hostTypeSystem, new LinkedList<Activity>(),
-                listFromProtoModel(specified), specified.getImports());
+        this(hostTypeSystem, specified.getImports(), listFromProtoModel(specified));
     }
+
+    public Session(HostTypeSystem hostTypeSystem,
+                   List<ImportList> imports, List<Activity> remaining) {
+        this.hostTypeSystem = hostTypeSystem;
+        this.remaining = new LinkedList<Activity>(remaining);
+        // copies are important for immutability, see interaction and listFromProtoModel
+        this.imports = imports;
+        System.out.println("Created "+this+", remaining: "
+                + this.remaining + ", imports: " + imports);
+    }
+
 
     private static List<Activity> filterBehaviours(List<Activity> protocol) {
         List<Activity> copy = new LinkedList<Activity>(protocol);
@@ -29,18 +38,9 @@ public class Session {
 
     private static List<Activity> listFromProtoModel(ProtocolModel specified) {
         List<Activity> protocol = specified.getProtocol().getBlock().getContents();
-        System.out.println("listFromProtoModel:" + protocol);
-        return filterBehaviours(protocol);
-    }
-
-    public Session(HostTypeSystem hostTypeSystem,
-                   List<Activity> encountered, List<Activity> remaining, List<ImportList> imports) {
-        this.hostTypeSystem = hostTypeSystem;
-        this.encountered = new LinkedList<Activity>(encountered); // copies are important...
-        this.remaining = new LinkedList<Activity>(remaining); // ... for immutability, see interaction and listFromProtoModel
-        this.imports = imports;
-        System.out.println("Created "+this+", encountered: "
-                + this.encountered + ", remaining: " + this.remaining);
+        List<Activity> behaviours = filterBehaviours(protocol);
+        System.out.println("listFromProtoModel:" + behaviours);
+        return behaviours;
     }
 
     private static String whensToString(List<When> whens) {
@@ -57,35 +57,89 @@ public class Session {
         MessageSignature msgSig = new MessageSignature(msgType);
 
         if (expected instanceof Choice) {
-            Choice c = (Choice) expected;
-            if (!c.getToRole().equals(dst))
-                throw new SessionTypeCheckingException(
-                        "Expected branch selection send to "
-                                + c.getToRole() + " but got: " + dst);
-            List<When> whens = c.getWhens();
-            for (When when: whens) {
-                if (isMessageSignatureSubtype(msgSig, when.getMessageSignature())) {
-                    remaining.remove(0);
-                    List<Activity> newRemaining = new LinkedList<Activity>(
-                            filterBehaviours(when.getBlock().getContents())
-                    );
-                    newRemaining.addAll(remaining);
-                    return new Session(hostTypeSystem, encountered, newRemaining, imports);
-                }
-            }
-            throw new SessionTypeCheckingException("Expected a branch label subtype among: "
-                    + whensToString(whens) + "but got: " + msgSig);
+            return branchSend(dst, expected, msgSig);
         } else {
-            Interaction newInter = new Interaction(src, dst, msgSig);
+            return interaction(src, dst, expected, msgSig);
+        }
+    }
 
-            if (isSubtype(newInter, expected)) {
+    private Session interaction(Role src, Role dst, Activity expected, MessageSignature msgSig) {
+        Interaction newInter = new Interaction(src, dst, msgSig);
+
+        if (isSubtype(newInter, expected)) {
+            remaining.remove(0);
+            return new Session(hostTypeSystem, imports, remaining);
+        } else {
+            throw new SessionTypeCheckingException("Expected " + expected + " but got " + newInter);
+        }
+    }
+
+    private Session branchSend(Role dst, Activity expected, MessageSignature msgSig) {
+        Choice c = (Choice) expected;
+        if (!c.getToRole().equals(dst))
+            throw new SessionTypeCheckingException(
+                    "Expected branch selection send to "
+                            + c.getToRole() + " but got: " + dst);
+        List<When> whens = c.getWhens();
+        for (When when: whens) {
+            if (isMessageSignatureSubtype(msgSig, when.getMessageSignature())) {
                 remaining.remove(0);
-                encountered.add(newInter);
-                return new Session(hostTypeSystem, encountered, remaining, imports);
-            } else {
-                throw new SessionTypeCheckingException("Expected " + expected + " but got " + newInter);
+                List<Activity> newRemaining = new LinkedList<Activity>(
+                        filterBehaviours(when.getBlock().getContents())
+                );
+                newRemaining.addAll(remaining);
+                return new Session(hostTypeSystem, imports, newRemaining);
             }
         }
+        throw new SessionTypeCheckingException("Expected a branch label subtype among: "
+                + whensToString(whens) + "but got: " + msgSig);
+    }
+
+    public Session visitBranch(MessageSignature label, Role srcRole) {
+        Choice choice = getChoice();
+        Role specSrcRole = choice.getFromRole();
+        if (!specSrcRole.equals(srcRole))
+            throw new SessionTypeCheckingException("Protocol had choice receive from " + specSrcRole
+                    + ", but got: " + srcRole);
+
+        List<When> whens = choice.getWhens();
+        System.out.println(label);
+        for (When w: whens) {
+            System.out.println(w + ": " + w.getMessageSignature());
+            if (isMessageSignatureSubtype(label, w.getMessageSignature()))
+                return new Session(hostTypeSystem, imports, getRemaining(w));
+        }
+        throw new SessionTypeCheckingException("Accepting branch label " + label
+                + ", but had no matching label. Available labels: " + whensToString(whens));
+    }
+
+    private Choice getChoice() {
+        return (Choice) remaining.get(0);
+    }
+
+    public List<MessageSignature> missingBranches(List<MessageSignature> seen) {
+        Choice c = getChoice();
+        List<MessageSignature> missing = new LinkedList<MessageSignature>();
+        for (When w: c.getWhens()) {
+            MessageSignature whenSig = w.getMessageSignature();
+            boolean found = false;
+            for (MessageSignature seenSig: seen) {
+                if (isMessageSignatureSubtype(seenSig, whenSig)) {
+                    found = true; break;
+                }
+            }
+            if (!found) missing.add(whenSig);
+        }
+        return missing;
+    }
+
+    public Session choiceChecked() {
+        remaining.remove(0);
+        return new Session(hostTypeSystem, imports, remaining);
+    }
+
+    private List<Activity> getRemaining(When w) {
+        return filterBehaviours(w.getBlock().getContents());
     }
 
     public boolean isComplete() {

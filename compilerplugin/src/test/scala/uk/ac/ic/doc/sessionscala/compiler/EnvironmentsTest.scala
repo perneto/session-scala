@@ -18,7 +18,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val topEnv = new TopLevelSessionTypingEnvironment
   val sharedChan = newTermName("foo")
   val sessChan = newTermName("s")
-  val string = definitions.StringClass.tpe
+  val stringT = definitions.StringClass.tpe
+  val intT = definitions.IntClass.tpe
+  val objectT = definitions.ObjectClass.tpe
     
   test("top-level enter join, unregistered channel") {
     intercept[SessionTypeCheckingException] {
@@ -38,10 +40,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     emptyProtocol.setRole(new Role("A"))
     emptyModel.setProtocol(emptyProtocol)
 
-    val envWithSharedChan = topEnv.registerSharedChannel(sharedChan, emptyModel)
-    var env = envWithSharedChan.enterJoin(sharedChan, "A", sessChan)
+    var env = topEnv.registerSharedChannel(sharedChan, emptyModel)
+    env = env.enterJoin(sharedChan, "A", sessChan)
     env = env.leaveJoin
-    env should be theSameInstanceAs (envWithSharedChan)
   }
 
   val basicProtoModel = parse(
@@ -53,18 +54,16 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("basic protocol, complete") {
     var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    val envInit = env
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.send(sessChan, "Bob", string)
+    env = env.send(sessChan, "Bob", stringT)
     env = env.leaveJoin
-    env should be === (envInit)
   }
 
   test("basic protocol, wrong message type") {
     var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     intercept[SessionTypeCheckingException] {
-      env = env.send(sessChan, "Bob", definitions.ObjectClass.tpe) // wrong message type
+      env = env.send(sessChan, "Bob", objectT) // wrong message type
     }
   }
 
@@ -79,11 +78,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("basic protocol, receive side") {
     var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    val envInit = env
     env = env.enterJoin(sharedChan, "Bob", sessChan)
-    env = env.receive(sessChan, "Alice", string)
+    env = env.receive(sessChan, "Alice", stringT)
     env = env.leaveJoin
-    env should be theSameInstanceAs (envInit)
   }
 
   val choiceProtoModel = parse(
@@ -98,23 +95,20 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("protocol with choice, chooser side, complete") {
     var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
-    val envInit = env
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.send(sessChan, "Bob", string)
+    env = env.send(sessChan, "Bob", stringT)
     env = env.leaveJoin
-    env should be theSameInstanceAs (envInit)
   }
 
   test("protocol with choice, receiver side, complete") {
     var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
-    val envInit = env
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     env = env.enterBranchReceiveBlock(sessChan, "Alice")
-    env = env.enterIndividualBranchReceive(string)
+    env = env.enterIndividualBranchReceive(stringT)
     env = env.leaveIndividualBranchReceive
-    env = env.enterIndividualBranchReceive(definitions.IntClass.tpe)
+    env = env.enterIndividualBranchReceive(intT)
     env = env.leaveIndividualBranchReceive
+    env = env.leaveBranchReceiveBlock
     env = env.leaveJoin
-    env should be theSameInstanceAs (envInit)
   }
 }
