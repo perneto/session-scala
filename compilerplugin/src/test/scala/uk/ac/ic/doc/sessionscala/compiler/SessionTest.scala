@@ -13,7 +13,6 @@ class SessionTest extends FunSuite with SessionTypingEnvironments
         with ScribbleParsing
         with ScalaCompilerSetup
         with ShouldMatchers {
-  
   val basicProtoModel = parse(
       """protocol Foo@Alice {
            role Bob;

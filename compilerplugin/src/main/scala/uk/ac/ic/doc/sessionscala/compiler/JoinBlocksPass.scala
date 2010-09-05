@@ -1,6 +1,7 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
+import org.scribble.protocol.model.ProtocolModel
 import tools.nsc.plugins.PluginComponent
 import tools.nsc.Phase
 import java.io.{File, FileInputStream}
@@ -9,6 +10,8 @@ abstract class JoinBlocksPass extends PluginComponent
                                   with SessionTypingEnvironments
                                   with SessionDefinitions {
   import global._
+
+  class AbortException extends Exception
 
   class SessionTypecheckingTraverser(unitPath: String) extends Traverser {
 
@@ -32,17 +35,27 @@ abstract class JoinBlocksPass extends PluginComponent
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol
+      def parseFile(filename: String): ProtocolModel = {
+        var globalModel: ProtocolModel = null;
+        val is = new FileInputStream(new File(unitPath, filename))
+        globalModel = scribbleParser.parse(is, scribbleJournal)
+        println("global model: " + globalModel)
+        //todo: validate model
+        if (globalModel == null) {
+          reporter.error(tree.pos,
+            "Could not parse scribble description at: " + filename)
+          throw new AbortException
+        }
+        globalModel
+      }
 
       tree match {
         case ValDef(_,name,_,rhs)
         if sym.hasAnnotation(protocolAnnotation) && sym.tpe <:< sharedChannelTrait.tpe =>
           val annotInfo = sym.getAnnotation(protocolAnnotation).get
-          val (filenameTree : Literal)::_ = annotInfo.args
+          val (filenameTree: Literal)::_ = annotInfo.args
           val filename = filenameTree.value.stringValue
-          val is = new FileInputStream(new File(unitPath, filename))
-          val globalModel = scribbleParser.parse(is, scribbleJournal)
-          println("global model: " + globalModel.getProtocol)
-          //todo: validate model
+          val globalModel = parseFile(filename)
           sessionEnvironment = sessionEnvironment.registerSharedChannel(name, globalModel)
           traverse(rhs)
 
@@ -137,7 +150,11 @@ abstract class JoinBlocksPass extends PluginComponent
       println("AcceptBlockPass starting")
       val unitPath = new File(unit.source.path).getParent()
       val typeChecker = new SessionTypecheckingTraverser(unitPath)
-      typeChecker(unit.body)
+      try {
+        typeChecker(unit.body)
+      } catch {
+        case e: AbortException =>
+      }
     }
   }
 }

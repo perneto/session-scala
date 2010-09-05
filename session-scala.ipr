@@ -115,8 +115,8 @@
   <component name="libraryTable">
     <library name="buildScala">
       <CLASSES>
-        <root url="jar://$PROJECT_DIR$/project/boot/scala-2.8.0.RC7/lib/scala-compiler.jar!/" />
-        <root url="jar://$PROJECT_DIR$/project/boot/scala-2.8.0.RC7/lib/scala-library.jar!/" />
+        <root url="jar://$PROJECT_DIR$/project/boot/scala-2.8.0/lib/scala-compiler.jar!/" />
+        <root url="jar://$PROJECT_DIR$/project/boot/scala-2.8.0/lib/scala-library.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>

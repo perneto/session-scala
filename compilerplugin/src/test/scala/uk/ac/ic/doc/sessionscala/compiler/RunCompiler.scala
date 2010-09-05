@@ -3,7 +3,6 @@ package uk.ac.ic.doc.sessionscala.compiler
 import org.scalatest.FunSuite
 
 import scala.tools.nsc._
-import reporters.ConsoleReporter
 
 /**
  * Created by: omp08

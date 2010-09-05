@@ -21,8 +21,7 @@ public class Session {
         this.remaining = new LinkedList<Activity>(remaining);
         // copies are important for immutability, see interaction and listFromProtoModel
         this.imports = imports;
-        System.out.println("Created "+this+", remaining: "
-                + this.remaining + ", imports: " + imports);
+        //System.out.println("Created "+this+", remaining: " + this.remaining + ", imports: " + imports);
     }
 
 
@@ -39,7 +38,7 @@ public class Session {
     private static List<Activity> listFromProtoModel(ProtocolModel specified) {
         List<Activity> protocol = specified.getProtocol().getBlock().getContents();
         List<Activity> behaviours = filterBehaviours(protocol);
-        System.out.println("listFromProtoModel:" + behaviours);
+        //System.out.println("listFromProtoModel:" + behaviours);
         return behaviours;
     }
 
@@ -182,8 +181,8 @@ public class Session {
         SubtypeVisitor v = new SubtypeVisitor();
         supertype.visit(v);
 
-        System.out.println("isSubtype, subtype: " + subtype + ", supertype: "
-                + supertype + ", result: " + v.res);
+        //System.out.println("isSubtype, subtype: " + subtype + ", supertype: "
+        //        + supertype + ", result: " + v.res);
         return v.res; // todo
     }
 

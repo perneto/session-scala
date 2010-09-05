@@ -18,12 +18,17 @@ trait SessionTypingEnvironments {
 
   val projector = new ProtocolProjectorImpl
 
-  class ScalaTypeSystem extends HostTypeSystem {
+  object ScalaTypeSystem extends HostTypeSystem {
     def scalaToScribble(t: Type): TypeReference = {
       val s = t.toString // fixme: temporary hack
       val i = s.indexOf('(')
       val end = if (i > 0) i else s.length
-      val substring = s.substring(s.lastIndexOf('.') + 1, end)
+      val lastDot = s.lastIndexOf('.')
+      var substring = s.substring(lastDot + 1, end)
+      if (substring.equals("type")) {
+        val before = s.substring(0, lastDot)
+        substring = before.substring(before.lastIndexOf('.') + 1, before.length)
+      }
       println("Converted Scala type: " + t + " to Scribble type: " + substring)
       new TypeReference(substring)
     }
@@ -58,7 +63,7 @@ trait SessionTypingEnvironments {
 
   }
 
-  val typeSystem = new ScalaTypeSystem
+  val typeSystem = ScalaTypeSystem
 
   type SharedChannels = Map[Name, ProtocolModel]
   type Sessions = Map[Name, Session]
