@@ -2,6 +2,7 @@ package uk.ac.ic.doc.sessionscala.compiler;
 
 import org.scribble.protocol.model.*;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,9 +19,11 @@ public class Session {
     public Session(HostTypeSystem hostTypeSystem,
                    List<ImportList> imports, List<Activity> remaining) {
         this.hostTypeSystem = hostTypeSystem;
-        this.remaining = new LinkedList<Activity>(remaining);
+        this.remaining = Collections.unmodifiableList(remaining);
+        System.out.println("Created Session, remaining: " + remaining
+                + ", remaining.id: " + System.identityHashCode(remaining));
         // copies are important for immutability, see interaction and listFromProtoModel
-        this.imports = imports;
+        this.imports = Collections.unmodifiableList(imports);
         //System.out.println("Created "+this+", remaining: " + this.remaining + ", imports: " + imports);
     }
 
@@ -52,6 +55,7 @@ public class Session {
     }
 
     public Session interaction(Role src, Role dst, TypeReference msgType) {
+        assert remaining.size() > 0;
         Activity expected = remaining.get(0);
         MessageSignature msgSig = new MessageSignature(msgType);
 
@@ -66,11 +70,18 @@ public class Session {
         Interaction newInter = new Interaction(src, dst, msgSig);
 
         if (isSubtype(newInter, expected)) {
-            remaining.remove(0);
-            return new Session(hostTypeSystem, imports, remaining);
+            return new Session(hostTypeSystem, imports, allButFirst(remaining));
         } else {
             throw new SessionTypeCheckingException("Expected " + expected + " but got " + newInter);
         }
+    }
+
+    private <T> List<T> allButFirst(List<T> list) {
+        List<T> newList = new LinkedList<T>();
+        Iterator<T> it = list.iterator();
+        if (it.hasNext()) it.next();
+        while (it.hasNext()) newList.add(it.next());
+        return newList;
     }
 
     private Session branchSend(Role dst, Activity expected, MessageSignature msgSig) {
@@ -82,11 +93,10 @@ public class Session {
         List<When> whens = c.getWhens();
         for (When when: whens) {
             if (isMessageSignatureSubtype(msgSig, when.getMessageSignature())) {
-                remaining.remove(0);
                 List<Activity> newRemaining = new LinkedList<Activity>(
                         filterBehaviours(when.getBlock().getContents())
                 );
-                newRemaining.addAll(remaining);
+                newRemaining.addAll(allButFirst(remaining));
                 return new Session(hostTypeSystem, imports, newRemaining);
             }
         }
@@ -102,9 +112,9 @@ public class Session {
                     + ", but got: " + srcRole);
 
         List<When> whens = choice.getWhens();
-        System.out.println(label);
+        //System.out.println(label);
         for (When w: whens) {
-            System.out.println(w + ": " + w.getMessageSignature());
+            //System.out.println(w + ": " + w.getMessageSignature());
             if (isMessageSignatureSubtype(label, w.getMessageSignature()))
                 return new Session(hostTypeSystem, imports, getRemaining(w));
         }
@@ -113,6 +123,7 @@ public class Session {
     }
 
     private Choice getChoice() {
+        assert remaining.size() > 0;
         return (Choice) remaining.get(0);
     }
 
@@ -133,8 +144,7 @@ public class Session {
     }
 
     public Session choiceChecked() {
-        remaining.remove(0);
-        return new Session(hostTypeSystem, imports, remaining);
+        return new Session(hostTypeSystem, imports, allButFirst(remaining));
     }
 
     private List<Activity> getRemaining(When w) {
@@ -209,5 +219,13 @@ public class Session {
         res &= !itSuper.hasNext() && !itSub.hasNext();
 
         return res;
+    }
+
+    @Override
+    public String toString() {
+        return "Session{" +
+                "remaining=" + remaining +
+                ", imports=" + imports +
+                "}@" + System.identityHashCode(this);
     }
 }

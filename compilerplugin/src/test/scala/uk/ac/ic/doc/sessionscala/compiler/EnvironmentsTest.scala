@@ -15,33 +15,36 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   import global._
 
-  val topEnv = new TopLevelSessionTypingEnvironment
-  val sharedChan = newTermName("foo")
-  val sessChan = newTermName("s")
+  val topEnv = new TopLevelEnv
+  val sharedChan = newTermName("sharedChannel")
+  val sessChan = newTermName("sessionChannel")
   val stringT = definitions.StringClass.tpe
   val intT = definitions.IntClass.tpe
   val objectT = definitions.ObjectClass.tpe
-    
+
+  def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
+    val env = topEnv.registerSharedChannel(sharedChan, model)
+    env.enterJoin(sharedChan, joinAs, sessChan)
+  }
+
   test("top-level enter join, unregistered channel") {
     intercept[SessionTypeCheckingException] {
       topEnv.enterJoin(sharedChan, "A", sessChan)
     }
   }
 
-  test("top-level leave") {
+  test("top-level leave (no session to be left)") {
     intercept[SessionTypeCheckingException] {
       topEnv.leaveJoin
     }
   }
-                                    
-  test("enter and leave join, empty protocol") {
-    val emptyProtocol = new Protocol
-    val emptyModel = new ProtocolModel()
-    emptyProtocol.setRole(new Role("A"))
-    emptyModel.setProtocol(emptyProtocol)
 
-    var env = topEnv.registerSharedChannel(sharedChan, emptyModel)
-    env = env.enterJoin(sharedChan, "A", sessChan)
+  val emptyProtoModel = parse(
+  """protocol Foo { role Alice; }
+  """)
+
+  test("enter and leave join, empty protocol") {
+    var env = join(emptyProtoModel, "Alice")
     env = env.leaveJoin
   }
 
@@ -53,23 +56,20 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     """)
 
   test("basic protocol, complete") {
-    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    var env = join(basicProtoModel, "Alice")
     env = env.send(sessChan, "Bob", stringT)
     env = env.leaveJoin
   }
 
   test("basic protocol, wrong message type") {
-    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    var env = join(basicProtoModel, "Alice")
     intercept[SessionTypeCheckingException] {
       env = env.send(sessChan, "Bob", objectT) // wrong message type
     }
   }
 
   test("basic protocol, missing interaction") {
-    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    var env = join(basicProtoModel, "Alice")
     // missing send
     intercept[SessionTypeCheckingException] {
       env = env.leaveJoin
@@ -77,8 +77,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   }
 
   test("basic protocol, receive side") {
-    var env = topEnv.registerSharedChannel(sharedChan, basicProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    var env = join(basicProtoModel, "Bob")
     env = env.receive(sessChan, "Alice", stringT)
     env = env.leaveJoin
   }
@@ -94,21 +93,31 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     """)
 
   test("protocol with choice, chooser side, complete") {
-    var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    var env = join(choiceProtoModel, "Alice")
     env = env.send(sessChan, "Bob", stringT)
     env = env.leaveJoin
   }
 
   test("protocol with choice, receiver side, complete") {
-    var env = topEnv.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
-    env = env.enterBranchReceiveBlock(sessChan, "Alice")
-    env = env.enterIndividualBranchReceive(stringT)
-    env = env.leaveIndividualBranchReceive
-    env = env.enterIndividualBranchReceive(intT)
-    env = env.leaveIndividualBranchReceive
-    env = env.leaveBranchReceiveBlock
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
     env = env.leaveJoin
   }
+
+
+  test("choice, if branches on chooser side, complete") {
+    var env = join(choiceProtoModel, "Alice")
+    env = env.enterThen
+    env = env.send(sessChan, "Bob", stringT)
+    env = env.enterElse
+    env = env.send(sessChan, "Bob", intT)
+    env = env.leaveIf
+    env = env.leaveJoin
+  }
+
 }

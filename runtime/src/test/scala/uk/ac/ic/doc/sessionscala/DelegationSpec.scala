@@ -67,7 +67,7 @@ class DelegationSpec extends Timeouts {
     assert(carolOK, "The message to Carol (sB) should be received")
   }
 
-
+  /* We might not want delegation at all with multiparty sessions?
   ignore("Simple delegation, ignoring lost messages") {
     val chanA = createLocalChannel(Set("Alice", "Bob"))
     val chanB = createLocalChannel(Set("Bob","Carol"))
@@ -108,5 +108,5 @@ class DelegationSpec extends Timeouts {
     assert(fortyThreeOK)
 
   }
-
+  */
 }
