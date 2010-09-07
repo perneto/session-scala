@@ -56,7 +56,7 @@
     <output url="file://$PROJECT_DIR$/out" />
   </component>
   <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="" />
+    <mapping directory="" vcs="hg4idea" />
   </component>
   <component name="libraryTable">
     <library name="buildScala">

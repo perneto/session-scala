@@ -77,6 +77,8 @@ trait SessionTypingEnvironments {
       new SessionTypedElements(
         sharedChannels.updated(sharedChan, model), sessions)
 
+    def updated(newSess: Sessions) = SessionTypedElements(sharedChannels, newSess)
+
     def getSharedChan(name: Name) = sharedChannels.get(name)
   }
 
@@ -190,7 +192,7 @@ trait SessionTypingEnvironments {
         throw new SessionTypeCheckingException(
           "Session not completed, remaining activities: " + session.remaining)
 
-      parent
+      parent.createInstance(ste)
     }
 
     override def isSessionChannel(ident: Name) = {
@@ -227,9 +229,22 @@ trait SessionTypingEnvironments {
 
     override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) =
       new ChoiceReceiveBlockEnv(ste, this, joinAsRole, sessChanJoin,
-        sessChan, srcRole, Nil)
+        sessChan, srcRole, Nil, None)
 
     override def enterThen = new ThenBlockEnv(ste, this, joinAsRole, sessChanJoin)
+
+    def checkSessionsIdentical(sessions: Sessions): Unit = {
+      ste.sessions foreach {
+        case (chan, sessElse) =>
+          val sessThen = sessions(chan)
+          if (sessElse.remaining != sessThen.remaining)
+            throw new SessionTypeCheckingException(
+              "Branch statement did not advance session equally on all branches on channel: "
+                      + chan + ". A branch had remaining session type: "
+                      + sessThen.remaining + " while another had: " + sessElse.remaining)
+      }
+    }
+
   }
 
   class ChoiceReceiveBlockEnv(ste: SessionTypedElements,
@@ -238,10 +253,11 @@ trait SessionTypingEnvironments {
                               sessChanJoin: Name,
                               sessChanReceiveBlock: Name,
                               choiceSrcRole: String,
-                              branches: List[Type])
+                              branches: List[Type],
+                              lastBranchSess: Option[Sessions])
           extends InProcessEnv(ste, parent, joinAsRole, sessChanJoin) {
 
-    println("Created ChoiceReceiveBlockEnv: " + ste.sessions)
+    //println("Created ChoiceReceiveBlockEnv: " + ste.sessions)
 
     def parentSession = ste.sessions(sessChanReceiveBlock)
 
@@ -257,14 +273,19 @@ trait SessionTypingEnvironments {
 
       val updatedThis = new ChoiceReceiveBlockEnv(
         ste, parent, joinAsRole, sessChanJoin, sessChanReceiveBlock,
-        choiceSrcRole, label :: branches)
+        choiceSrcRole, label :: branches, lastBranchSess)
       new ChoiceReceiveBranchEnv(newSte, updatedThis, joinAsRole,
-        sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches, label)
+        sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches, label, lastBranchSess)
     }
 
     override def createInstance(ste: SessionTypedElements) =
       new ChoiceReceiveBlockEnv(ste, parent, joinAsRole,
-        sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches)
+        sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches, lastBranchSess)
+
+    def withLastBranchSessions(sess: Sessions): ChoiceReceiveBlockEnv = {
+      new ChoiceReceiveBlockEnv(ste, parent, joinAsRole, sessChanJoin,
+        sessChanReceiveBlock, choiceSrcRole, branches, Some(sess))
+    }
 
     override def leaveChoiceReceiveBlock = {
       println("seen branches: " + branches)
@@ -275,35 +296,46 @@ trait SessionTypingEnvironments {
       if (!missing.isEmpty)
         throw new SessionTypeCheckingException("Missing choice receive branch(es): " + missing)
 
+      // to keep advance of interleaved sessions
+      val newSte = ste.updated(lastBranchSess.get)
+      // lastBranchSess.get(sessChanReceiveBlock) is empty as it only had the branch block
+      // now we replace it by the parent session which still had the whole thing,
+      // only removing the choice construct at the beginning
       parent.createInstance(
-        ste.updated(sessChanReceiveBlock, parentSession.choiceChecked))
+        newSte.updated(sessChanReceiveBlock, parentSession.choiceChecked))
     }
   }
 
   class ChoiceReceiveBranchEnv(ste: SessionTypedElements,
-                               parent: SessionTypingEnvironment,
+                               override val parent: ChoiceReceiveBlockEnv,
                                joinAsRole: Role,
                                sessChanJoin: Name,
                                sessChanReceiveBlock: Name,
                                choiceSrcRole: String,
                                branches: List[Type],
-                               branchLabel: Type)
-          extends ChoiceReceiveBlockEnv(ste, parent, joinAsRole,
-            sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches) {
+                               branchLabel: Type,
+                               lastBranchSess: Option[Sessions])
+          extends ChoiceReceiveBlockEnv(ste, parent, joinAsRole, sessChanJoin,
+            sessChanReceiveBlock, choiceSrcRole, branches, lastBranchSess) {
 
     println("Created ChoiceReceiveBranchEnv: " + ste.sessions)
 
     override def leaveChoiceReceiveBranch = {
       println("leave branch: " + branchLabel)
       val sess = ste.sessions(sessChanReceiveBlock)
-      if (!sess.isComplete)
+      if (!sess.isComplete) // sess only has the branch block, not what comes after it
         throw new SessionTypeCheckingException("Branch incomplete, missing: "+ sess.remaining)
-      parent
+      if (lastBranchSess.isDefined) {
+        checkSessionsIdentical(lastBranchSess.get)
+        println("checked last branch ok: " + lastBranchSess.get)
+      }
+
+      parent.withLastBranchSessions(ste.sessions)
     }
 
     override def createInstance(ste: SessionTypedElements) =
-      new ChoiceReceiveBranchEnv(ste, parent, joinAsRole,
-        sessChanJoin, sessChanReceiveBlock, choiceSrcRole, branches, branchLabel)
+      new ChoiceReceiveBranchEnv(ste, parent, joinAsRole, sessChanJoin,
+        sessChanReceiveBlock, choiceSrcRole, branches, branchLabel, lastBranchSess)
   }
 
   class ThenBlockEnv(ste: SessionTypedElements,
@@ -331,18 +363,11 @@ trait SessionTypingEnvironments {
                      sessionsThenBranch: Sessions)
       extends InProcessEnv(ste, parent, joinAsRole, sessChanJoin) {
 
-    println("Created ElseBlockEnv: " + ste + " sessionsThenBranch: "
-            + sessionsThenBranch + ", parent.ste.sessions: " + parent.ste.sessions)
+    //println("Created ElseBlockEnv: " + ste + " sessionsThenBranch: "
+    //        + sessionsThenBranch + ", parent.ste.sessions: " + parent.ste.sessions)
 
     override def leaveIf = {
-      ste.sessions foreach { case (chan, sessElse) =>
-        val sessThen = sessionsThenBranch(chan)
-        if (sessElse.remaining != sessThen.remaining) // compares remainder of session
-          throw new SessionTypeCheckingException(
-            "If statement did not advance session equally on both branches on channel: "
-                    + chan + ". Then branch had remaining session type: "
-                    + sessThen.remaining + " while else branch had: " + sessElse.remaining)
-      }
+      checkSessionsIdentical(sessionsThenBranch)
       parent.createInstance(ste)
     }
 

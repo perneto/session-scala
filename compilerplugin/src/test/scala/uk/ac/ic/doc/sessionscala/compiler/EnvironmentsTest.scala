@@ -17,10 +17,14 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   val topEnv = new TopLevelEnv
   val sharedChan = newTermName("sharedChannel")
+  val sharedChan2 = newTermName("sharedChan2")
   val sessChan = newTermName("sessionChannel")
+  val sessChan2 = newTermName("sessChan2")
   val stringT = definitions.StringClass.tpe
   val intT = definitions.IntClass.tpe
   val objectT = definitions.ObjectClass.tpe
+  val anyT = definitions.AnyClass.tpe
+  val charSequenceT = definitions.getClass("java.lang.CharSequence").tpe
 
   def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
     val env = topEnv.registerSharedChannel(sharedChan, model)
@@ -117,6 +121,82 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.enterElse
     env = env.send(sessChan, "Bob", intT)
     env = env.leaveIf
+    env = env.leaveJoin
+  }
+
+  test("choice, supertype on receive covers 2 branches")  {
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(anyT)
+    env = env.leaveChoiceReceiveBranch
+    intercept[SessionTypeCheckingException] {
+      env = env.leaveChoiceReceiveBlock
+    }
+  }
+
+  test("choice, if branches on receive side, branch label is supertype but covers single branch, complete") {
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterThen
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+
+    env = env.enterElse
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(charSequenceT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+        
+    env = env.leaveIf
+    env = env.leaveJoin
+  }
+
+  val twoMsgProto = parse(
+  """protocol Foo {
+       role Alice, Bob;
+       String from Alice to Bob;
+       Int from Bob to Alice;
+     }
+  """)
+
+  test("interleaved sessions") {
+    var env = join(twoMsgProto, "Alice")
+    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
+    env = env.enterJoin(sharedChan2, "Bob", sessChan2)
+    env = env.send(sessChan, "Bob", stringT)
+    env = env.receive(sessChan2, "Alice", stringT)
+    env = env.send(sessChan2, "Alice", intT)
+    env = env.receive(sessChan, "Bob", intT)
+    env = env.leaveJoin
+    env = env.leaveJoin
+  }
+
+  test("interleaved sessions, branches receive side") {
+    var env = join(choiceProtoModel, "Bob")
+
+    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
+    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
+    env = env.send(sessChan2, "Bob", stringT)
+
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(stringT)
+
+    env = env.receive(sessChan2, "Bob", intT)
+
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(intT)
+
+    env = env.receive(sessChan2, "Bob", intT)
+
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+
+    env = env.leaveJoin
     env = env.leaveJoin
   }
 

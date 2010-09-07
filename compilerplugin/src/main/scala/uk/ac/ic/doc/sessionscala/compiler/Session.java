@@ -115,7 +115,10 @@ public class Session {
         //System.out.println(label);
         for (When w: whens) {
             //System.out.println(w + ": " + w.getMessageSignature());
-            if (isMessageSignatureSubtype(label, w.getMessageSignature()))
+            // The labels in user code can be supertypes of the protocol labels,
+            // but there should be no ambiguity - a label can only cover one branch.
+            // This is dealt with in missingBranches()
+            if (isMessageSignatureSubtype(w.getMessageSignature(), label))
                 return new Session(hostTypeSystem, imports, getRemaining(w));
         }
         throw new SessionTypeCheckingException("Accepting branch label " + label
@@ -130,11 +133,15 @@ public class Session {
     public List<MessageSignature> missingBranches(List<MessageSignature> seen) {
         Choice c = getChoice();
         List<MessageSignature> missing = new LinkedList<MessageSignature>();
+        List<MessageSignature> seenCopy = new LinkedList<MessageSignature>(seen);
         for (When w: c.getWhens()) {
             MessageSignature whenSig = w.getMessageSignature();
             boolean found = false;
-            for (MessageSignature seenSig: seen) {
-                if (isMessageSignatureSubtype(seenSig, whenSig)) {
+            for (Iterator<MessageSignature> it = seenCopy.iterator(); it.hasNext();) {
+                MessageSignature seenSig = it.next();
+                if (isMessageSignatureSubtype(whenSig, seenSig)) {
+                    it.remove(); // This will ensure we return a non-empty list if
+                    // a supertype label covers several branches, which is forbidden.
                     found = true; break;
                 }
             }
