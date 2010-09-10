@@ -2,6 +2,8 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 import tools.nsc.{Settings, Global}
 import org.scribble.protocol.model._
 
@@ -9,6 +11,7 @@ import org.scribble.protocol.model._
  * Created by: omp08
  */
 
+@RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with SessionTypingEnvironments
         with ScribbleParsing
         with ScalaCompilerSetup

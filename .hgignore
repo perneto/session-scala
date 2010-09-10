@@ -5,3 +5,8 @@ target/
 lib_managed/
 src_managed/
 project/boot/
+bin/
+.project
+.classpath
+.scala_dependencies
+.settings

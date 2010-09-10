@@ -1,5 +1,7 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.scribble.protocol.model._
 import org.scalatest.matchers.ShouldMatchers
@@ -8,6 +10,7 @@ import org.scalatest.matchers.ShouldMatchers
  * Created by: omp08
  */
 
+@RunWith(classOf[JUnitRunner])
 class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
                                         with ScalaCompilerSetup
                                         with ScribbleParsing
@@ -15,7 +18,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   import global._
 
-  val topEnv = new TopLevelEnv
+  val topEnv = new JoinBlockTopLevelEnv
   val sharedChan = newTermName("sharedChannel")
   val sharedChan2 = newTermName("sharedChan2")
   val sessChan = newTermName("sessionChannel")

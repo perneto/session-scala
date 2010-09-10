@@ -1,23 +1,26 @@
 import sbt._
+import de.element34.sbteclipsify._
 
-class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with IdeaProject
+
+class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with IdeaProject 
 {
   override def parallelExecution = true
 
   val mavenLocal = "Local Maven Repository" at "file://"+Path.userHome+"/.m2/repository"
 
-  class Runtime(info: ProjectInfo) extends DefaultProject(info) with IdeaProject {
+  class Runtime(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
     override def fork = forkRun
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "1.7.2"
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
   }
 
-  class Examples(info: ProjectInfo) extends DefaultProject(info) with IdeaProject {
+  class Examples(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
     override def fork = forkRun
   }
 
-  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with IdeaProject {
+  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
+    val junit = "junit" % "junit" % "4.7"
     override def testAction = super.testAction dependsOn(`package`)
 
     val scribble_common = "org.scribble.bundles" % "org.scribble.common" % "2.0.0-SNAPSHOT"

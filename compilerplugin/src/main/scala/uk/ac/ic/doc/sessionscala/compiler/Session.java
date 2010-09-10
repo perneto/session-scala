@@ -20,8 +20,8 @@ public class Session {
                    List<ImportList> imports, List<Activity> remaining) {
         this.hostTypeSystem = hostTypeSystem;
         this.remaining = Collections.unmodifiableList(remaining);
-        System.out.println("Created Session, remaining: " + remaining
-                + ", remaining.id: " + System.identityHashCode(remaining));
+        //System.out.println("Created Session, remaining: " + remaining
+        //        + ", remaining.id: " + System.identityHashCode(remaining));
         // copies are important for immutability, see interaction and listFromProtoModel
         this.imports = Collections.unmodifiableList(imports);
         //System.out.println("Created "+this+", remaining: " + this.remaining + ", imports: " + imports);

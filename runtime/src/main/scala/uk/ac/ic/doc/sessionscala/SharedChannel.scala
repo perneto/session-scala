@@ -1,7 +1,5 @@
 package uk.ac.ic.doc.sessionscala
 
-import scala.actors._
-
 object SharedChannel {
   def createLocalChannel(awaiting: Set[String]): SharedChannel = {
     if (awaiting.isEmpty) throw new IllegalArgumentException("At least one role is required")

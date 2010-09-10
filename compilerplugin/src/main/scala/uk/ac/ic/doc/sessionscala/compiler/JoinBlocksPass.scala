@@ -3,42 +3,30 @@ package uk.ac.ic.doc.sessionscala.compiler
 import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
 import org.scribble.protocol.model.ProtocolModel
 import tools.nsc.plugins.PluginComponent
-import tools.nsc.Phase
 import util.control.ControlThrowable
 import java.io.{File, FileInputStream}
+import tools.nsc.{Global, Phase}
 
 abstract class JoinBlocksPass extends PluginComponent
-                                  with SessionTypingEnvironments
-                                  with SessionDefinitions {
+                                 with SessionTypingEnvironments
+                                 with SessionDefinitions
+                                 with SessionTypeCheckingTraversers {
   import global._
 
+	val JoinBlockTopLevelEnv: SessionTypingEnvironment
+	
   class AbortException extends ControlThrowable
 
-  class SessionTypecheckingTraverser(unitPath: String) extends Traverser {
+  class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
-    var env: SessionTypingEnvironment = new TopLevelEnv
+    var env = JoinBlockTopLevelEnv
 
-    def isSessionChannelIdent(tree: Tree): Boolean = getSessionChannelName(tree).isDefined
-
-    def getSessionChannelName(tree: Tree): Option[Name] = tree match {
-      case Ident(name) if env.isSessionChannel(name) => Some(name)
-      case _ => None
-    }
-
-    def getSessionChannels(args: List[Tree]): List[Name] =
-      args.map(getSessionChannelName).flatten      
-
-    def linearityError(lhs: Any, rhs: Tree) {
-      reporter.error(rhs.pos, "Cannot assign " + rhs
-        + " to " + lhs + ": aliasing of session channels is forbidden")
-    }
-    
     def parseFile(filename: String, pos: Position): ProtocolModel = {
       var globalModel: ProtocolModel = null;
       val is = new FileInputStream(new File(unitPath, filename))
       globalModel = scribbleParser.parse(is, scribbleJournal)
-      println("global model: " + globalModel)
+      //println("global model: " + globalModel)
       //todo: validate model
       if (globalModel == null) {
         reporter.error(pos,
@@ -47,6 +35,27 @@ abstract class JoinBlocksPass extends PluginComponent
       }
       globalModel
     }
+
+
+    def isSessionChannel(name: Name) = env.isSessionChannel(name)
+    def delegation(fun: Symbol, sessChans: List[Name]) =
+      env = env.delegation(fun, sessChans)
+
+    def leaveIf = env = env.leaveIf
+    def enterElse = env = env.enterElse
+    def enterThen = env = env.enterThen
+
+    def leaveChoiceReceiveBlock = env = env.leaveChoiceReceiveBlock
+    def leaveChoiceReceiveBranch = env = env.leaveChoiceReceiveBranch
+    def enterChoiceReceiveBranch(label: Type) =
+      env = env.enterChoiceReceiveBranch(label)
+    def enterChoiceReceiveBlock(sessionChan: Name, srcRole: String) =
+      env = env.enterChoiceReceiveBlock(sessionChan, srcRole)
+
+    def receive(sessionChan: Name, srcRole: String, tpe: Type) =
+      env = env.receive(sessionChan, srcRole, tpe)
+    def send(sessionChan: Name, dstRole: String, tpe: Type) =
+      env = env.send(sessionChan, dstRole, tpe)
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol
@@ -78,84 +87,6 @@ abstract class JoinBlocksPass extends PluginComponent
             case e: SessionTypeCheckingException => reporter.error(tree.pos, e.getMessage)
           }
 
-        case Apply(Select(Apply(Select(Ident(session),_),Literal(role)::Nil),_),arg::Nil)
-        if sym == bangMethod && env.isSessionChannel(session) =>
-          //println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
-          //        + ", session: " + session + ", role: " + role)
-          env = env.send(session, role.stringValue, arg.tpe)
-          traverse(arg)
-
-        case TypeApply(
-               Select(
-                 Apply(
-                   Select(Ident(session), _),
-                   Literal(role)::Nil
-                 ),
-               _),
-             _)
-        if sym == qmarkMethod && env.isSessionChannel(session) =>
-          if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
-            reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-          //println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
-          env = env.receive(session, role.stringValue, tree.tpe)
-          super.traverse(tree)
-
-        case Apply(
-               TypeApply(
-                 Select(
-                   Apply(
-                     Select(Ident(session),_),
-                     Literal(role)::Nil
-                   ), _
-                 ), _
-               ),
-               Function(_,Match(_,cases))::Nil
-             )
-        if sym == receiveMethod && env.isSessionChannel(session) =>
-            //println("receiveMethod, session: " + session + ", role: " + role
-            //        + ", cases: " + cases)
-            env = env.enterChoiceReceiveBlock(session, role.stringValue)
-            cases foreach { c: CaseDef =>
-              if (! c.guard.isEmpty) {
-                reporter.error(c.guard.pos,
-                  "Receive clauses on session channels (branching) do not support guards yet")
-              } else {
-                def processBranch = {
-                  env = env.enterChoiceReceiveBranch(c.pat.tpe)
-                  traverse(c.body)
-                  env = env.leaveChoiceReceiveBranch
-                }
-                c.pat match {
-                  case Select(_,name) => processBranch
-                  case Ident(name) => processBranch
-                  case _ =>
-                    reporter.error(c.pat.pos,
-                      "Receive clauses on session channels (branching) do not support complex patterns yet")
-                }
-
-              }
-            }
-            env = env.leaveChoiceReceiveBlock
-
-        case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
-          println("delegation of session channel: " + tree)
-          env = env.delegation(fun.symbol, getSessionChannels(args))
-          super.traverse(tree)
-
-        // todo: allow returning session channel from methods after they have advanced the session
-        // need to be assigned to new val, new val identifier needs to be added to environment
-        //case ValDef(_,name,_,a @ Apply(fun,_)) if a.symbol.tpe == sessionChannelType =>
-
-        case Assign(lhs,rhs) if isSessionChannelIdent(rhs) => linearityError(lhs,rhs)
-        case ValDef(_,name,_,rhs) if isSessionChannelIdent(rhs) => linearityError(name,rhs)
-
-        case If(cond,thenp,elsep) =>
-          env = env.enterThen
-          traverse(thenp)
-          env = env.enterElse
-          traverse(elsep)
-          env = env.leaveIf
-
         case _ =>
           super.traverse(tree)
       }
@@ -164,9 +95,9 @@ abstract class JoinBlocksPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      println("AcceptBlockPass starting")
+      println("JoinBlockPass starting")
       val unitPath = new File(unit.source.path).getParent()
-      val typeChecker = new SessionTypecheckingTraverser(unitPath)
+      val typeChecker = new JoinBlocksTraverser(unitPath)
       try {
         typeChecker(unit.body)
       } catch {
