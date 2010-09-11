@@ -2,7 +2,6 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import tools.nsc.ast.Trees
 import tools.nsc.symtab.Symbols
-import tools.nsc.util.Position
 import tools.nsc.Global
 
 /**
@@ -17,6 +16,7 @@ trait SessionTypeCheckingTraversers {
   trait SessionTypeCheckingTraverser extends Traverser {
     def initEnvironment: SessionTypingEnvironment
     var env = initEnvironment
+    var pos: Position = NoPosition
     
     def linearityError(lhs: Any, rhs: Tree) {
       reporter.error(rhs.pos, "Cannot assign " + rhs
@@ -40,11 +40,12 @@ trait SessionTypeCheckingTraversers {
         if sym == bangMethod && env.isSessionChannel(session) =>
           //println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
           //        + ", session: " + session + ", role: " + role)
+          pos = tree.pos
           env = env.send(session, role.stringValue, arg.tpe)
           traverse(arg)
 
         case TypeApply(
-               Select(
+               qmark@Select(
                  Apply(
                    Select(Ident(session), _),
                    Literal(role)::Nil
@@ -55,6 +56,7 @@ trait SessionTypeCheckingTraversers {
           if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
             reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
           //println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
+          pos = qmark.pos
           env = env.receive(session, role.stringValue, tree.tpe)
           super.traverse(tree)
 
@@ -67,11 +69,12 @@ trait SessionTypeCheckingTraversers {
                    ), _
                  ), _
                ),
-               Function(_,Match(_,cases))::Nil
+               (f@Function(_,Match(_,cases)))::Nil
              )
         if sym == receiveMethod && env.isSessionChannel(session) =>
             //println("receiveMethod, session: " + session + ", role: " + role
             //        + ", cases: " + cases)
+            pos = tree.pos
             env = env.enterChoiceReceiveBlock(session, role.stringValue)
             cases foreach { c: CaseDef =>
               if (! c.guard.isEmpty) {
@@ -79,8 +82,10 @@ trait SessionTypeCheckingTraversers {
                   "Receive clauses on session channels (branching) do not support guards yet")
               } else {
                 def processBranch = {
+                  pos = c.pat.pos
                   env = env.enterChoiceReceiveBranch(c.pat.tpe)
                   traverse(c.body)
+                  pos = c.body.pos
                   env = env.leaveChoiceReceiveBranch
                 }
                 c.pat match {
@@ -93,10 +98,12 @@ trait SessionTypeCheckingTraversers {
 
               }
             }
+            pos = f.pos
             env = env.leaveChoiceReceiveBlock
 
         case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
           println("delegation of session channel: " + tree)
+          pos = tree.pos
           env = env.delegation(fun.symbol, getSessionChannels(args))
           super.traverse(tree)
 
@@ -111,8 +118,10 @@ trait SessionTypeCheckingTraversers {
         case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
 
         case If(cond,thenp,elsep) =>
+          pos = thenp.pos
           env = env.enterThen
           traverse(thenp)
+          pos = elsep.pos
           env = env.enterElse
           traverse(elsep)
           env = env.leaveIf

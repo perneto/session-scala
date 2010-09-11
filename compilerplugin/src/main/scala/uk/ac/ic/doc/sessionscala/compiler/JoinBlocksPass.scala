@@ -57,13 +57,13 @@ abstract class JoinBlocksPass extends PluginComponent
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
         if sym == acceptMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
-          env = env.enterJoin(chanIdent, role.stringValue, sessChan)
           try {
+            env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
             env = env.leaveJoin          
           } catch {
-            // todo: pass pos in env for better-localized error messages
-            case e: SessionTypeCheckingException => reporter.error(tree.pos, e.getMessage)
+            case e: SessionTypeCheckingException => 
+              reporter.error(pos, e.getMessage)
           }
 
         case _ =>

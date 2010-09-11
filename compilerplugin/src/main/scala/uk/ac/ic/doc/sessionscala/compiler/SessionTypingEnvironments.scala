@@ -136,6 +136,9 @@ trait SessionTypingEnvironments {
     def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment
+  
+    def enterSessionMethod(sessChans: List[Name]): SessionTypingEnvironment = this
+    def leaveSessionMethod: SessionTypingEnvironment = this
   }
   
   abstract class AbstractDelegatingEnv(val parent: SessionTypingEnvironment) 
@@ -183,18 +186,53 @@ trait SessionTypingEnvironments {
 
   }
 
-  //class 
-  
-  class JoinBlockTopLevelEnv(val ste: SessionTypedElements) extends SessionTypingEnvironment {
+  abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
     val parent = null
+    override def isSessionChannel(c: Name) = false
+        
+    protected def notYet(what: String) =
+      throw new SessionTypeCheckingException("trying to do a " + what
+              + " operation, but not in appropriate block yet")
+    protected def notLeavingYet(what: String) =
+      throw new SessionTypeCheckingException("trying to leave a " + what
+              + " block, but was not yet in such a block environment")
+  }
+  
+  class MethodSessionTypeInferenceTopLevelEnv() extends AbstractTopLevelEnv {
+    val ste = null
+    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
+      throw new IllegalStateException("Should not be called")
+    
+    def updated(ste: SessionTypedElements) = new MethodSessionTypeInferenceTopLevelEnv
+    
+    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
+      throw new IllegalStateException("Should not be called")
+    
+    def leaveJoin = this
+
+    def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = this
+    def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = this
+
+    def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) = this
+    def leaveChoiceReceiveBlock = this
+
+    def enterChoiceReceiveBranch(labelType: Type) = this
+    def leaveChoiceReceiveBranch = this
+
+    def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = this
+    def enterElse: SessionTypingEnvironment = this
+    def leaveIf: SessionTypingEnvironment = this
+
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) = this    
+  }
+  
+  class JoinBlockTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv {
     def this() = this(new SessionTypedElements(Map.empty, Map.empty))
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       delegator.updated(delegator.ste.updated(name, globalType))
     
-    override def isSessionChannel(c: Name) = false
-        
-    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = {
+    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = {
       //println("enterJoin: " + ste)
       val role = new Role(roleName)
       val globalModel = delegator.getGlobalTypeForChannel(sharedChannel)
@@ -203,13 +241,11 @@ trait SessionTypingEnvironments {
         delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)),
         delegator, role, sessChan)
     }
-    
-    protected def notYet(what: String) =
-      throw new SessionTypeCheckingException("trying to do a " + what
-              + " operation, but not in appropriate block yet")
-    protected def notLeavingYet(what: String) =
-      throw new SessionTypeCheckingException("trying to leave a " + what
-              + " block, but was not yet in such a block environment")
+          
+    def updated(ste: SessionTypedElements) = {
+      assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_))
+      new JoinBlockTopLevelEnv(ste)
+    }
     
     def leaveJoin: SessionTypingEnvironment = notLeavingYet("join")
 
@@ -229,11 +265,6 @@ trait SessionTypingEnvironments {
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       // todo: new env that forbids any use of s (delegated)
       delegator
-    }
-    
-    def updated(ste: SessionTypedElements): SessionTypingEnvironment = {
-      assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_))
-      new JoinBlockTopLevelEnv(ste)
     }
   }
 
