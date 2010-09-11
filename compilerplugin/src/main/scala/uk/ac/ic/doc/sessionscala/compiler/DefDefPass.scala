@@ -8,14 +8,12 @@ import tools.nsc.{Global, Phase}
  */
 
 abstract class DefDefPass extends PluginComponent
-                                  with SessionTypingEnvironments
-                                  with SessionDefinitions
-                                  with SessionTypeCheckingTraversers {
+                             with SessionTypingEnvironments
+                             with SessionDefinitions
+                             with SessionTypeCheckingTraversers {
   import global._
 
-	def env: SessionTypingEnvironment = new JoinBlockTopLevelEnv
-
-  def isSessionChannelType(t: Type): Boolean = {
+	def isSessionChannelType(t: Type): Boolean = {
     val function1 = definitions.FunctionClass(1)
     val sessionChannel = typeRef(function1.owner.tpe, function1,
             List(definitions.StringClass.tpe, participantChannelClass.tpe))
@@ -31,29 +29,8 @@ abstract class DefDefPass extends PluginComponent
   }
   
   class SessionMethodDefTraverser extends SessionTypeCheckingTraverser {
-    def leaveIf = {}
-
-    def enterElse = {}
-
-    def enterThen = {}
-
-    def leaveChoiceReceiveBlock = {}
-
-    def leaveChoiceReceiveBranch = {}
-
-
-    def isSessionChannel(name: Name) = false
-
-    def delegation(fun: Symbol, sessChans: List[Name]) = null
-
-    def enterChoiceReceiveBranch(label: Type) = null
-
-    def enterChoiceReceiveBlock(sessionChan: Name, srcRole: String) = null
-
-    def receive(sessionChan: Name, srcRole: String, tpe: Type) = null
-
-    def send(sessionChan: Name, dstRole: String, tpe: Type) = null
-
+    def initEnvironment = new JoinBlockTopLevelEnv // todo
+    
     override def traverse(tree: Tree) = tree match {
 			case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
 	    println("method def: " + name + ", symbol: " + tree.symbol)

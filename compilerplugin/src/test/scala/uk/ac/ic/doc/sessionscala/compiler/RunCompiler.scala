@@ -1,13 +1,15 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
-
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 import scala.tools.nsc._
 
 /**
  * Created by: omp08
  */
 
+@RunWith(classOf[JUnitRunner])
 class RunCompiler extends FunSuite {
   val scalaVersion = "2.8.0"
   test("run compiler") {
@@ -20,7 +22,6 @@ class RunCompiler extends FunSuite {
         ":compilerplugin/target/scala_"+scalaVersion+"/classes" +
         ":examples/target/scala_"+scalaVersion+"/classes"
     ))
-    //println("Classpath: " + settings.classpath)
     //settings.showPlugins only works if you're not compiling a file, same as -help
     settings.require.tryToSet(List("sessiontyping"))
     settings.plugin.tryToSet(List(

@@ -133,7 +133,9 @@ trait SessionTypingEnvironments {
     def enterElse: SessionTypingEnvironment
     def leaveIf: SessionTypingEnvironment
 
-    def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment
+    def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment =
+      delegation(this, function, channels)
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment
   }
   
   abstract class AbstractDelegatingEnv(val parent: SessionTypingEnvironment) 
@@ -164,8 +166,8 @@ trait SessionTypingEnvironments {
     def enterElse = parent.enterElse
     def leaveIf = parent.leaveIf
 
-    def delegation(function: Symbol, channels: List[Name]) =
-      parent.delegation(function, channels)
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) =
+      parent.delegation(delegator, function, channels)
     
     def checkSessionsIdentical(sessions: Sessions): Unit = {
       ste.sessions foreach {
@@ -181,6 +183,8 @@ trait SessionTypingEnvironments {
 
   }
 
+  //class 
+  
   class JoinBlockTopLevelEnv(val ste: SessionTypedElements) extends SessionTypingEnvironment {
     val parent = null
     def this() = this(new SessionTypedElements(Map.empty, Map.empty))
@@ -222,9 +226,9 @@ trait SessionTypingEnvironments {
     def enterElse: SessionTypingEnvironment = notYet("else branch")
     def leaveIf: SessionTypingEnvironment = notLeavingYet("if")
 
-    def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       // todo: new env that forbids any use of s (delegated)
-      this
+      delegator
     }
     
     def updated(ste: SessionTypedElements): SessionTypingEnvironment = {

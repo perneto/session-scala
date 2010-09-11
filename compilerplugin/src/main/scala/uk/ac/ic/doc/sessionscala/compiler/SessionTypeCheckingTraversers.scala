@@ -9,24 +9,15 @@ import tools.nsc.Global
  * Created by: omp08
  */
 
-trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
+trait SessionTypeCheckingTraversers { 
+  self: SessionDefinitions with SessionTypingEnvironments =>
   val global: Global
   import global._
 
   trait SessionTypeCheckingTraverser extends Traverser {
-
-    def send(sessionChan: Name, dstRole: String, tpe: Type): Unit
-    def receive(sessionChan: Name, srcRole: String, tpe: Type): Unit
-    def enterChoiceReceiveBlock(sessionChan: Name, srcRole: String): Unit
-    def enterChoiceReceiveBranch(label: Type): Unit
-    def leaveChoiceReceiveBranch: Unit
-    def leaveChoiceReceiveBlock: Unit
-    def enterThen: Unit
-    def enterElse: Unit
-    def leaveIf: Unit
-    def delegation(fun: Symbol, sessChans: List[Name]): Unit
-    def isSessionChannel(name: Name): Boolean
-
+    def initEnvironment: SessionTypingEnvironment
+    var env = initEnvironment
+    
     def linearityError(lhs: Any, rhs: Tree) {
       reporter.error(rhs.pos, "Cannot assign " + rhs
         + " to " + lhs + ": aliasing of session channels is forbidden")
@@ -34,7 +25,7 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
     def isSessionChannel(tree: Tree): Boolean = getSessionChannelName(tree).isDefined
 
         def getSessionChannelName(tree: Tree): Option[Name] = tree match {
-          case Ident(name) if isSessionChannel(name) => Some(name)
+          case Ident(name) if env.isSessionChannel(name) => Some(name)
           case _ => None
         }
 
@@ -43,13 +34,13 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
     
     override def traverse(tree: Tree) {
       val sym = tree.symbol
-
+      
       tree match {
         case Apply(Select(Apply(Select(Ident(session),_),Literal(role)::Nil),_),arg::Nil)
-        if sym == bangMethod && isSessionChannel(session) =>
+        if sym == bangMethod && env.isSessionChannel(session) =>
           //println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
           //        + ", session: " + session + ", role: " + role)
-          send(session, role.stringValue, arg.tpe)
+          env = env.send(session, role.stringValue, arg.tpe)
           traverse(arg)
 
         case TypeApply(
@@ -60,11 +51,11 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
                  ),
                _),
              _)
-        if sym == qmarkMethod && isSessionChannel(session) =>
+        if sym == qmarkMethod && env.isSessionChannel(session) =>
           if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
             reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
           //println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
-          receive(session, role.stringValue, tree.tpe)
+          env = env.receive(session, role.stringValue, tree.tpe)
           super.traverse(tree)
 
         case Apply(
@@ -78,19 +69,19 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
                ),
                Function(_,Match(_,cases))::Nil
              )
-        if sym == receiveMethod && isSessionChannel(session) =>
+        if sym == receiveMethod && env.isSessionChannel(session) =>
             //println("receiveMethod, session: " + session + ", role: " + role
             //        + ", cases: " + cases)
-            enterChoiceReceiveBlock(session, role.stringValue)
+            env = env.enterChoiceReceiveBlock(session, role.stringValue)
             cases foreach { c: CaseDef =>
               if (! c.guard.isEmpty) {
                 reporter.error(c.guard.pos,
                   "Receive clauses on session channels (branching) do not support guards yet")
               } else {
                 def processBranch = {
-                  enterChoiceReceiveBranch(c.pat.tpe)
+                  env = env.enterChoiceReceiveBranch(c.pat.tpe)
                   traverse(c.body)
-                  leaveChoiceReceiveBranch
+                  env = env.leaveChoiceReceiveBranch
                 }
                 c.pat match {
                   case Select(_,name) => processBranch
@@ -102,11 +93,11 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
 
               }
             }
-            leaveChoiceReceiveBlock
+            env = env.leaveChoiceReceiveBlock
 
         case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
           println("delegation of session channel: " + tree)
-          delegation(fun.symbol, getSessionChannels(args))
+          env = env.delegation(fun.symbol, getSessionChannels(args))
           super.traverse(tree)
 
         // todo: allow returning session channel from methods after they have advanced the session
@@ -120,11 +111,11 @@ trait SessionTypeCheckingTraversers { self: SessionDefinitions =>
         case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
 
         case If(cond,thenp,elsep) =>
-          enterThen
+          env = env.enterThen
           traverse(thenp)
-          enterElse
+          env = env.enterElse
           traverse(elsep)
-          leaveIf
+          env = env.leaveIf
 
         case _ =>
           super.traverse(tree)

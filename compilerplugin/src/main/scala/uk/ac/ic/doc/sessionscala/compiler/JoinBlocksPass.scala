@@ -13,14 +13,14 @@ abstract class JoinBlocksPass extends PluginComponent
                                  with SessionTypeCheckingTraversers {
   import global._
 
-	val JoinBlockTopLevelEnv: SessionTypingEnvironment
+  val defdefpass: DefDefPass
 	
   class AbortException extends ControlThrowable
 
   class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
-    var env = JoinBlockTopLevelEnv
+    def initEnvironment = new JoinBlockTopLevelEnv
 
     def parseFile(filename: String, pos: Position): ProtocolModel = {
       var globalModel: ProtocolModel = null;
@@ -35,27 +35,6 @@ abstract class JoinBlocksPass extends PluginComponent
       }
       globalModel
     }
-
-
-    def isSessionChannel(name: Name) = env.isSessionChannel(name)
-    def delegation(fun: Symbol, sessChans: List[Name]) =
-      env = env.delegation(fun, sessChans)
-
-    def leaveIf = env = env.leaveIf
-    def enterElse = env = env.enterElse
-    def enterThen = env = env.enterThen
-
-    def leaveChoiceReceiveBlock = env = env.leaveChoiceReceiveBlock
-    def leaveChoiceReceiveBranch = env = env.leaveChoiceReceiveBranch
-    def enterChoiceReceiveBranch(label: Type) =
-      env = env.enterChoiceReceiveBranch(label)
-    def enterChoiceReceiveBlock(sessionChan: Name, srcRole: String) =
-      env = env.enterChoiceReceiveBlock(sessionChan, srcRole)
-
-    def receive(sessionChan: Name, srcRole: String, tpe: Type) =
-      env = env.receive(sessionChan, srcRole, tpe)
-    def send(sessionChan: Name, dstRole: String, tpe: Type) =
-      env = env.send(sessionChan, dstRole, tpe)
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol

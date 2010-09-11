@@ -17,7 +17,7 @@ class SessionTypingPlugin(val global: Global) extends Plugin {
     val phaseName = "sessiontyping_acceptblocks"
 
     val scribbleJournal = _journal
-		lazy val JoinBlockTopLevelEnv = new JoinBlockTopLevelEnv
+		val defdefpass = methodDefPass
   }
 
   val methodDefPass = new DefDefPass {
