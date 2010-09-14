@@ -40,7 +40,7 @@ abstract class DefDefPass extends PluginComponent
   	      if (!tparams.isEmpty) reporter.error(tree.pos,
   	          "Type parameters not supported for session methods")
   	      println(chanNames)
-  	      env = env.enterSessionMethod(chanNames)
+  	      env = env.enterSessionMethod(tree.symbol, chanNames)
   	      traverse(rhs)
   	      env = env.leaveSessionMethod
   	    } else {

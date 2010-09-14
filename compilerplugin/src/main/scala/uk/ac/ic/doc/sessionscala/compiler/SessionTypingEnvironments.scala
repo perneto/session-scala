@@ -67,23 +67,46 @@ trait SessionTypingEnvironments {
 
   type SharedChannels = Map[Name, ProtocolModel]
   type Sessions = Map[Name, Session]
-
-  case class SessionTypedElements(sharedChannels: SharedChannels, sessions: Sessions) {
+  type Inferred = Map[Symbol, Map[Name, List[Activity]]]
+  
+  case class SessionTypedElements(sharedChannels: SharedChannels, sessions: Sessions, inferred: Inferred) {
+    def this() = this(Map(), Map(), Map())
     def updated(sessChan: Name, newSess: Session): SessionTypedElements =
       new SessionTypedElements(
-        sharedChannels, sessions.updated(sessChan, newSess))
+        sharedChannels, sessions.updated(sessChan, newSess), inferred)
 
     def updated(sharedChan: Name, model: ProtocolModel): SessionTypedElements =
       new SessionTypedElements(
-        sharedChannels.updated(sharedChan, model), sessions)
+        sharedChannels.updated(sharedChan, model), sessions, inferred)
 
-    def updated(newSess: Sessions) = SessionTypedElements(sharedChannels, newSess)
+    def updated(newSess: Sessions) = SessionTypedElements(sharedChannels, newSess, inferred)
 
+    def updated(method: Symbol, inf: Map[Name, List[Activity]]) = 
+      SessionTypedElements(sharedChannels, sessions, inferred.updated(method, inf))
+    
     def getSharedChan(name: Name) = sharedChannels.get(name)
+    def getInferredFor(method: Symbol, chan: Name): List[Activity] = 
+      getInferredFor(method).get(chan).getOrElse(Nil)
+    def getInferredFor(method: Symbol): Map[Name, List[Activity]] = 
+      inferred.get(method).getOrElse(Map())
+    def appendInferred(method: Symbol, chan: Name, act: Activity) = {
+      val appended = getInferredFor(method, chan) ++ List(act)
+      updated(method, getInferredFor(method).updated(chan, appended))  
+    }   
   }
 
   def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
     new Interaction(src, dst, new MessageSignature(msgType))
+  
+  def checkSessionsIdentical(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
+    case (chan, sessElse) =>
+      val sessThen = sessions2(chan)
+      if (sessElse.remaining != sessThen.remaining)
+        throw new SessionTypeCheckingException(
+          "Branch statement did not advance session equally on all branches on channel: "
+                  + chan + ". A branch had remaining session type: "
+                  + sessThen.remaining + " while another had: " + sessElse.remaining)    
+  }
 
   trait SessionTypingEnvironment {
     val ste: SessionTypedElements
@@ -137,8 +160,11 @@ trait SessionTypingEnvironments {
       delegation(this, function, channels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment
   
-    def enterSessionMethod(sessChans: List[Name]): SessionTypingEnvironment = this
+    def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
     def leaveSessionMethod: SessionTypingEnvironment = this
+    
+    def branchComplete(branch1: SessionTypedElements, branch2: SessionTypedElements): SessionTypedElements
+    
   }
   
   abstract class AbstractDelegatingEnv(val parent: SessionTypingEnvironment) 
@@ -172,18 +198,8 @@ trait SessionTypingEnvironments {
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) =
       parent.delegation(delegator, function, channels)
     
-    def checkSessionsIdentical(sessions: Sessions): Unit = {
-      ste.sessions foreach {
-        case (chan, sessElse) =>
-          val sessThen = sessions(chan)
-          if (sessElse.remaining != sessThen.remaining)
-            throw new SessionTypeCheckingException(
-              "Branch statement did not advance session equally on all branches on channel: "
-                      + chan + ". A branch had remaining session type: "
-                      + sessThen.remaining + " while another had: " + sessElse.remaining)
-      }
-    }
-
+    def branchComplete(branch1: SessionTypedElements, branch2: SessionTypedElements) = 
+      parent.branchComplete(branch1, branch2)
   }
 
   abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
@@ -198,12 +214,14 @@ trait SessionTypingEnvironments {
               + " block, but was not yet in such a block environment")
   }
   
-  class MethodSessionTypeInferenceTopLevelEnv() extends AbstractTopLevelEnv {
-    val ste = null
+  class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv {
+    def this() = this(new SessionTypedElements)
+    
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
     
-    def updated(ste: SessionTypedElements) = new MethodSessionTypeInferenceTopLevelEnv
+    def updated(ste: SessionTypedElements) = 
+      new MethodSessionTypeInferenceTopLevelEnv(ste)
     
     def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
@@ -224,10 +242,47 @@ trait SessionTypingEnvironments {
     def leaveIf: SessionTypingEnvironment = this
 
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) = this    
+
+    override def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
+      println("enterSessionMethod")
+      new InMethodInferenceEnv(this, ste, fun, sessChans)
+    }
+    
+    def inferredSessionType(method: Symbol, chan: Name): List[Activity] = 
+      ste.getInferredFor(method, chan)
+      
+    def branchComplete(branch1: SessionTypedElements, branch2: SessionTypedElements) = branch1 // todo: fuse/add to inferred  
+  }
+  
+  class InMethodInferenceEnv(parent: SessionTypingEnvironment, val ste: SessionTypedElements, 
+      method: Symbol, chans: List[Name]) extends AbstractDelegatingEnv(parent){
+    def updated(newSte: SessionTypedElements) =
+      new InMethodInferenceEnv(parent, newSte, method, chans)
+    override def isSessionChannel(chan: Name) = chans.contains(chan)
+    
+    def inferInteraction(chan: Name, inter: Interaction, delegator: SessionTypingEnvironment) = {
+      val dSte = delegator.ste
+      val newSte = dSte.appendInferred(method, chan, inter)
+      delegator.updated(newSte)
+    }
+    
+    override def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
+      val inter = createInteraction(null, new Role(role), new TypeReference(typeSystem.scalaToScribble(msgType)))
+      println("send, delegator: " + delegator)
+      inferInteraction(sessChan, inter, delegator)
+    }
+      
+    override def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
+      val inter = createInteraction(new Role(role), null, new TypeReference(typeSystem.scalaToScribble(msgType)))
+      println("receive, delegator: " + delegator)
+      inferInteraction(sessChan, inter, delegator)
+    }
+
+    override def leaveSessionMethod = parent.updated(ste)
   }
   
   class JoinBlockTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv {
-    def this() = this(new SessionTypedElements(Map.empty, Map.empty))
+    def this() = this(new SessionTypedElements)
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       delegator.updated(delegator.ste.updated(name, globalType))
@@ -265,6 +320,11 @@ trait SessionTypingEnvironments {
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       // todo: new env that forbids any use of s (delegated)
       delegator
+    }
+    
+    def branchComplete(branch1: SessionTypedElements, branch2: SessionTypedElements) = {
+      checkSessionsIdentical(branch1.sessions, branch2.sessions)
+      branch1
     }
   }
 
@@ -330,7 +390,7 @@ trait SessionTypingEnvironments {
                               sessChanReceiveBlock: Name,
                               choiceSrcRole: String,
                               branches: List[Type],
-                              lastBranchSess: Option[Sessions])
+                              lastBranchSte: Option[SessionTypedElements])
   extends AbstractDelegatingEnv(parent) {
 
     //println("Created ChoiceReceiveBlockEnv: " + ste.sessions)
@@ -348,18 +408,18 @@ trait SessionTypingEnvironments {
       val newSte = ste.updated(sessChanReceiveBlock, sessBranch)
 
       val updatedThis = new ChoiceReceiveBlockEnv(ste, parent, sessChanReceiveBlock,
-        choiceSrcRole, label :: branches, lastBranchSess)
+        choiceSrcRole, label :: branches, lastBranchSte)
       new ChoiceReceiveBranchEnv(newSte, updatedThis, sessChanReceiveBlock, 
-          branches, label, lastBranchSess)
+          branches, label, lastBranchSte)
     }
 
     def updated(ste: SessionTypedElements) =
       new ChoiceReceiveBlockEnv(ste, parent, sessChanReceiveBlock, 
-          choiceSrcRole, branches, lastBranchSess)
+          choiceSrcRole, branches, lastBranchSte)
 
-    def withLastBranchSessions(sess: Sessions): ChoiceReceiveBlockEnv = {
+    def withLastBranchSte(lastBranchSte: SessionTypedElements): ChoiceReceiveBlockEnv = {
       new ChoiceReceiveBlockEnv(ste, parent, sessChanReceiveBlock, 
-          choiceSrcRole, branches, Some(sess))
+          choiceSrcRole, branches, Some(lastBranchSte))
     }
 
     override def leaveChoiceReceiveBlock = {
@@ -371,9 +431,9 @@ trait SessionTypingEnvironments {
       if (!missing.isEmpty)
         throw new SessionTypeCheckingException("Missing choice receive branch(es): " + missing)
 
-      // to keep advance of interleaved sessions
-      val newSte = ste.updated(lastBranchSess.get)
-      // lastBranchSess.get(sessChanReceiveBlock) is empty as it only had the branch block
+      // to keep advance of interleaved sessions on other channels than sessChanReceiveBlock
+      val newSte = lastBranchSte.get
+      // lastBranchSte.sessions.get(sessChanReceiveBlock) is empty as it only had the branch block
       // now we replace it by the parent session which still had the whole thing,
       // only removing the choice construct at the beginning
       parent.updated(
@@ -386,7 +446,7 @@ trait SessionTypingEnvironments {
                                sessChanReceiveBlock: Name,
                                branches: List[Type],
                                branchLabel: Type,
-                               lastBranchSess: Option[Sessions])
+                               lastBranchSte: Option[SessionTypedElements])
           extends AbstractDelegatingEnv(parent) {
 
     //println("Created ChoiceReceiveBranchEnv: " + ste.sessions)
@@ -396,17 +456,18 @@ trait SessionTypingEnvironments {
       val sess = ste.sessions(sessChanReceiveBlock)
       if (!sess.isComplete) // sess only has the branch block, not what comes after it
         throw new SessionTypeCheckingException("Branch incomplete, missing: "+ sess.remaining)
-      if (lastBranchSess.isDefined) {
-        checkSessionsIdentical(lastBranchSess.get)
+      
+      val nextSte = if (lastBranchSte.isDefined) {
+        branchComplete(ste, lastBranchSte.get)
         //println("checked last branch ok: " + lastBranchSess.get)
-      }
+      } else ste
 
-      parent.withLastBranchSessions(ste.sessions)
+      parent.withLastBranchSte(nextSte)
     }
 
     def updated(ste: SessionTypedElements) =
       new ChoiceReceiveBranchEnv(ste, parent, sessChanReceiveBlock, 
-          branches, branchLabel, lastBranchSess)
+          branches, branchLabel, lastBranchSte)
   }
 
   class ThenBlockEnv(val ste: SessionTypedElements,
@@ -420,25 +481,24 @@ trait SessionTypingEnvironments {
 
     override def enterElse = {
       //println("enterElse, parent: " + parent + ", parent.ste.sessions: " + parent.ste.sessions)
-      new ElseBlockEnv(parent.ste, parent, ste.sessions)
+      new ElseBlockEnv(parent.ste, parent, ste)
     }
 
   }
 
   class ElseBlockEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
-                     sessionsThenBranch: Sessions)
+                     steThenBranch: SessionTypedElements)
       extends AbstractDelegatingEnv(parent) {
 
     //println("Created ElseBlockEnv: " + ste + " sessionsThenBranch: "
     //        + sessionsThenBranch + ", parent.ste.sessions: " + parent.ste.sessions)
 
     override def leaveIf = {
-      checkSessionsIdentical(sessionsThenBranch)
-      parent.updated(ste)
+      parent.updated(branchComplete(ste, steThenBranch))
     }
 
     def updated(newSte: SessionTypedElements) =
-      new ElseBlockEnv(newSte, parent, sessionsThenBranch)
+      new ElseBlockEnv(newSte, parent, steThenBranch)
   }
 }

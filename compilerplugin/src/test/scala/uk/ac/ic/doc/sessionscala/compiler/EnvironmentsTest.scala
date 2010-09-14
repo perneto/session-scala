@@ -202,5 +202,20 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
     env = env.leaveJoin
   }
+  
+  import scalaj.collection.Imports._
 
+  val empty = definitions.EmptyPackage
+  val fooMethod = empty.newMethod(mkTermName("foo"))
+  ignore("method inference - needs Interaction.equals implemented in Scribble") {
+    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env = env.enterSessionMethod(fooMethod, List(sessChan))
+    env = env.send(sessChan, "Bob", stringT)
+    env = env.leaveSessionMethod
+    val inferred = env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
+                                    .inferredSessionType(fooMethod, sessChan) 
+    inferred should have length (1)
+    inferred(0) should be (new Interaction(null, List(new Role("Bob")) asJava, 
+        new MessageSignature(new TypeReference("String"))))
+  }
 }
