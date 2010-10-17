@@ -28,6 +28,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val objectT = definitions.ObjectClass.tpe
   val anyT = definitions.AnyClass.tpe
   val charSequenceT = definitions.getClass("java.lang.CharSequence").tpe
+  
+  val stringTRef = new TypeReference("String")
+  val intTRef = new TypeReference("Int")
 
   def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
     val env = topEnv.registerSharedChannel(sharedChan, model)
@@ -55,7 +58,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
   }
 
-  val basicProtoModel = parse(
+  val sendStringModel = parse(
     """protocol Foo {
          role Alice, Bob;
          String from Alice to Bob;
@@ -63,20 +66,20 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     """)
 
   test("basic protocol, complete") {
-    var env = join(basicProtoModel, "Alice")
+    var env = join(sendStringModel, "Alice")
     env = env.send(sessChan, "Bob", stringT)
     env = env.leaveJoin
   }
 
   test("basic protocol, wrong message type") {
-    var env = join(basicProtoModel, "Alice")
+    var env = join(sendStringModel, "Alice")
     intercept[SessionTypeCheckingException] {
       env = env.send(sessChan, "Bob", objectT) // wrong message type
     }
   }
 
   test("basic protocol, missing interaction") {
-    var env = join(basicProtoModel, "Alice")
+    var env = join(sendStringModel, "Alice")
     // missing send
     intercept[SessionTypeCheckingException] {
       env = env.leaveJoin
@@ -84,7 +87,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   }
 
   test("basic protocol, receive side") {
-    var env = join(basicProtoModel, "Bob")
+    var env = join(sendStringModel, "Bob")
     env = env.receive(sessChan, "Alice", stringT)
     env = env.leaveJoin
   }
@@ -205,18 +208,107 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   
   import scalaj.collection.Imports._
 
+  def sessionMethod(method: Symbol, chan: Name): SessionTypingEnvironment = {
+    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env.enterSessionMethod(fooMethod, List(chan))
+  }
+  
+  def inferred(env: SessionTypingEnvironment, method: Symbol, chan: Name): List[Activity] = 
+    env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
+                                    .inferredSessionType(method, chan)
+  
   val empty = definitions.EmptyPackage
   val fooMethod = empty.newMethod(mkTermName("foo"))
   test("method inference, one send and receive") {
-    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env = env.enterSessionMethod(fooMethod, List(sessChan))
+    var env = sessionMethod(fooMethod, sessChan)
     env = env.send(sessChan, "Bob", stringT)
     env = env.receive(sessChan, "Bob", stringT)
     env = env.leaveSessionMethod
-    val inferred = env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
-                                    .inferredSessionType(fooMethod, sessChan) 
-    inferred should have length (2)
-    inferred(0) should be (createInteraction(null, new Role("Bob"), new TypeReference("String")))
-    inferred(1) should be (createInteraction(new Role("Bob"), null, new TypeReference("String")))
+    
+    val inf = inferred(env, fooMethod, sessChan) 
+    inf should have length (2)
+    inf(0) should be (createInteraction(null, new Role("Bob"), stringTRef))
+    inf(1) should be (createInteraction(new Role("Bob"), null, stringTRef))
+  }
+  
+  test("method inference, branching") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
+    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+    
+    val inf = inferred(env, fooMethod, sessChan) 
+    inf should have length (1)
+    inf(0) should be (createChoice(new Role("Bob"), null, List(stringTRef, intTRef)))
+  }
+  
+  test("method inference, if branches should be merged into choice") {
+    var env = sessionMethod(fooMethod, sessChan)
+    
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", intT)
+    env = env.leaveIf
+    
+    val inf = inferred(env, fooMethod, sessChan)
+    inf should have length (1)
+    inf(0) should be (createChoice(null, new Role("Alice"), List(stringTRef, intTRef)))
+  }
+  
+  test("inferred method call") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.send(sessChan, "Bob", stringT)
+    
+    val topEnv = new JoinBlockTopLevelEnv(env)
+    env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env.enterJoin(sharedChan, "Alice", sessChan)
+    env.delegation(fooMethod, List(sessChan))
+    env.leaveJoin
+  }
+  
+  test("method inference, recursion") {
+    var env = sessionMethod(fooMethod, sessChan)
+    
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.delegation(fooMethod, List(sessChan)) // recursion detected: gather inferred and wrap inside recur
+    
+    val inf = inferred(env, fooMethod, sessChan)
+    inf should have length (1)
+    // To solve the unknown label problem, extra annotations might be required
+    inf(0) should be (createRecur(null, 
+          List(createInteraction(null, new Role("Alice"), stringTRef), createRecursion(null))
+        )
+    )
+  }
+  
+  val recurModel = parse(
+  """ protocol Foo {
+        role Alice, Bob;
+        X: {
+          String from Alice to Bob;
+          #X;
+        }
+      }
+  """)
+  
+  test("inferred, recursive method call - unroll recursion first") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.delegation(fooMethod, List(sessChan))
+    
+    val topEnv = new JoinBlockTopLevelEnv(env)
+    env = topEnv.registerSharedChannel(sharedChan, recurModel)
+    env.enterJoin(sharedChan, "Alice", sessChan)
+    env.delegation(fooMethod, List(sessChan))
+    env.leaveJoin
+  }
+  	
+  test("scoping of inferred methods") {
+    // will require keeping even the join block visitor informed of method definitions,
+    // so that it can bring previously inferred methods in and out of scope
   }
 }

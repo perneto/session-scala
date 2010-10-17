@@ -98,6 +98,33 @@ trait SessionTypingEnvironments {
   def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
     new Interaction(src, dst, new MessageSignature(msgType))
   
+  def createWhen(label: TypeReference): When = {
+    val w = new When
+    w.setMessageSignature(new MessageSignature(label))
+    w
+  }
+  
+  def createChoice(src: Role, dst: Role, branches: List[TypeReference]) = {
+    val c = new Choice
+    c.setFromRole(src)
+    c.setToRole(dst)
+    c.getWhens().addAll((branches map (createWhen(_))) asJava)
+    c
+  }
+  
+  def createRecur(label: String, block: List[Activity]) = {
+    val r = new Recur
+    r.setLabel(label)
+    block foreach (r.getBlock().add(_))
+    r
+  }
+  
+  def createRecursion(label: String) = {
+    val r = new Recursion
+    r.setLabel(label)
+    r
+  }
+  
   def checkSessionsIdentical(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
     case (chan, sessElse) =>
       val sessThen = sessions2(chan)
@@ -281,8 +308,10 @@ trait SessionTypingEnvironments {
     override def leaveSessionMethod = parent.updated(ste)
   }
   
-  class JoinBlockTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv {
-    def this() = this(new SessionTypedElements)
+  class JoinBlockTopLevelEnv(val ste: SessionTypedElements, val infEnv: SessionTypingEnvironment) extends AbstractTopLevelEnv {
+    def this() = this(new SessionTypedElements, null)
+    def this(ste: SessionTypedElements) = this(ste, null)
+    def this(infEnv: SessionTypingEnvironment) = this(new SessionTypedElements, infEnv)
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       delegator.updated(delegator.ste.updated(name, globalType))
