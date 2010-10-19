@@ -6,7 +6,11 @@ lib_managed/
 src_managed/
 project/boot/
 bin/
+build/
+dist/
 .project
 .classpath
 .scala_dependencies
 .settings
+build.xml
+manifest.mf
