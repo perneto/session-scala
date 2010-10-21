@@ -7,6 +7,8 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with Id
   override def parallelExecution = true
 
   val mavenLocal = "Local Maven Repository" at "file://"+Path.userHome+"/.m2/repository"
+  val mavenRepo = DefaultMavenRepository
+  val scalatools = ScalaToolsReleases
 
   class Runtime(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
     override def fork = forkRun
@@ -20,7 +22,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with Id
 
   class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
-    val junit = "junit" % "junit" % "4.7"
+    val junit = "junit" % "junit" % "4.8.2"
     override def testAction = super.testAction dependsOn(`package`)
 
     val scribble_common = "org.scribble.bundles" % "org.scribble.common" % "2.0.0-SNAPSHOT"
