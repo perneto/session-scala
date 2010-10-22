@@ -167,7 +167,7 @@ public class Session {
         return new LinkedList<Activity>(remaining);
     }
 
-    private boolean isSubtype(final Activity subtype, final Activity supertype) {
+    public static boolean isSubtype(final HostTypeSystem hostTypeSystem, final List<ImportList> imports, final Activity subtype, final Activity supertype) {
         class SubtypeVisitor extends AbstractModelObjectVisitor {
             boolean res = false;
 
@@ -190,7 +190,7 @@ public class Session {
                     MessageSignature subSig = subInter.getMessageSignature();
                     boolean msgOk =  superSig != null
                             && subSig != null
-                            && isMessageSignatureSubtype(subSig, superSig);
+                            && isMessageSignatureSubtype(hostTypeSystem, imports, subSig, superSig);
                     res = (sendOk ^ receiveOk) && msgOk;
                 }
             }
@@ -203,7 +203,7 @@ public class Session {
         return v.res; // todo
     }
 
-    private boolean isMessageSignatureSubtype(MessageSignature subSig, MessageSignature superSig) {
+    public static boolean isMessageSignatureSubtype(HostTypeSystem hostTypeSystem, List<ImportList> imports,  MessageSignature subSig, MessageSignature superSig) {
         boolean res;
 
         String superOp = superSig.getOperation();
@@ -226,6 +226,14 @@ public class Session {
         res &= !itSuper.hasNext() && !itSub.hasNext();
 
         return res;
+    }
+
+    private boolean isMessageSignatureSubtype(MessageSignature subSig, MessageSignature superSig) {
+        return isMessageSignatureSubtype(hostTypeSystem, imports, subSig, superSig);
+    }
+
+    private boolean isSubtype(Activity subtype, Activity supertype) {
+        return isSubtype(hostTypeSystem, imports, subtype, supertype);
     }
 
     @Override
