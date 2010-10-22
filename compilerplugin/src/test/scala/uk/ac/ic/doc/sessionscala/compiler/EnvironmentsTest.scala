@@ -25,12 +25,17 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val sessChan2 = newTermName("sessChan2")
   val stringT = definitions.StringClass.tpe
   val intT = definitions.IntClass.tpe
+  val floatT = definitions.FloatClass.tpe
   val objectT = definitions.ObjectClass.tpe
   val anyT = definitions.AnyClass.tpe
   val charSequenceT = definitions.getClass("java.lang.CharSequence").tpe
   
   val stringTRef = new TypeReference("String")
   val intTRef = new TypeReference("Int")
+  val floatTRef = new TypeReference("Float")
+  val objectTRef = new TypeReference("Object")
+  val aliceRole = new Role("Alice")
+  val bobRole = new Role("Bob")
 
   def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
     val env = topEnv.registerSharedChannel(sharedChan, model)
@@ -234,8 +239,8 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     // all inferred methods are inferred as potentially recursive,
     // and use their name as recursion variable. (todo: later need to allow for overloading)
     checkInferred(env, fooMethod, sessChan, "foo", List(
-        createInteraction(null, new Role("Bob"), stringTRef),
-        createInteraction(new Role("Bob"), null, stringTRef)
+        createInteraction(null, bobRole, stringTRef),
+        createInteraction(bobRole, null, stringTRef)
     ))
   }
   
@@ -251,23 +256,86 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod
 
     checkInferred(env, fooMethod, sessChan, "foo", List(
-        createInteraction(null, new Role("Bob"), stringTRef),
-	createChoice(new Role("Bob"), null, List(stringTRef, intTRef))
+        createInteraction(null, bobRole, stringTRef),
+	createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
   }
   
   test("method inference, if branches should be merged into choice") {
     var env = sessionMethod(fooMethod, sessChan)
-    
+
+    env = env.send(sessChan, "Alice", objectT)
+
     env = env.enterThen
     env = env.send(sessChan, "Alice", stringT)
+    env = env.receive(sessChan, "Alice", floatT)
     env = env.enterElse
     env = env.send(sessChan, "Alice", intT)
     env = env.leaveIf
     env = env.leaveSessionMethod
     
     checkInferred(env, fooMethod, sessChan, "foo", List(
-        createChoice(null, new Role("Alice"), List(stringTRef, intTRef))
+        createInteraction(null, aliceRole, objectTRef),
+        createChoice(null, aliceRole, List(
+            (stringTRef, List(createInteraction(aliceRole, null, floatTRef))),
+            (intTRef, Nil)))
+    ))
+  }
+
+  test("method inference, more than 2 if branches, merge into choice") {
+    var env = sessionMethod(fooMethod, sessChan)
+
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.enterElse
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", intT)
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", floatT)
+    env = env.leaveIf
+    env = env.leaveIf
+    env = env.leaveSessionMethod
+
+    checkInferred(env, fooMethod, sessChan, "foo", List(
+        // todo: right now whens are in a list so Choice.equals is order-sensitive. need to change it to a set
+        createChoice(null, aliceRole, emptyBody(List(intTRef, floatTRef, stringTRef)))
+    ))
+  }
+
+  test("method inference, if branches, second branch doesn't send label: error") {
+    var env = sessionMethod(fooMethod, sessChan)
+
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.enterElse
+    intercept[SessionTypeCheckingException] {
+      env = env.leaveIf
+    }
+  }
+
+  test("method inference, if branches, first branch doesn't send label: error") {
+    var env = sessionMethod(fooMethod, sessChan)
+
+    env = env.enterThen
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", stringT)
+    intercept[SessionTypeCheckingException] {
+      env = env.leaveIf
+    }
+  }
+
+  test("method inference, if branches, identical: no choice") {
+    var env = sessionMethod(fooMethod, sessChan)
+
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", intT)
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", intT)
+    env = env.leaveIf
+    env = env.leaveSessionMethod
+
+    checkInferred(env, fooMethod, sessChan, "foo", List(
+        createInteraction(null, aliceRole, intTRef)
     ))
   }
   
@@ -290,7 +358,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod
     
     checkInferred(env, fooMethod, sessChan, "foo", List(
-        createInteraction(null, new Role("Alice"), stringTRef),
+        createInteraction(null, aliceRole, stringTRef),
         createRecursion("foo")
     ))
   }
@@ -298,13 +366,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   ignore("method inference, interleaved sessions") {}
 
   val recurModel = parse(
-  """ protocol Foo {
-        role Alice, Bob;
-        X: {
-          String from Alice to Bob;
-          #X;
-        }
-      }
+  """protocol Foo {
+       role Alice, Bob;
+       X: {
+         String from Alice to Bob;
+         #X;
+       }
+     }
   """)
   
   ignore("inferred, recursive method call - unroll recursion first") {
