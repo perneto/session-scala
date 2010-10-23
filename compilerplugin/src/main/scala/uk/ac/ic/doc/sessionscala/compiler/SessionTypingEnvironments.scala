@@ -160,11 +160,12 @@ trait SessionTypingEnvironments {
     r
   }
   
-  def createRecursion(label: String) = {
+  def createRecursion(label: String): Recursion = {
     val r = new Recursion
     r.setLabel(label)
     r
   }
+  def createRecursion(function: Symbol): Recursion = createRecursion(function.name.toString)
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."
   def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
@@ -326,6 +327,14 @@ trait SessionTypingEnvironments {
       inferInteraction(sessChan, inter, delegator)
     }
 
+    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) = {
+      val dSte = delegator.ste
+      val newSte = channels.foldLeft(dSte) {(ste, chan) => 
+        ste.append(method, chan, createRecursion(function))
+      }
+      delegator.updated(newSte)
+    }
+
     override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) =
       new InfChoiceReceiveBlockEnv(delegator.ste, delegator, method, sessChan, srcRole, None)
 
@@ -404,7 +413,6 @@ trait SessionTypingEnvironments {
       addToChoice(c, createWhen(send.getMessageSignature, restAct))
           //send.getToRoles.get(0), List(mkBranch))
     }
-    
     
     def mergeAsChoice(chan: Name, act1: Activity, act2: Activity, rest1: LA, rest2: LA) = {
       def throwUneven(goodSend: Interaction) = throw new SessionTypeCheckingException(

@@ -257,7 +257,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
     checkInferred(env, fooMethod, sessChan, "foo", List(
         createInteraction(null, bobRole, stringTRef),
-	createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
+        createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
   }
   
@@ -339,18 +339,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     ))
   }
   
-  ignore("inferred method call") {
-    var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Bob", stringT)
-    
-    val topEnv = new JoinBlockTopLevelEnv(env)
-    env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.delegation(fooMethod, List(sessChan))
-    env = env.leaveSessionMethod
-  }
-  
-  ignore("method inference, recursion") {
+  test("method inference, recursion") {
     var env = sessionMethod(fooMethod, sessChan)
     
     env = env.send(sessChan, "Alice", stringT)
@@ -363,8 +352,33 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     ))
   }
 
-  ignore("method inference, interleaved sessions") {}
+  test("method inference, interleaved sessions") {
+    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env.enterSessionMethod(fooMethod, List(sessChan, sessChan2))
+    
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.receive(sessChan2, "Bob", intT)
+    env = env.leaveSessionMethod
 
+    checkInferred(env, fooMethod, sessChan, "foo", List (
+      createInteraction(null, aliceRole, stringTRef)
+    ))
+    checkInferred(env, fooMethod, sessChan2, "foo", List (
+      createInteraction(bobRole, null, intTRef)
+    ))
+  }
+
+  ignore("inferred method call") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.send(sessChan, "Bob", stringT)
+    
+    val topEnv = new JoinBlockTopLevelEnv(env)
+    env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.delegation(fooMethod, List(sessChan))
+    env = env.leaveSessionMethod
+  }
+  
   val recurModel = parse(
   """protocol Foo {
        role Alice, Bob;
