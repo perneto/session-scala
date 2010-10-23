@@ -381,14 +381,17 @@ trait SessionTypingEnvironments {
       println("merge, acts1: " + acts1 + ", acts2: " + acts2)
       val (common, different) = splitPrefix(acts1, acts2)
       println("common: " + common + ", different: " + different)
-      val (act1, act2) = different.head
-      val (rest1, rest2) = different.tail.unzip
-      val choice = if (act1.isInstanceOf[Choice]) updateChoice(act1.asInstanceOf[Choice], act2, rest1, rest2)
-                   else if (act2.isInstanceOf[Choice]) updateChoice(act2.asInstanceOf[Choice], act1, rest1, rest2)
-                   else mergeAsChoice(chan, act1, act2, rest1, rest2)
+      if (different.isEmpty) common
+      else {
+        val (act1, act2) = different.head
+        val (rest1, rest2) = different.tail.unzip
+        val choice = if (act1.isInstanceOf[Choice]) updateChoice(act1.asInstanceOf[Choice], act2, rest1, rest2)
+                     else if (act2.isInstanceOf[Choice]) updateChoice(act2.asInstanceOf[Choice], act1, rest1, rest2)
+                     else mergeAsChoice(chan, act1, act2, rest1, rest2)
 
-      println(choice)
-      common ::: List(choice)
+        println(choice)
+        common ::: List(choice)
+      }
     }
     
     def updateChoice(c: Choice, act: Activity, empty: LA, restAct: LA) = {
