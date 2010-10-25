@@ -31,6 +31,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val charSequenceT = definitions.getClass("java.lang.CharSequence").tpe
   
   val stringTRef = new TypeReference("String")
+  val charSequenceTRef = new TypeReference("CharSequence")
   val intTRef = new TypeReference("Int")
   val floatTRef = new TypeReference("Float")
   val objectTRef = new TypeReference("Object")
@@ -338,6 +339,24 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
         createInteraction(null, aliceRole, intTRef)
     ))
   }
+
+  test("method inference, if branches, identical modulo subtyping: no choice") {
+    var env = sessionMethod(fooMethod, sessChan)
+
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.receive(sessChan, "Alice", stringT)
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", charSequenceT)
+    env = env.receive(sessChan, "Alice", charSequenceT)
+    env = env.leaveIf
+    env = env.leaveSessionMethod
+
+    checkInferred(env, fooMethod, sessChan, "foo", List(
+        createInteraction(null, aliceRole, charSequenceTRef), // send: infer supertype
+        createInteraction(aliceRole, null, stringTRef) // receive: infer subtype
+    ))
+  }
   
   test("method inference, recursion") {
     var env = sessionMethod(fooMethod, sessChan)
@@ -352,9 +371,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     ))
   }
 
-  test("method inference, interleaved sessions") {
-    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(fooMethod, List(sessChan, sessChan2))
+  def sessionMethod(method: Symbol, chan1: Name, chan2: Name): SessionTypingEnvironment = {
+    val env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env.enterSessionMethod(method, List(chan1, chan2))
+  }
+
+  test("method inference, interleaved sessions, basic send-receive") {
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
     
     env = env.send(sessChan, "Alice", stringT)
     env = env.receive(sessChan2, "Bob", intT)
@@ -366,6 +389,76 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     checkInferred(env, fooMethod, sessChan2, "foo", List (
       createInteraction(bobRole, null, intTRef)
     ))
+  }
+
+  test("method inference, interleaved sessions, if branches") {
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
+    
+    env = env.enterThen
+    env = env.send(sessChan, "Alice", intT)
+    env = env.receive(sessChan2, "Bob", intT)
+
+    env = env.enterElse
+    env = env.send(sessChan, "Alice", stringT)
+    env = env.receive(sessChan2, "Bob", intT)
+
+    env = env.leaveIf
+    env = env.leaveSessionMethod
+
+    checkInferred(env, fooMethod, sessChan, "foo", List (
+      createChoice(null, aliceRole, emptyBody(List(intTRef, stringTRef)))
+    ))
+    checkInferred(env, fooMethod, sessChan2, "foo", List (
+      createInteraction(bobRole, null, intTRef)
+    ))
+  }
+
+  test("method inference, interleaved sessions, choice branches") {
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
+    
+    env = env.send(sessChan, "Bob", stringT)
+    env = env.receive(sessChan2, "Alice", intT)
+
+    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
+
+    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.receive(sessChan2, "Bob", intT)
+    env = env.leaveChoiceReceiveBranch
+
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.receive(sessChan2, "Bob", intT)
+    env = env.leaveChoiceReceiveBranch
+
+    env = env.leaveChoiceReceiveBlock
+    env = env.leaveSessionMethod
+
+    checkInferred(env, fooMethod, sessChan, "foo", List(
+      createInteraction(null, bobRole, stringTRef),
+      createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
+    ))
+    checkInferred(env, fooMethod, sessChan2, "foo", List (
+      createInteraction(aliceRole, null, intTRef),
+      createInteraction(bobRole, null, intTRef)
+    ))
+  }
+
+  ignore("method inference, interleaved sessions, choice branches, uneven interleaved session") {
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
+    
+    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
+
+    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.receive(sessChan2, "Bob", intT)
+    env = env.leaveChoiceReceiveBranch
+
+    env = env.enterChoiceReceiveBranch(intT)
+    env = env.receive(sessChan2, "Bob", intT)
+    env = env.receive(sessChan2, "Bob", intT)
+
+    intercept[SessionTypeCheckingException] {
+      env = env.leaveChoiceReceiveBranch
+      env = env.leaveChoiceReceiveBlock
+    }
   }
 
   ignore("inferred method call") {

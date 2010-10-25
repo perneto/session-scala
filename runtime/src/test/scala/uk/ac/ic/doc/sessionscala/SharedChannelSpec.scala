@@ -103,7 +103,7 @@ class SharedChannelSpec extends FunSuite with ShouldMatchers with Timeouts {
     }
 
     actor { chan.join("Bar") { s =>
-      Thread.sleep(300)
+      Thread.sleep(100)
       s("Foo") ! 42
     }}
 
