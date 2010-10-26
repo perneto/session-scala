@@ -60,7 +60,7 @@ public class Session {
         MessageSignature msgSig = new MessageSignature(msgType);
 
         if (expected instanceof Choice) {
-            return branchSend(dst, expected, msgSig);
+            return branchSend(dst, (Choice) expected, msgSig);
         } else {
             return interaction(src, dst, expected, msgSig);
         }
@@ -84,8 +84,7 @@ public class Session {
         return newList;
     }
 
-    private Session branchSend(Role dst, Activity expected, MessageSignature msgSig) {
-        Choice c = (Choice) expected;
+    private Session branchSend(Role dst, Choice c, MessageSignature msgSig) {
         if (!c.getToRole().equals(dst))
             throw new SessionTypeCheckingException(
                     "Expected branch selection send to "
@@ -236,11 +235,58 @@ public class Session {
         return isSubtype(hostTypeSystem, imports, subtype, supertype);
     }
 
+    private void throwIncompatible(Choice c) {
+        throw new SessionTypeCheckingException("Expected: " + 
+                (remaining.isEmpty() ? "<finished>" : remaining.get(0)) + " but got: " + c);
+    }
+    public List<When> checkChoiceRolesAndLabels(Choice c) {
+        if (remaining.isEmpty()) throwIncompatible(c);
+        Activity next = remaining.get(0);
+        if (! (next instanceof Choice)) throwIncompatible(c);
+        Choice nextChoice = (Choice) next;
+        if (isSendChoice(nextChoice)) {
+            if (!isSendChoice(c) || areRolesDifferent(c, nextChoice) || !areWhenClausesSubtype(c, nextChoice))
+                throwIncompatible(c);
+        } else {
+            if (isSendChoice(c) || areRolesDifferent(c, nextChoice) || !areWhenClausesSubtype(nextChoice, c))
+                throwIncompatible(c);
+        }
+
+        return nextChoice.getWhens();
+    }
+
     @Override
     public String toString() {
         return "Session{" +
                 "remaining=" + remaining +
                 ", imports=" + imports +
                 "}@" + System.identityHashCode(this);
+    }
+
+    private boolean isSendChoice(Choice c) {
+        return c.getFromRole() == null && c.getToRole() != null;
+    }
+
+    private boolean areWhenClausesSubtype(Choice c, Choice nextChoice) {
+        boolean result = true;
+        for (When w: c.getWhens()) result &= doesMatch(w, nextChoice.getWhens());
+        return result;
+    }
+
+    private boolean doesMatch(When w, List<When> whens) {
+        for (When match: whens) {
+            if (isMessageSignatureSubtype(w.getMessageSignature(), match.getMessageSignature()))
+                return true; // todo check body as well
+        }
+        return false;
+    }
+
+    private boolean areRolesDifferent(Choice c, Choice nextChoice) {
+        Role from1 = c.getFromRole();
+        Role from2 = nextChoice.getFromRole();
+        Role to1 = c.getToRole();
+        Role to2 = nextChoice.getToRole();
+        return (from1 == null ? from2 != null : !from1.equals(from2))
+               || (to1 == null ? to2 != null : !to1.equals(to2));
     }
 }

@@ -284,7 +284,11 @@ trait SessionTypingEnvironments {
         + " block, but was not yet in such a block environment")
   }
 
-  class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv {
+  trait InferredTypeRegistry {
+    def inferredSessionType(method: Symbol, chan: Name): Recur
+  }
+
+  class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv with InferredTypeRegistry {
     def this() = this(EmptySTE)
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
@@ -358,7 +362,7 @@ trait SessionTypingEnvironments {
     }
 
     def sessionBranches(parentSte: SessionTypedElements, branch1: SessionTypedElements, branch2: SessionTypedElements, chan: Name, labelToMerge: Type) = {
-      assert(branch1.getInferredFor(method, chan).length == 1) // the first branch wraps its inferred list in a choice, and thereafter this function preserves this invariant
+      assert(branch1.getInferredFor(method, chan).length == 1, branch1.getInferredFor(method, chan)) // the first branch wraps its inferred list in a choice, and thereafter this function preserves this invariant
       val choice = branch1.getInferredFor(method, chan)(0).asInstanceOf[Choice]
       val block = branch2.getInferredFor(method, chan)
       val w = createWhen(typeSystem.scalaToScribble(labelToMerge), block)
@@ -464,10 +468,10 @@ trait SessionTypingEnvironments {
       result.appendAll(method, chan, branch.getInferredFor(method, chan))
     }
 
-  class JoinBlockTopLevelEnv(val ste: SessionTypedElements, val infEnv: SessionTypingEnvironment) extends AbstractTopLevelEnv {
+  class JoinBlockTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
     def this() = this(EmptySTE, null)
     def this(ste: SessionTypedElements) = this(ste, null)
-    def this(infEnv: SessionTypingEnvironment) = this(EmptySTE, infEnv)
+    def this(infEnv: InferredTypeRegistry) = this(EmptySTE, infEnv)
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       delegator.updated(delegator.ste.updated(name, globalType))
@@ -484,7 +488,7 @@ trait SessionTypingEnvironments {
           
     def updated(ste: SessionTypedElements) = {
       assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_))
-      new JoinBlockTopLevelEnv(ste)
+      new JoinBlockTopLevelEnv(ste, infEnv)
     }
     
     override def leaveJoin: SessionTypingEnvironment = notLeavingYet("join")
@@ -502,16 +506,49 @@ trait SessionTypingEnvironments {
     override def enterElse: SessionTypingEnvironment = notYet("else branch")
     override def leaveIf: SessionTypingEnvironment = notLeavingYet("if")
 
-    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment = {
+    override def delegation(delegator: SessionTypingEnvironment, method: Symbol, channels: List[Name]): SessionTypingEnvironment = {
+      println("infEnv: " + infEnv)
+      val increments = channels map (c => (c, unroll(infEnv.inferredSessionType(method, c))))
+      val updated = (increments foldLeft delegator) { 
+        case (env, (chan, acts)) => advanceList(chan, env, acts)
+      }
+      println(updated)
       // todo: new env that forbids any use of s (delegated)
-      delegator
+      updated
     }
-    
+
+    def advanceList(chan: Name, env: SessionTypingEnvironment, acts: Iterable[Activity]): SessionTypingEnvironment =
+      (acts foldLeft env) (advanceOne(chan, _, _))
+
+    def advanceOne(chan: Name, env: SessionTypingEnvironment, act: Activity): SessionTypingEnvironment = act match {
+      case i: Interaction => sendOrReceive(env, chan, i)
+      case c: Choice => {
+        val sess = env.ste.sessions(chan)
+        println(sess)
+        val whens = sess.checkChoiceRolesAndLabels(c).asScala
+        //val newEnv = (whens foldLeft env) ((env, when) => advanceList(chan, env, when.getBlock.getContents asScala))
+        env.updated(chan, sess.choiceChecked)
+      }
+    }
+
+    def sendOrReceive(env: SessionTypingEnvironment, c: Name, i: Interaction) = {
+      // fixme: store inferred as scala types, not typereferences - no imports known at inference time, currently hacked
+      val tpe = typeSystem.scribbleToScala(Nil, i.getMessageSignature.getTypeReferences.get(0))
+      if (i.getFromRole == null) env.send(c, i.getToRoles.get(0).toString, tpe)
+      else env.receive(c, i.getFromRole.toString, tpe)
+    }
+      
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type) = {
       checkSessionsRemainingSame(branch1.sessions, branch2.sessions)
       branch1
     }
   }
+
+  def unroll(recur: Recur): LA = List((recur.getBlock.getContents asScala) map { _ match {
+      case r: Recursion => recur // fixme: check labels!
+      case x => x
+    }
+  }:_*) // cast the Seq as a vararg list
 
   class InProcessEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
@@ -670,7 +707,7 @@ trait SessionTypingEnvironments {
       } else { // first branch
         val freshChoice = createChoice(new Role(choiceSrc), 
           typeSystem.scalaToScribble(branchLabel), ste.getInferredFor(method, chanChoice))
-        ste.append(method, chanChoice, freshChoice) // append because it's convenient, but the inferre)d list is always empty as we start the branch from a fresh STE
+        ste.updated(method, chanChoice, List(freshChoice)) // overwrite what we just wrapped in a choice
       }
 
       parent.withLastBranchSte(mergedSte)
