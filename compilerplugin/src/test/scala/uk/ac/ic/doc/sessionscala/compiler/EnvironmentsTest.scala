@@ -442,7 +442,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     ))
   }
 
-  ignore("method inference, interleaved sessions, choice branches, uneven interleaved session") {
+  test("method inference, interleaved sessions, choice branches, uneven interleaved session") {
     var env = sessionMethod(fooMethod, sessChan, sessChan2)
     
     env = env.enterChoiceReceiveBlock(sessChan, "Bob")
@@ -464,12 +464,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   ignore("inferred method call") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.send(sessChan, "Bob", stringT)
+    env = env.leaveSessionMethod
     
     val topEnv = new JoinBlockTopLevelEnv(env)
     env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan))
-    env = env.leaveSessionMethod
+    env = env.leaveJoin
   }
   
   val recurModel = parse(
