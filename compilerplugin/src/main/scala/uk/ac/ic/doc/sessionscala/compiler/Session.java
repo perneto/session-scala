@@ -239,7 +239,7 @@ public class Session {
         throw new SessionTypeCheckingException("Expected: " + 
                 (remaining.isEmpty() ? "<finished>" : remaining.get(0)) + " but got: " + c);
     }
-    public List<When> checkChoiceRolesAndLabels(Choice c) {
+    public Session checkChoice(Choice c) {
         if (remaining.isEmpty()) throwIncompatible(c);
         Activity next = remaining.get(0);
         if (! (next instanceof Choice)) throwIncompatible(c);
@@ -252,7 +252,7 @@ public class Session {
                 throwIncompatible(c);
         }
 
-        return nextChoice.getWhens();
+        return choiceChecked();
     }
 
     @Override
