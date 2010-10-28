@@ -28,6 +28,10 @@ public class Session {
     }
 
 
+    public Session(Session parent, List<Activity> remaining) {
+        this(parent.hostTypeSystem, parent.imports, remaining);
+    }
+
     private static List<Activity> filterBehaviours(List<Activity> protocol) {
         List<Activity> copy = new LinkedList<Activity>(protocol);
         for (Iterator<Activity> it = copy.iterator(); it.hasNext(); ) {
@@ -55,7 +59,7 @@ public class Session {
     }
 
     public Session interaction(Role src, Role dst, TypeReference msgType) {
-        assert remaining.size() > 0;
+        checkNotEmpty("interaction");
         Activity expected = remaining.get(0);
         MessageSignature msgSig = new MessageSignature(msgType);
 
@@ -70,10 +74,22 @@ public class Session {
         Interaction newInter = new Interaction(src, dst, msgSig);
 
         if (isSubtype(newInter, expected)) {
-            return new Session(hostTypeSystem, imports, allButFirst(remaining));
+            return dropFirst();
         } else {
             throw new SessionTypeCheckingException("Expected " + expected + " but got " + newInter);
         }
+    }
+
+    private void checkNotEmpty(String tried) {
+        if (remaining.isEmpty())
+            throw new SessionTypeCheckingException("Tried to do "+tried+", but protocol was finished");
+    }
+    public Session recursionLabel(Recursion r) {
+        checkNotEmpty("recursive call");
+        Activity a = remaining.get(0);
+        if (! (a instanceof Recursion && ((Recursion) a).getLabel().equals(r.getLabel()))) 
+          throw new SessionTypeCheckingException("Expected " + a + " but got " + r);
+        return dropFirst();
     }
 
     private <T> List<T> allButFirst(List<T> list) {
@@ -96,7 +112,7 @@ public class Session {
                         filterBehaviours(when.getBlock().getContents())
                 );
                 newRemaining.addAll(allButFirst(remaining));
-                return new Session(hostTypeSystem, imports, newRemaining);
+                return new Session(this, newRemaining);
             }
         }
         throw new SessionTypeCheckingException("Expected a branch label subtype among: "
@@ -111,9 +127,7 @@ public class Session {
                     + ", but got: " + srcRole);
 
         List<When> whens = choice.getWhens();
-        //System.out.println(label);
         for (When w: whens) {
-            //System.out.println(w + ": " + w.getMessageSignature());
             // The labels in user code can be supertypes of the protocol labels,
             // but there should be no ambiguity - a label can only cover one branch.
             // This is dealt with in missingBranches()
@@ -122,11 +136,14 @@ public class Session {
         }
         throw new SessionTypeCheckingException("Accepting branch label " + label
                 + ", but had no matching label. Available labels: " + whensToString(whens));
+        // fixme: it's legal to have more branch receives than specified
     }
 
-    private Choice getChoice() {
+    public Choice getChoice() {
         assert remaining.size() > 0;
-        return (Choice) remaining.get(0);
+        Activity a = remaining.get(0);
+        if (!(a instanceof Choice)) throw new SessionTypeCheckingException("Tried to make a Choice, but protocol had: " + a);
+        return (Choice) a;
     }
 
     public List<MessageSignature> missingBranches(List<MessageSignature> seen) {
@@ -149,7 +166,7 @@ public class Session {
         return missing;
     }
 
-    public Session choiceChecked() {
+    public Session dropFirst() {
         return new Session(hostTypeSystem, imports, allButFirst(remaining));
     }
 
@@ -239,7 +256,32 @@ public class Session {
         throw new SessionTypeCheckingException("Expected: " + 
                 (remaining.isEmpty() ? "<finished>" : remaining.get(0)) + " but got: " + c);
     }
-    public Session checkChoice(Choice c) {
+
+    public Session findMatchingWhen(Role src, When w) {
+        return visitBranch(w.getMessageSignature(), src);
+    }
+
+    @Override
+    public String toString() {
+        return "Session{" +
+                "remaining=" + remaining +
+                ", imports=" + imports +
+                "}@" + System.identityHashCode(this);
+    }
+
+    public static boolean isSendChoice(Choice c) {
+        return c.getFromRole() == null && c.getToRole() != null;
+    }
+    
+    public Recur getRecur() {
+        if (remaining.isEmpty()) return null;
+        Activity act = remaining.get(0);
+        if (act instanceof Recur) return (Recur) act;
+        return null; 
+    }
+
+/* Not deleting yet as might be useful for choice send
+    public List<When> checkChoiceLabels(Choice c) {
         if (remaining.isEmpty()) throwIncompatible(c);
         Activity next = remaining.get(0);
         if (! (next instanceof Choice)) throwIncompatible(c);
@@ -252,19 +294,7 @@ public class Session {
                 throwIncompatible(c);
         }
 
-        return choiceChecked();
-    }
-
-    @Override
-    public String toString() {
-        return "Session{" +
-                "remaining=" + remaining +
-                ", imports=" + imports +
-                "}@" + System.identityHashCode(this);
-    }
-
-    private boolean isSendChoice(Choice c) {
-        return c.getFromRole() == null && c.getToRole() != null;
+        return nextChoice.getWhens();
     }
 
     private boolean areWhenClausesSubtype(Choice c, Choice nextChoice) {
@@ -276,10 +306,11 @@ public class Session {
     private boolean doesMatch(When w, List<When> whens) {
         for (When match: whens) {
             if (isMessageSignatureSubtype(w.getMessageSignature(), match.getMessageSignature()))
-                return true; // todo check body as well
+                return true;
         }
         return false;
     }
+    
 
     private boolean areRolesDifferent(Choice c, Choice nextChoice) {
         Role from1 = c.getFromRole();
@@ -289,4 +320,5 @@ public class Session {
         return (from1 == null ? from2 != null : !from1.equals(from2))
                || (to1 == null ? to2 != null : !to1.equals(to2));
     }
+*/
 }

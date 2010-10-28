@@ -64,6 +64,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
   }
 
+  test("unexpected send, empty protocol: error") {
+    var env = join(emptyProtoModel, "Alice")
+    intercept[SessionTypeCheckingException] {
+      env = env.send(sessChan, "Alice", stringT)
+    }
+  }
+
   val sendStringModel = parse(
     """protocol Foo {
          role Alice, Bob;
@@ -548,7 +555,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     }
   }
 
-
   val recurModel = parse(
   """protocol Foo {
        role Alice, Bob;
@@ -559,9 +565,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
      }
   """)
   
-  ignore("inferred, recursive method call - unroll recursion first") {
+  test("inferred, recursive method call - unroll recursion first") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Bob", stringT)
     env = env.delegation(fooMethod, List(sessChan))
     env = env.leaveSessionMethod
     
@@ -576,17 +582,38 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   """protocol Foo {
        role Alice, Bob;
        X: {
-         String from Alice to Bob;
          Y: {
-            #X;
-            #Y;
+           choice from Alice to Bob {
+             Int { #X; }
+             String { #Y; }
+           }
          }
        }
      }
   """)
 
-  ignore("inferred, recursive method call, multiple recursion labels") {
+  val xmethod = empty.newMethod(mkTermName("methodX"))
+  val ymethod = empty.newMethod(mkTermName("methodY"))
+  test("inferred, recursive method call, multiple recursion labels") {
+    var env = sessionMethod(xmethod, sessChan)
+    env = env.delegation(ymethod, List(sessChan))
+    env = env.leaveSessionMethod
     
+    env = sessionMethod(ymethod, sessChan)
+    env = env.enterThen
+    env = env.send(sessChan, "Bob", intT)
+    env = env.delegation(xmethod, List(sessChan))
+    env = env.enterElse
+    env = env.send(sessChan, "Bob", stringT)
+    env = env.delegation(ymethod, List(sessChan))
+    env = env.leaveIf
+    env = env.leaveSessionMethod
+
+    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, multiRecurModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.delegation(fooMethod, List(sessChan))
+    env = env.leaveJoin
   }
   	
   ignore("scoping of inferred methods") {

@@ -11,7 +11,7 @@ import scalaj.collection.Imports._
 trait SessionTypingEnvironments {
   val scribbleJournal: Journal
   val global: Global
-  import global._
+  import global.{Block => _, _}
 
   val projector = new ProtocolProjectorImpl
 
@@ -107,19 +107,19 @@ trait SessionTypingEnvironments {
     new Interaction(src, dst, new MessageSignature(msgType))
 
   def createWhen(label: TypeReference): When = 
-    createWhen(new MessageSignature(label), Nil)
-  def createWhen(label: TypeReference, block: LA): When = {
-    val w = createWhen(label)
-    w.getBlock().getContents().addAll(block asJava)
+    createWhen(label, Nil)
+  def createWhen(label: TypeReference, block: LA): When =
+    createWhen(new MessageSignature(label), block)    
+  def createWhen(label: MessageSignature, block: Block): When = {
+    val w = new When
+    w.setMessageSignature(label)
+    w.setBlock(block)
     w
   }
   def createWhen(label: MessageSignature, block: LA): When = {
-    val w = new When
-    w.setMessageSignature(label)
-    val b = new org.scribble.protocol.model.Block
+    val b = new Block
     b.getContents.addAll(block asJava)
-    w.setBlock(b)
-    w
+    createWhen(label, b)
   }
 
   def emptyBody(branches: List[TypeReference]): List[(TypeReference, LA)] =
@@ -144,6 +144,13 @@ trait SessionTypingEnvironments {
     branches.foreach {case (label, block) => c.getWhens.add(createWhen(label, block))}
     c
   }
+  def createChoice(orig: Choice, branches: Seq[When]): Choice = {
+    val c = new Choice
+    c.setToRole(orig.getToRole)
+    c.setFromRole(orig.getFromRole)
+    branches.foreach(c.getWhens.add(_))
+    c
+  }
   def addToChoice(c: Choice, w: When) = {
     val newC = new Choice
     newC.setToRole(c.getToRole)
@@ -153,11 +160,19 @@ trait SessionTypingEnvironments {
     newC
   }
 
-  def createRecur(label: String, block: LA) = {
+  def createRecur(label: String, block: LA): Recur = 
+    createRecur(label, createBlock(block))
+  def createRecur(label: String, block: Block): Recur = {
     val r = new Recur
     r.setLabel(label)
-    block foreach (r.getBlock().add(_))
+    r.setBlock(block)
     r
+  }
+
+  def createBlock(contents: Seq[Activity]) = {
+    val b = new Block
+    contents foreach (b.add(_))
+    b
   }
 
   def createRecursion(label: String): Recursion = {
@@ -168,6 +183,8 @@ trait SessionTypingEnvironments {
   def createRecursion(function: Symbol): Recursion = createRecursion(function.name.toString)
 
   def notEmpty(recur: Recur) = !recur.getBlock.getContents.isEmpty
+
+  def isChoiceReceive(c: Choice) = !Session.isSendChoice(c)
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."
   def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
@@ -509,11 +526,31 @@ trait SessionTypingEnvironments {
     override def leaveIf: SessionTypingEnvironment = notLeavingYet("if")
   }
 
-  def unroll(recur: Recur): LA = List((recur.getBlock.getContents asScala) map { _ match {
-      case r: Recursion => recur // fixme: check labels!
-      case x => x
+  def unroll(recur: Recur): Seq[Activity] = {
+    def unrollRec(act: Activity): Activity = act match {
+      case r: Recur if r.getLabel == recur.getLabel => r // masking
+      case r: Recur => createRecur(r.getLabel, unrollRec(r.getBlock).asInstanceOf[Block])
+      case rec: Recursion if rec.getLabel == recur.getLabel => recur
+      case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, unrollRec(w.getBlock).asInstanceOf[Block]))))
+      case b: Block => createBlock(b.getContents.asScala.map(unrollRec(_)))
+      case other => other
     }
-  }:_*) // cast the Seq as a vararg list
+    
+    recur.getBlock.getContents.asScala.map(unrollRec(_))    
+  }
+
+  def alphaRename(acts: Seq[Activity], oldLabel: String, newLabel: String): Seq[Activity] = { 
+    def alphaRenameRec(act: Activity): Activity = act match {
+      case r: Recur if r.getLabel == oldLabel => r // masking
+      case r: Recur => createRecur(r.getLabel, alphaRenameRec(r.getBlock).asInstanceOf[Block])
+      case rec: Recursion if rec.getLabel == oldLabel => createRecursion(newLabel)
+      case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, alphaRenameRec(w.getBlock).asInstanceOf[Block]))))
+      case b: Block => createBlock(b.getContents.asScala.map(alphaRenameRec(_)))
+      case other => other
+    }
+    
+    acts.map(alphaRenameRec(_))
+  }
 
   class InProcessEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
@@ -572,35 +609,57 @@ trait SessionTypingEnvironments {
     override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
 
     override def delegation(delegator: SessionTypingEnvironment, method: Symbol, channels: List[Name]): SessionTypingEnvironment = {
-      val increments = channels map {c =>
+      val inferred = channels map {c =>
         assert(notEmpty(infEnv.inferredSessionType(method, c)))
-        (c, unroll(infEnv.inferredSessionType(method, c)))
+        (c, infEnv.inferredSessionType(method, c))
       }
-      println(increments)
-      val updated = (increments foldLeft delegator) {
-        case (env, (chan, acts)) =>
+      println(inferred)
+      val updated = (inferred foldLeft delegator) {
+        case (env, (chan, recur)) =>
           val sess = env.ste.sessions(chan)
-          env.updated(chan, advanceList(chan, sess, acts))
+          env.updated(chan, advanceOne(sess, recur))
       }
       // todo: new env that forbids any use of s (delegated) (forbid send/receive/delegation, others still ok)
       updated
     }
 
-    def advanceList(chan: Name, sess: Session, acts: Iterable[Activity]): Session =
-      (acts foldLeft sess) (advanceOne(chan, _, _))
+    def advanceList(sess: Session, acts: Seq[Activity]): Session =
+      (acts foldLeft sess) (advanceOne(_, _))
 
-    def advanceOne(chan: Name, sess: Session, act: Activity): Session = act match {
-      case i: Interaction => sendOrReceive(sess, chan, i)
-      case c: Choice => sess.checkChoice(c)              
+    def advanceOne(sess: Session, act: Activity): Session = act match {
+      case i: Interaction => sendOrReceive(sess, i)
+      case c: Choice =>
+        if (isChoiceReceive(c)) {
+          val src = c.getFromRole
+          c.getWhens foreach { infWhen => // fixme: it's legal to have more branches than specified
+              val sessBranch = sess.findMatchingWhen(src, infWhen)
+              advanceList(sessBranch, infWhen.getBlock.getContents.asScala)
+          }
+        }
+        // todo: choice send
+        sess.dropFirst
+      case r: Recur => 
+        val expectedRecur = sess.getRecur
+        if (expectedRecur != null) {
+          val inferred = alphaRename(contents(r).asScala, r.getLabel, expectedRecur.getLabel)
+          advanceList(new Session(sess, contents(expectedRecur)), inferred)
+          sess.dropFirst
+        } else {
+          advanceList(sess, unroll(r))
+        }
+      case r: Recursion => sess.recursionLabel(r)
     }
+  
+    def contents(r: Recur) = r.getBlock.getContents
 
     // Similar to normal typechecking, this can be a choice selection as well as a normal interaction
-    def sendOrReceive(sess: Session, c: Name, i: Interaction) = {
+    def sendOrReceive(sess: Session, i: Interaction) = {
       // fixme: store inferred as scala types, not typereferences - no imports known at inference time, currently hacked
       val tRef = i.getMessageSignature.getTypeReferences.get(0)
       val src = i.getFromRole
       val dsts = i.getToRoles
       val dst = if (dsts.isEmpty) null else dsts.get(0)
+      println("sendOrReceive - " + i)
       // not defining an interaction(Interaction) method, since the above fixme will require a type translation here
       sess.interaction(src, dst, i.getMessageSignature.getTypeReferences.get(0))
     }
@@ -663,7 +722,7 @@ trait SessionTypingEnvironments {
       // now we replace it by the parent session which still had the whole thing,
       // only removing the choice construct at the beginning
       parent.updated(
-        newSte.updated(chanChoice, parentSession.choiceChecked))
+        newSte.updated(chanChoice, parentSession.dropFirst))
     }
   }
 
