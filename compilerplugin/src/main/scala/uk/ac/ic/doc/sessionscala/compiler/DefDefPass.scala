@@ -33,13 +33,13 @@ abstract class DefDefPass extends PluginComponent
     
     override def traverse(tree: Tree) = tree match {
 			case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
-  	    println("method def: " + name + ", symbol: " + tree.symbol)
+  	    //println("method def: " + name + ", symbol: " + tree.symbol)
   	
   	    val chanNames = sessionChannelName(tree.symbol.tpe)
   	    if (!chanNames.isEmpty) {
   	      if (!tparams.isEmpty) reporter.error(tree.pos,
   	          "Type parameters not supported for session methods")
-  	      println(chanNames)
+  	      //println(chanNames)
   	      env = env.enterSessionMethod(tree.symbol, chanNames)
   	      traverse(rhs)
   	      env = env.leaveSessionMethod

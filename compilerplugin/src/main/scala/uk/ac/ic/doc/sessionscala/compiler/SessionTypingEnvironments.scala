@@ -53,7 +53,7 @@ trait SessionTypingEnvironments {
         val l = rootCtx.imports.map(_.importedSymbol(newTypeName(tref.getName)))
                 .filter(_ != NoSymbol)
         if (l.length >= 1) l(0).tpe // order: scala.Predef, scala, java.lang
-        else throw new SessionTypeCheckingException("Could not find pre-defined type: " + tref.getName)
+        else throw new SessionTypeCheckingException("Could not find pre-defined type: " + tref.getName + ". Imports list is: " + imports)
       }
     }
 
@@ -320,7 +320,6 @@ trait SessionTypingEnvironments {
       throw new IllegalStateException("Should not be called")
 
     override def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
-      println("enterSessionMethod")
       new InMethodInferenceEnv(this, ste, fun, sessChans)
     }
 
@@ -336,7 +335,7 @@ trait SessionTypingEnvironments {
     override def isSessionChannel(chan: Name) = chans.contains(chan)
 
     def inferInteraction(chan: Name, inter: Interaction, delegator: SessionTypingEnvironment) = {
-      println("inferInteraction, in: " + method + " on chan: " + chan + ": " + inter)
+      //println("inferInteraction, in: " + method + " on chan: " + chan + ": " + inter)
       val dSte = delegator.ste
       val newSte = dSte.append(method, chan, inter)
       delegator.updated(newSte)
@@ -344,13 +343,13 @@ trait SessionTypingEnvironments {
 
     override def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
       val inter = createInteraction(null, new Role(role), new TypeReference(typeSystem.scalaToScribble(msgType)))
-      println("send, delegator: " + delegator)
+      //println("send, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
 
     override def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
       val inter = createInteraction(new Role(role), null, new TypeReference(typeSystem.scalaToScribble(msgType)))
-      println("receive, delegator: " + delegator)
+      //println("receive, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
 
@@ -391,7 +390,7 @@ trait SessionTypingEnvironments {
     }
 
     def ifBranches(thenBranch: SessionTypedElements, elseBranch: SessionTypedElements): SessionTypedElements = {
-      println("ifBranches, thenBranch: " + thenBranch + ", elseBranch: " + elseBranch)
+      //println("ifBranches, thenBranch: " + thenBranch + ", elseBranch: " + elseBranch)
       allInferred(method, thenBranch, elseBranch).foldLeft(EmptySTE) { (result, chan) =>
         val inferredThen = thenBranch.getInferredFor(method, chan)
         val inferredElse = elseBranch.getInferredFor(method, chan) 
@@ -422,9 +421,9 @@ trait SessionTypingEnvironments {
     }
     
     def merge(chan: Name, acts1: LA, acts2: LA): LA = {
-      println("merge, acts1: " + acts1 + ", acts2: " + acts2)
+      //println("merge, acts1: " + acts1 + ", acts2: " + acts2)
       val (common, different) = splitPrefix(acts1, acts2)
-      println("common: " + common + ", different: " + different)
+      //println("common: " + common + ", different: " + different)
       if (different.isEmpty) common
       else {
         val (act1, act2) = different.head
@@ -433,7 +432,7 @@ trait SessionTypingEnvironments {
                      else if (act2.isInstanceOf[Choice]) updateChoice(act2.asInstanceOf[Choice], act1, rest1, rest2)
                      else mergeAsChoice(chan, act1, act2, rest1, rest2)
 
-        println(choice)
+        //println(choice)
         common ::: List(choice)
       }
     }
@@ -454,7 +453,7 @@ trait SessionTypingEnvironments {
           ", one branch was sending choice label: " + goodSend.getMessageSignature +
           " while the other branch was not doing any session operations.")
 
-      println("mergeAsChoice, act1: " + act1)
+      //println("mergeAsChoice, act1: " + act1)
       val send1 = act1.asInstanceOf[Interaction]
       val send2 = act2.asInstanceOf[Interaction]
       
@@ -613,7 +612,7 @@ trait SessionTypingEnvironments {
         assert(notEmpty(infEnv.inferredSessionType(method, c)))
         (c, infEnv.inferredSessionType(method, c))
       }
-      println(inferred)
+      //println(inferred)
       val updated = (inferred foldLeft delegator) {
         case (env, (chan, recur)) =>
           val sess = env.ste.sessions(chan)
@@ -629,14 +628,17 @@ trait SessionTypingEnvironments {
     def advanceOne(sess: Session, act: Activity): Session = act match {
       case i: Interaction => sendOrReceive(sess, i)
       case c: Choice =>
+        /*
         if (isChoiceReceive(c)) {
-          val src = c.getFromRole
-          c.getWhens foreach { infWhen => // fixme: it's legal to have more branches than specified
-              val sessBranch = sess.findMatchingWhen(src, infWhen)
-              advanceList(sessBranch, infWhen.getBlock.getContents.asScala)
-          }
+          // todo: it's legal to have more branches than specified in a choice receive        
+        } else {	      
+	      } */
+        val src = c.getFromRole
+        val dst = c.getToRole
+        c.getWhens foreach { infWhen => // we iterate on c's branches, so this supports sending less branches than specified for a choice send
+          val sessBranch = sess.findMatchingWhen(src, dst, infWhen)
+          advanceList(sessBranch, infWhen.getBlock.getContents.asScala)
         }
-        // todo: choice send
         sess.dropFirst
       case r: Recur => 
         val expectedRecur = sess.getRecur
@@ -659,7 +661,7 @@ trait SessionTypingEnvironments {
       val src = i.getFromRole
       val dsts = i.getToRoles
       val dst = if (dsts.isEmpty) null else dsts.get(0)
-      println("sendOrReceive - " + i)
+      //println("sendOrReceive - " + i)
       // not defining an interaction(Interaction) method, since the above fixme will require a type translation here
       sess.interaction(src, dst, i.getMessageSignature.getTypeReferences.get(0))
     }
@@ -847,8 +849,8 @@ trait SessionTypingEnvironments {
 
     override def leaveIf = {
       val mergedSte = branchComplete(parent.ste, null, steThenBranch, ste, null)
-      println(mergedSte)
-      println(parent)
+      //println(mergedSte)
+      //println(parent)
       parent.updated(mergedSte)
     }
 
