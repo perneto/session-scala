@@ -1,7 +1,5 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.scribble.protocol.model._
 import org.scalatest.matchers.ShouldMatchers
@@ -10,7 +8,6 @@ import org.scalatest.matchers.ShouldMatchers
  * Created by: omp08
  */
 
-@RunWith(classOf[JUnitRunner])
 class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
                                         with ScalaCompilerSetup
                                         with ScribbleParsing

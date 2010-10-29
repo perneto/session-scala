@@ -21,7 +21,7 @@ import _root_.com.rabbitmq.client._
 import _root_.java.util.Timer
 import _root_.java.util.TimerTask
 import actors.Actor
-import actors.Actor._
+import Actor._
 import java.io.{ByteArrayInputStream, ObjectInputStream}
 
 /**
@@ -51,7 +51,7 @@ case class AMQPReconnect(delay: Long)
  * this actor an AMQPAddListener message.
  *
  * For each message containing a value of type T, all listeners will be send
- * an AMQPMessage contaning that value.
+ * an AMQPMessage containing that value.
  *
  * See also Enterprise Integration Patterns pp. 508-514
  *

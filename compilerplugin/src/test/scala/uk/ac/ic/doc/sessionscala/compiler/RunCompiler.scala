@@ -1,15 +1,12 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import scala.tools.nsc._
 
 /**
  * Created by: omp08
  */
 
-@RunWith(classOf[JUnitRunner])
 class RunCompiler extends FunSuite {
   val scalaVersion = "2.8.0"
   test("run compiler") {

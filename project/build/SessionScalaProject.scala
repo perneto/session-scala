@@ -1,8 +1,7 @@
 import sbt._
-import de.element34.sbteclipsify._
 
 
-class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with IdeaProject 
+class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 {
   override def parallelExecution = true
 
@@ -10,19 +9,18 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info) with Id
   val mavenRepo = DefaultMavenRepository
   val scalatools = ScalaToolsReleases
 
-  class Runtime(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
+  class Runtime(info: ProjectInfo) extends DefaultProject(info) {
     override def fork = forkRun
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "1.7.2"
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
   }
 
-  class Examples(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
+  class Examples(info: ProjectInfo) extends DefaultProject(info) {
     override def fork = forkRun
   }
 
-  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with IdeaProject with Eclipsify{
+  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) {
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
-    val junit = "junit" % "junit" % "4.8.2"
     override def testAction = super.testAction dependsOn(`package`)
 
     val scribble_common = "org.scribble.bundles" % "org.scribble.common" % "2.0.0-SNAPSHOT"
