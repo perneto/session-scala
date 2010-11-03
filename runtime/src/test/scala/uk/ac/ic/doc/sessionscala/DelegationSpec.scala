@@ -11,49 +11,49 @@ import Actor._
 class DelegationSpec extends Timeouts {
 
   test("Session interleaving") {
-    val chanA = createLocalChannel(Set("Alice", "Bob"))
-    val chanB = createLocalChannel(Set("Bob","Carol"))
+    val chanA = createLocalChannel(Set('Alice, 'Bob))
+    val chanB = createLocalChannel(Set('Bob,'Carol))
     var bothAccepted = false ; var aliceOK = false ; var carolOK = false
     var bobOK1 = false; var bobOK2 = false ; var bobOK3 = false 
 
     actor {
-      chanA.join("Alice") { sA =>
-        sA("Bob") ! "Hello from Alice"
-        //println("Hello (1) from Alice sent to: " + sA("Bob"))
-        aliceOK = sA("Bob").? == "Hello from Bob"
-        sA("Bob") ! "Hello from Alice"
-        //println("Hello (2) from Alice sent to: " + sA("Bob"))
+      chanA.join('Alice) { sA =>
+        sA('Bob) ! "Hello from Alice"
+        //println("Hello (1) from Alice sent to: " + sA('Bob))
+        aliceOK = sA('Bob).? == "Hello from Bob"
+        sA('Bob) ! "Hello from Alice"
+        //println("Hello (2) from Alice sent to: " + sA('Bob))
       }
     }
 
     actor {
-      chanA.join("Bob") { sA =>
+      chanA.join('Bob) { sA =>
         // println("before first receive on: " + sA)
-        bobOK1 = sA("Alice").? == "Hello from Alice"
+        bobOK1 = sA('Alice).? == "Hello from Alice"
 
-        chanB.join("Bob") { sB =>
+        chanB.join('Bob) { sB =>
           bothAccepted = true
           //println("before send to Alice")
-          sA("Alice") ! "Hello from Bob"
+          sA('Alice) ! "Hello from Bob"
           //println("sA: " + sA)
           //println("sB: " + sB)
           //println(this)
           //println("before second receive on: " + sA)
-          bobOK2 = sA("Alice").? == "Hello from Alice"
+          bobOK2 = sA('Alice).? == "Hello from Alice"
           //println("before receive on: " + sB)
-          bobOK3 = sB("Carol").? == "Hello from Carol"
+          bobOK3 = sB('Carol).? == "Hello from Carol"
           //println("after sB receive")
-          sB("Carol") ! "Hello from Bob"
+          sB('Carol) ! "Hello from Bob"
 
         }
       }
     }
 
     actor {
-      chanB.join("Carol") { sB =>
-        sB("Bob") ! "Hello from Carol"
-        //println("Hello from Carol sent to: " + sB("Bob"))
-        carolOK = sB("Bob").? == "Hello from Bob"
+      chanB.join('Carol) { sB =>
+        sB('Bob) ! "Hello from Carol"
+        //println("Hello from Carol sent to: " + sB('Bob))
+        carolOK = sB('Bob).? == "Hello from Bob"
       }
     }
 
@@ -69,23 +69,23 @@ class DelegationSpec extends Timeouts {
 
   /* We might not want delegation at all with multiparty sessions?
   ignore("Simple delegation, ignoring lost messages") {
-    val chanA = createLocalChannel(Set("Alice", "Bob"))
-    val chanB = createLocalChannel(Set("Bob","Carol"))
+    val chanA = createLocalChannel(Set('Alice, 'Bob))
+    val chanB = createLocalChannel(Set('Bob,"Carol"))
     var helloOK = false ; var fortyTwoOK = false ; var fortyThreeOK = false
 
     actor {
-      chanA.join("Alice") { sA =>
-        sA("Bob") ! "Hello"
-        sA("Bob") ! 42 // Now magically redirected to Carol
-        fortyThreeOK = sA("Bob").? == 43
+      chanA.join('Alice) { sA =>
+        sA('Bob) ! "Hello"
+        sA('Bob) ! 42 // Now magically redirected to Carol
+        fortyThreeOK = sA('Bob).? == 43
       }
     }
 
     actor {
-      chanA.join("Bob") { sA =>
-        val hello = sA("Alice").?
+      chanA.join('Bob) { sA =>
+        val hello = sA('Alice).?
         helloOK = hello == "Hello"
-        chanB.join("Bob") { sB =>
+        chanB.join('Bob) { sB =>
           //sB("Carol").delegate(sA)
         }
       }
@@ -98,7 +98,7 @@ class DelegationSpec extends Timeouts {
         //val msg = sA.?
         println("Received delegated msg")
         //fortyTwoOK = msg == 42
-        //sA("Alice") ! 43
+        //sA('Alice) ! 43
       }
     }
 

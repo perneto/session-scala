@@ -9,7 +9,7 @@ import scala.tools.nsc._
 
 class RunCompiler extends FunSuite {
   val scalaVersion = "2.8.0"
-  test("run compiler") {
+  ignore("run compiler") {
 
     val settings = new Settings
     settings.classpath.tryToSet(List(

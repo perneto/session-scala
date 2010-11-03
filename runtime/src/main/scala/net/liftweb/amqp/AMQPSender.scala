@@ -29,7 +29,9 @@ import actors.Actor, Actor.loop
  * @author Steve Jenson (stevej@pobox.com)
  */
 abstract class AMQPSender[T](cf: ConnectionFactory, host: String, port: Int, exchange: String, routingKey: String) extends Actor {
-  val conn = cf.newConnection(host, port)
+  cf.setHost(host)
+  cf.setPort(port)
+  val conn = cf.newConnection()
   val channel = conn.createChannel()
 
   /**
@@ -65,7 +67,9 @@ abstract class AMQPSender[T](cf: ConnectionFactory, host: String, port: Int, exc
 class StringAMQPSender(cf: ConnectionFactory, host: String, port: Int, exchange: String, routingKey: String)
     extends AMQPSender[String](cf, host, port, exchange, routingKey){
   override def configure(channel: Channel) = {
-    val conn = cf.newConnection(host, port)
+    cf.setHost(host)
+    cf.setPort(port)
+    val conn = cf.newConnection()
     val channel = conn.createChannel()
     channel
   }

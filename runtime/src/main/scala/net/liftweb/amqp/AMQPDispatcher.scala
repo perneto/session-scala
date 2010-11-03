@@ -62,7 +62,9 @@ abstract class AMQPDispatcher[T](cf: ConnectionFactory, host: String, port: Int)
   private var as: List[Actor] = Nil
 
   private def connect(): (Connection, Channel) = {
-    val conn = cf.newConnection(host, port)
+    cf.setHost(host)
+    cf.setPort(port)
+    val conn = cf.newConnection()
     val channel = conn.createChannel()
     configure(channel)
     (conn, channel)

@@ -11,11 +11,11 @@ import actors.Actor.actor
 object BadBranching {
   def m {
     @protocol("buyerseller.scribble")
-    val sharedChan = SharedChannel.createLocalChannel(Set("Buyer", "Seller"))
+    val sharedChan = SharedChannel.createLocalChannel(Set('Buyer, 'Seller))
 
     actor {
-      sharedChan.join("Buyer") { s =>
-        s("Seller").receive {
+      sharedChan.join('Buyer) { s =>
+        s('Seller).receive {
           case OK if (42 == 43) => // bad: guards not supported
           case Some(NotOK) => // bad: complex patterns not supported
           case _ => // bad: complex patterns not supported

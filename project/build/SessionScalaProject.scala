@@ -11,7 +11,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
   class Runtime(info: ProjectInfo) extends DefaultProject(info) {
     override def fork = forkRun
-    val rabbitmq = "com.rabbitmq" % "amqp-client" % "1.7.2"
+    val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.1.1"
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
   }
 

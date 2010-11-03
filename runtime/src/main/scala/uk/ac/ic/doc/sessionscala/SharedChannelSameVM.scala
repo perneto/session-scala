@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{DaemonActor, Actor}
 
-class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
+class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel {
 
   val coordinator = new DaemonActor {
     def act = {
@@ -10,7 +10,7 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
       var s = new AcceptState(awaiting)
       loop {
         react {
-          case NewAccept(role: String, actorForRole: Actor) =>
+          case NewAccept(role: Symbol, actorForRole: Actor) =>
             val newS = s.received(role, actorForRole, sender)
             if (newS.isComplete) {
               s = newS.createSessionChanAndReply
@@ -23,12 +23,15 @@ class SharedChannelSameVM(awaiting: Set[String]) extends SharedChannel {
   }
   coordinator.start
 
-  def join(role: String)(act: ActorFun): Unit = {
+  def join(role: Symbol)(act: ActorFun): Unit = {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
     //println("join, awaiting: " + awaiting + ", role: " + role)
-    val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[String => ParticipantChannel]
+    val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[Symbol => ParticipantChannel]
     act(sessChan)
   }
+
+  def invite(mapping: (Symbol,String)*): Unit = {}
+  def accept(role: Symbol)(act: ActorFun): Unit = {}
 
 }

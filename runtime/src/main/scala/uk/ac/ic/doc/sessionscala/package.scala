@@ -4,7 +4,7 @@ import actors.{Actor, OutputChannel}
 import sessionscala.ParticipantChannel
 
 package object sessionscala {
-  type SessionChannel = (String => ParticipantChannel)
+  type SessionChannel = (Symbol => ParticipantChannel)
   /*private [sessionscala]*/ type OC = OutputChannel[Any]
-  /*private [sessionscala]*/ type State = Map[String, List[(Actor, OC)]]
+  /*private [sessionscala]*/ type State = Map[Symbol, List[(Actor, OC)]]
 }
