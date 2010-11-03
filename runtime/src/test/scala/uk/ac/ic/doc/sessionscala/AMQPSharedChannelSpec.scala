@@ -49,6 +49,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
 
     assert(aliceStarted, "Alice did not start")
     assert(bobStarted, "Bob did not start")
+    //todo: assert exchanges/queues have correct names
   }
 
   ignore("invited participants can talk") {

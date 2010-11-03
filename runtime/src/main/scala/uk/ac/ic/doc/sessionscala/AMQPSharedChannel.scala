@@ -20,7 +20,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
       chan.queueBind(host, INIT_EXCHANGE, host)
 
-      val msgBytes = ("s1," + role + "," + scribbleType).getBytes(CHARSET)
+      val msgBytes = ("s1," + role.name + "," + scribbleType).getBytes(CHARSET)
       chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
     }
   }
