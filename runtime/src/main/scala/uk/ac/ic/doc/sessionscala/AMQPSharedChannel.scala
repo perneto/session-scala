@@ -1,9 +1,12 @@
 package uk.ac.ic.doc.sessionscala
 
 import AMQPUtils._
-import com.rabbitmq.client.Channel
+import com.rabbitmq.client._
+import SharedChannel._
+import scala.actors.{Channel => _, _}
+import Actor._
 
-class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel {
+class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
 
   val scribbleType = "protocol Foo {}"
@@ -23,29 +26,42 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       val msgBytes = ("s1," + role.name + "," + scribbleType).getBytes(CHARSET)
       chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
     }
+    chan.getConnection.close()
   }
 
   def contains[K,V](seq: Seq[(K,V)], k: K): Boolean = {
-    for ((key, value) <- seq) {
+    for ((key, _) <- seq) {
       if (k == key) return true
     }
     false
   }
 
   def checkMapping(mapping: Seq[(Symbol,String)]) {
-    val missing = awaiting flatMap { role =>
-      if (!contains(mapping, role)) List(role)
-      else Nil
-    }
-    if (!missing.isEmpty)
-      throw new IllegalArgumentException("Missing roles in invite: " + missing)
+    val declaredRoles = Set() ++ mapping map (_._1)
+    if (declaredRoles != awaiting)
+      throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
   }
 
-  def accept(role: Symbol)(act: ActorFun): Unit = {
+  // lazy so it's only started when accept is called for the first time
+  // todo: this avoids race conditions with invite, but still brittle, should be improved
+  lazy val relayActor = actor {
     val chan = initChanAndExchange()
-    // parameters: queue name, noAck
-    val response = chan.basicGet(SharedChannel.localhost, true)
-    val msg = new String(response.getBody, CHARSET)
+    chan.queueDeclare(localhost, false, false, false, null)
+    val consumer = new QueueingConsumer(chan)
+    val consumerTag = chan.basicConsume(localhost, true, consumer)
+    loop {
+      receive {
+      case (role: Symbol, actor: Actor) =>
+        val delivery = consumer.nextDelivery() // blocks waiting for message
+        declareSessionQueues(chan, delivery)
+
+        reply(Map())
+      }
+    }
+  }
+
+  def declareSessionQueues(chan: Channel, delivery: QueueingConsumer.Delivery) {
+    val msg = new String(delivery.getBody, CHARSET)
     val parts = msg.split(",")
     val exchange = parts(0)
     val role = parts(1)
@@ -58,8 +74,13 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     chan.queueBind(roleQueue, exchange, role)
 
     println("created session queue/exchange")
+  }
 
-    act(Map())
+  def accept(role: Symbol)(act: ActorFun): Unit = {
+    println("amqp, accept: " + role + ", awaiting: " + awaiting)
+    checkRoleAwaiting(role)
+    val sessChan = (relayActor !? ((role, Actor.self))).asInstanceOf[Symbol => ParticipantChannel]
+    act(sessChan)
   }
 
   def initChanAndExchange(): Channel = {

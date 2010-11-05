@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{DaemonActor, Actor}
 
-class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel {
+class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel(awaiting) {
 
   val coordinator = new DaemonActor {
     def act = {
@@ -24,8 +24,7 @@ class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel {
   coordinator.start
 
   def join(role: Symbol)(act: ActorFun): Unit = {
-    if (!awaiting.contains(role)) throw new IllegalArgumentException
-            ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
+    checkRoleAwaiting(role)
     //println("join, awaiting: " + awaiting + ", role: " + role)
     val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[Symbol => ParticipantChannel]
     act(sessChan)

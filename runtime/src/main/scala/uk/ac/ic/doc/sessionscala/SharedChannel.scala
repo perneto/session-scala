@@ -10,7 +10,7 @@ object SharedChannel {
   def localhost: String = java.net.InetAddress.getLocalHost.getCanonicalHostName
 }
 
-trait SharedChannel {
+abstract class SharedChannel(val awaiting: Set[Symbol]) {
   type ActorFun = (Symbol => ParticipantChannel) => Unit
   /** Blocks until all awaited roles have joined. */
   def join(role: Symbol)(act: ActorFun): Unit
@@ -20,6 +20,11 @@ trait SharedChannel {
   def invite(mapping: (Symbol,String)*): Unit
   /** Accept to play a given role. Waits for an invite before proceeding. */
   def accept(role: Symbol)(act: ActorFun): Unit
+
+  def checkRoleAwaiting(role: Symbol) {
+    if (!awaiting.contains(role)) throw new IllegalArgumentException
+            ("Role:" + role + " not defined on channel, awaiting: " + awaiting)
+  }
 }
 
 
