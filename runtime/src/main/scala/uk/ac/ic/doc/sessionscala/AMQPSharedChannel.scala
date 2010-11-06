@@ -100,11 +100,13 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       val mInvites = new LinkedList(invites asJava)
       accepts foreach { case pair@(role, replyTo) =>
         val it = mInvites.iterator
-        while (it.hasNext) {
+        var looping = true
+        while (it.hasNext && looping) {
           val i = it.next
           if (i.replyIfRoleMatches(role, replyTo)) {
             mAccepts.remove(pair)
             it.remove()
+            looping = false
           }
         }
       }
