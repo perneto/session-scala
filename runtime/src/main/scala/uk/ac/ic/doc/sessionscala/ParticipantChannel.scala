@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors._
 
-class ParticipantChannel(val chanFrom: Channel[Any], val chanTo: Channel[Any])  {
+class ParticipantChannel(val chanFrom: InputChannel[Any], val chanTo: OutputChannel[Any])  {
   def delegate(s: SessionChannel) = {}
 
 

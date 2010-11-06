@@ -38,7 +38,6 @@ trait Timeouts extends FunSuite {
   def withTimeoutAndWait[T](timeout: Int, wait: Int)(block: => T): T = {
     val ret = withTimeout(timeout)(block)
     Thread.sleep(wait)
-    println("finished sleeping")
     ret
   }
 

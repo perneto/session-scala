@@ -70,8 +70,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     loop {
       react {
         case body: Array[Byte] =>
-          val invitedRole = declareSessionQueues(chan, body)
-          matchMakerActor ! Left(invitedRole)
+          val (invitedRole,sessExchange) = declareSessionQueues(chan, body)
+          matchMakerActor ! Invite(invitedRole, sessExchange)
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
           chan.basicCancel(consumerTag); close(chan); 
@@ -80,33 +80,51 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     }
   }
 
+  case class Invite(role: Symbol, sessExchange: String) {
+    def replyIfRoleMatches(acceptRole: Symbol, replyTo: OC): Boolean = {
+      val matches = role == acceptRole
+      if (matches) replyTo ! sessExchange
+      matches
+    }
+  }
+
+  case class Accept(role: Symbol)
+
   val matchMakerActor = actor { 
     println("started matchmaker")
-    def tryToMatch(invites: Set[Symbol], accepts: Set[(Symbol,OC)]) {
+    def matchAndLoop(invites: List[Invite], accepts: List[(Symbol,OC)]) {
       println("trying to match invites: " + invites + " with accepts: " + accepts)
-      accepts foreach { case (role, replyTo) =>
-        if (invites.contains(role)) replyTo ! ()
+      import java.util.LinkedList
+      import scalaj.collection.Imports._
+      val mAccepts = new LinkedList(accepts asJava)
+      val mInvites = new LinkedList(invites asJava)
+      accepts foreach { case pair@(role, replyTo) =>
+        val it = mInvites.iterator
+        while (it.hasNext) {
+          val i = it.next
+          if (i.replyIfRoleMatches(role, replyTo)) {
+            mAccepts.remove(pair)
+            it.remove()
+          }
+        }
       }
+      loop(List(mInvites.asScala: _*), List(mAccepts.asScala: _*))
     }
-    def loop(invites: Set[Symbol], accepts: Set[(Symbol,OC)]) {
-      tryToMatch(invites, accepts)
+    def loop(invites: List[Invite], accepts: List[(Symbol,OC)]) {
       react {
-        case Left(invitedRole: Symbol) => 
-          loop(invites + invitedRole, accepts)
-        case Right(acceptRole: Symbol) => 
-          loop(invites, accepts + ((acceptRole, sender)))
+        case i: Invite => 
+          matchAndLoop(i :: invites, accepts)
+        case Accept(acceptRole: Symbol) => 
+          matchAndLoop(invites, (acceptRole, sender) :: accepts)
         case Exit => println("matchmaker exiting...")
       }
     }
-    loop(Set(), Set())
+    loop(List(), List())
   }
 
-  def declareSessionQueues(chan: Channel, body: Array[Byte]): Symbol = {
+  def declareSessionQueues(chan: Channel, body: Array[Byte]): (Symbol,String) = {
     val msg = new String(body, CHARSET)
-    val parts = msg.split(",")
-    val exchange = parts(0)
-    val role = parts(1)
-    val protocol = parts(2)
+    val Array(exchange, role, protocol) = msg.split(",")
     println("creating: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
 
     chan.exchangeDeclare(exchange, "direct")
@@ -114,16 +132,29 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     chan.queueDeclare(roleQueue, false, false, false, null)
     chan.queueBind(roleQueue, exchange, role)
 
-    Symbol(role)
+    (Symbol(role), exchange)
   }
+
+  class AMQPActorProxy(exchange: String, role: Symbol) extends Actor { def act = {} }
+
+  def addMap(map: Map[Symbol, ParticipantChannel], role: Symbol, actor: Actor) = 
+    map + (role -> new ParticipantChannel(actor, actor))
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
     println("amqp, accept: " + role + ", awaiting: " + awaiting)
     checkRoleAwaiting(role)
     println("sending blocking message")
-    matchMakerActor !? Right(role)
+    val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
     println("got reply from matchmaker")
-    val sessChan = Map[Symbol, ParticipantChannel]()
+    val sessChan = (awaiting foldLeft Map[Symbol, ParticipantChannel]()) { case (result, awaitedRole) =>
+      println("awaitedRole: " + awaitedRole)
+      if (role == awaitedRole) addMap(result, awaitedRole, self)
+      else {
+        val proxy = new AMQPActorProxy(sessExchange, role)
+        addMap(result, awaitedRole, proxy)
+      }
+    }
+    println(sessChan)
     act(sessChan)
   }
 

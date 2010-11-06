@@ -8,93 +8,92 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite, BeforeAndAfterAll}
 class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers with BeforeAndAfterEach {
   
   test("invite not exhaustive: error") {
-    val shared = createAMQPChannel(Set('Alice, 'Bob))
-    intercept[IllegalArgumentException] {
-      shared.invite('Alice -> localhost) // missing Bob
+    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+      intercept[IllegalArgumentException] {
+        shared.invite('Alice -> localhost) // missing Bob
+      }
     }
-    shared.close()
   }
 
   test("invite of unexpected role: error") {
-    val shared = createAMQPChannel(Set('Alice))
-    intercept[IllegalArgumentException] {
-      shared.invite('Alice -> localhost, 'Foo -> localhost)
+    withAMQPChannel(Set('Alice)) { shared =>
+      intercept[IllegalArgumentException] {
+        shared.invite('Alice -> localhost, 'Foo -> localhost)
+      }
     }
-    shared.close()
   }
 
   test("accept of unexpected role: error") {
-    val shared = createAMQPChannel(Set('Alice))
-    withTimeout(1000) {
-      intercept[IllegalArgumentException] {
-        shared.accept('Foo) { s => }
+    withAMQPChannel(Set('Alice)) { shared =>
+      withTimeout(1000) {
+        intercept[IllegalArgumentException] {
+          shared.accept('Foo) { s => }
+        }
       }
     }
-    shared.close()
-  }
-
-  def invite() = {
-    val shared = createAMQPChannel(Set('Alice, 'Bob))
-    shared.invite('Alice -> localhost, 'Bob -> localhost)
-    shared
   }
 
   test("invite/accept init") {
     var aliceStarted = false; var bobStarted = false;
-    val shared = invite()
-    println("passed invite")
-    withTimeoutAndWait(2000,500) {
-      actor { shared.accept('Alice) { s =>
-        aliceStarted = true
-      }}
+    withShared { shared =>
+      withTimeoutAndWait(2000,500) {
+        actor { shared.accept('Alice) { s =>
+          aliceStarted = true
+        }}
 
-      shared.accept('Bob) { s =>
-        bobStarted = true
+        shared.accept('Bob) { s =>
+          bobStarted = true
+        }
       }
     }
-    shared.close()
-
     assert(aliceStarted, "Alice did not start")
     assert(bobStarted, "Bob did not start")
-    //todo: assert exchanges/queues have correct names
   }
 
   test("accept when invited for another role: blocks") {
     var didRun = false
-    val shared = createAMQPChannel(Set('Alice, 'Bob))
-    expectTimeout(1000) {
-      shared.invite('Alice -> localhost, 'Bob -> "foohost")
-      shared.accept('Bob) { s =>
-        didRun = true
+    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+      expectTimeout(1000) {
+        shared.invite('Alice -> localhost, 'Bob -> "foohost")
+        shared.accept('Bob) { s =>
+          didRun = true
+        }
       }
     }
-    shared.close()
     assert(!didRun, "Bob should not have started as there was no invite for Bob on localhost")
   }
 
-  ignore("session channel has references for all roles") {
-    withTimeout(1000) {
-      val shared = invite()
-      shared.accept('Alice) { s =>
-        s('Bob) // just ensures that the mapping is defined for 'Bob
-        s('Alice)
+  def withShared(block: SharedChannel => Unit) {
+    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+      shared.invite('Alice -> localhost, 'Bob -> localhost)
+      block(shared)
+    }
+  }
+  test("session channel has references for all roles") {
+    withShared { shared =>
+      withTimeout(1000) {
+        shared.accept('Alice) { s =>
+          s('Bob) // just ensures that the mapping is defined for 'Bob
+          s('Alice)
+        }
       }
     }
   }
 
-  ignore("invited participants can talk") {
+  test("invited participants can talk") {
     var aliceOk = false; var bobOk = false
-    withTimeoutAndWait {
-      val shared = invite()
-      actor { shared.accept('Alice) { s =>
-        s('Bob) ! 42
-        aliceOk = s('Bob).? == "foo"
-      }}
+    withShared { shared =>
+      withTimeoutAndWait {
+        actor { shared.accept('Alice) { s =>
+          s('Bob) ! 42
+          aliceOk = s('Bob).? == "foo"
+        }}
 
-      actor { shared.accept('Bob) { s =>
-        s('Alice) ! "foo"
-        bobOk = s('Alice).? == 42
-      }}
+        actor { shared.accept('Bob) { s =>
+          s('Alice) ! "foo"
+          bobOk = s('Alice).? == 42
+        }}
+      }
     }
     assert(aliceOk, "Alice was not able to communicate")
     assert(bobOk, "Bob was not able to communicate")
@@ -108,6 +107,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
       chan.exchangeDelete("s1")
       chan.queueDelete("s1Alice")
       chan.queueDelete("s1Bob")
+      chan.queueDelete("foohost")
     } catch {
       case _ =>
     } finally {
