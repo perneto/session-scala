@@ -13,9 +13,9 @@ private[sessionscala] class AcceptState(awaiting: Set[Symbol], s: State) {
 
   def received(role: Symbol, actorForRole: Actor, sender: OC) = {
     //println("received role: " + role + " actorForRole: " + actorForRole + ", sender: " + sender)
-    val newList = (actorForRole, sender) :: {
+    val newList = (actorForRole, sender) :: (
       if (s.contains(role)) s(role) else Nil
-    }
+    )
     val newS = s.updated(role, newList)
     new AcceptState(awaiting, newS)
   }

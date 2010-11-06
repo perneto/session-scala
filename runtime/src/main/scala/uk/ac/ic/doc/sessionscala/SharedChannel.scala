@@ -21,6 +21,8 @@ abstract class SharedChannel(val awaiting: Set[Symbol]) {
   /** Accept to play a given role. Waits for an invite before proceeding. */
   def accept(role: Symbol)(act: ActorFun): Unit
 
+  def close() {}
+
   def checkRoleAwaiting(role: Symbol) {
     if (!awaiting.contains(role)) throw new IllegalArgumentException
             ("Role:" + role + " not defined on channel, awaiting: " + awaiting)

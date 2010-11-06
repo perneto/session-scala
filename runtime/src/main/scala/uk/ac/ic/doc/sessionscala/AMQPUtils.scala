@@ -16,6 +16,7 @@ object AMQPUtils {
     factory.setPort(port)
     factory.setUsername(user)
     factory.setPassword(password)
+    println("created connection factory")
     factory
   }
 

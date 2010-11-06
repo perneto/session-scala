@@ -26,6 +26,8 @@ class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel(awaiting)
   def join(role: Symbol)(act: ActorFun): Unit = {
     checkRoleAwaiting(role)
     //println("join, awaiting: " + awaiting + ", role: " + role)
+    // we send Actor.self explicitly, so that the mapping of roles to actors can be built
+    // this is separate from the implicitly passed fresh channel created by !?. This is accessed in coordinator using the sender method
     val sessChan = (coordinator !? NewAccept(role, Actor.self)).asInstanceOf[Symbol => ParticipantChannel]
     act(sessChan)
   }
