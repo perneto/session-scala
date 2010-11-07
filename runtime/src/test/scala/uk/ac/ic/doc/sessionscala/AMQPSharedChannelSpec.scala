@@ -7,7 +7,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite, BeforeAndAfterAll}
 
 class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers with BeforeAndAfterEach {
   
-  ignore("invite not exhaustive: error") {
+  test("invite not exhaustive: error") {
     withAMQPChannel(Set('Alice, 'Bob)) { shared =>
       intercept[IllegalArgumentException] {
         shared.invite('Alice -> localhost) // missing Bob
@@ -16,15 +16,16 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
     Thread.sleep(500) // race condition between afterEach and invitation receiver, afterEach deletes queue after receiver created it
   }
 
-  ignore("invite of unexpected role: error") {
+  test("invite of unexpected role: error") {
     withAMQPChannel(Set('Alice)) { shared =>
       intercept[IllegalArgumentException] {
         shared.invite('Alice -> localhost, 'Foo -> localhost)
       }
     }
+    Thread.sleep(500) // race condition between afterEach and invitation receiver, afterEach deletes queue after receiver created it
   }
 
-  ignore("accept of unexpected role: error") {
+  test("accept of unexpected role: error") {
     withAMQPChannel(Set('Alice)) { shared =>
       withTimeout(1000) {
         intercept[IllegalArgumentException] {
@@ -34,7 +35,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
     }
   }
 
-  ignore("invite/accept init") {
+  test("invite/accept init") {
     var aliceStarted = false; var bobStarted = false;
     withShared { shared =>
       withTimeoutAndWait(2000,500) {
@@ -70,7 +71,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
       block(shared)
     }
   }
-  ignore("session channel has references for all roles apart from own role") {
+  test("session channel has references for all roles apart from own role") {
     withShared { shared =>
       withTimeout(1000) {
         shared.accept('Alice) { s =>
@@ -107,7 +108,6 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
     assert(bobOk, "Bob was not able to communicate")
   }
 
-  /*
   override def afterEach() {
     val chan = AMQPUtils.connectDefaults()
     try {
@@ -123,5 +123,4 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
       chan.getConnection.close()
     }
   }
-  */
 }
