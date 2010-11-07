@@ -49,13 +49,15 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   override def close() {
     invitationReceiverActor ! Exit
     matchMakerActor ! Exit
+    proxyRegistryActor ! Exit
   }
 
   case object Exit
 
-  class SendMsgConsumer(chan: Channel) extends DefaultConsumer(chan) {
+  class SendMsgConsumer(chan: Channel, dest: Actor) extends DefaultConsumer(chan) {
     override def handleDelivery(consumerTag: String, env: Envelope, prop: AMQP.BasicProperties, body: Array[Byte]) {
-      invitationReceiverActor ! body
+      println("Received for dst: "+dest+", body: " + body)
+      dest ! body
     }
   }
 
@@ -64,8 +66,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     val chan = initChanAndExchange()
     chan.queueDeclare(localhost, false, false, false, null)
     // noAck = true, automatically sends acks
-    val consumerTag = chan.basicConsume(localhost, true, new SendMsgConsumer(chan))
-    println("consuming...")
+    val consumerTag = chan.basicConsume(localhost, true, new SendMsgConsumer(chan, self))
+    println("Invitation receiver is consuming messages...")
 
     loop {
       react {
@@ -74,10 +76,16 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
           matchMakerActor ! Invite(invitedRole, sessExchange)
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
-          chan.basicCancel(consumerTag); close(chan); 
-          println("invitation receiver exiting..."); exit()
+          println("Invitation receiver exiting") 
+          closeAndExit(chan, consumerTag)
       }
     }
+  }
+
+  def closeAndExit(chan: Channel, consumerTag: String) {
+    chan.basicCancel(consumerTag) 
+    close(chan)
+    exit()
   }
 
   case class Invite(role: Symbol, sessExchange: String) {
@@ -137,26 +145,132 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     (Symbol(role), exchange)
   }
 
-  class AMQPActorProxy(exchange: String, role: Symbol) extends Actor { def act = {} }
+  val proxyRegistryActor = actor {
+    def loop(listProxies: List[Actor]) {
+      react {
+        case proxy: Actor => loop(proxy :: listProxies)
+        case Exit => {
+          println("Proxy registry terminating proxies: " + listProxies)
+          listProxies foreach (_ ! Exit)
+        }
+      }
+    }
+    loop(Nil)
+  }
 
-  def addMap(map: Map[Symbol, ParticipantChannel], role: Symbol, actor: Actor) = 
-    map + (role -> new ParticipantChannel(actor, actor))
+  val INT_CODE: Byte = 0
+  val STRING_CODE: Byte = 1
+  val BIG_ENOUGH = 8192
+  import java.nio.ByteBuffer
+  def serialize(srcRole: Symbol, msg: Any): Array[Byte] = {
+    val buf = ByteBuffer.allocate(BIG_ENOUGH)
+    val srcBytes = srcRole.name.getBytes(CHARSET)
+    assert(srcBytes.length < 256)
+    buf.put(srcBytes.length.asInstanceOf[Byte])
+    buf.put(srcBytes)
+    msg match {
+      case s: String => 
+        buf.put(STRING_CODE)
+        buf.putInt(s.length)
+        buf.put(s.getBytes(CHARSET))
+      case i: Int => 
+        buf.put(INT_CODE)
+        buf.putInt(i)
+      case x => throw new IllegalArgumentException("Serialization not supported for: " + x)
+    }
+    val result = Array.ofDim[Byte](buf.position)
+    buf.flip()
+    buf.get(result)
+    println("serialize (" + srcRole + "," + msg + "): " + java.util.Arrays.toString(result))
+    result
+  }
+  def deserialize(msg: Array[Byte]): (Symbol, Any) = {
+    val buf = ByteBuffer.wrap(msg)
+    val length = buf.get()
+    val roleBytes = Array.ofDim[Byte](length)
+    buf.get(roleBytes)
+    val role = Symbol(new String(roleBytes, CHARSET))
+    val typeCode = buf.get()
+    val result = typeCode match {
+      case INT_CODE => (role, buf.getInt()) // big-endian
+      case STRING_CODE =>
+        val length = buf.getInt()
+        val stringBytes = Array.ofDim[Byte](length)
+        buf.get(stringBytes)
+        (role, new String(stringBytes, CHARSET))
+      case t => throw new IllegalArgumentException("Unsupported type code in deserialize: " + t)
+    }
+    println("deserialize: " + result)
+    result
+  }
+
+  case class NewDestinationRole(role: Symbol, chan: actors.Channel[Any])
+  case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])
+  case class DeserializedMsgReceive(fromRole: Symbol, body: Any)
+
+  import collection.mutable
+  class AMQPActorProxy(exchange: String, role: Symbol) extends Actor { 
+      val chan = connect(factory)
+      val roleQueue = exchange + role.name
+      // self instead of this gives the actor for the thread creating this object
+      // self is only valid in the act method
+      val consumerTag = chan.basicConsume(roleQueue, true, new SendMsgConsumer(chan, this))
+      // noAck = true, automatically sends acks todo: probably should be false here
+      println("Proxy for role "+role+" is consuming messages on queue: "+roleQueue+"...")
+
+      val srcRoleChans = mutable.Map[Symbol, actors.Channel[Any]]()
+
+      var reactBody: PartialFunction[Any, Unit] = {
+        case NewDestinationRole(dstRole, actorChan) =>
+          reactBody = reactBody orElse {
+            case actorChan ! msg => 
+              println("Proxy for "+role+" is sending message " + msg + " to exchange " + exchange + " with routingKey: " + dstRole.name)
+              chan.basicPublish(exchange, dstRole.name, null, serialize(role, msg))
+          }
+        case rawMsg: Array[Byte] =>
+          println("Proxy for " +role+ " received a message")
+          val (srcRole, msg) = deserialize(rawMsg)
+          self ! DeserializedMsgReceive(srcRole, msg)
+        case NewSourceRole(role, actorChan) =>
+          srcRoleChans += (role -> actorChan)
+          println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
+        case DeserializedMsgReceive(role, msg) if srcRoleChans.isDefinedAt(role) =>
+          println("sending " + msg + " to channel " + srcRoleChans(role))
+          srcRoleChans(role) ! msg
+        case Exit => 
+          println("Proxy for role "+role+" exiting")
+          closeAndExit(chan, consumerTag) 
+      }
+
+    def act = {
+      proxyRegistryActor ! self
+      loop {
+        react(reactBody)
+      }
+    } 
+  }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
-    println("amqp, accept: " + role + ", awaiting: " + awaiting)
+    println("accept: " + role + ", awaiting: " + awaiting)
     checkRoleAwaiting(role)
     println("sending blocking message")
     val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
     println("got reply from matchmaker")
+
+    val proxy = new AMQPActorProxy(sessExchange, role)
+    proxy.start
     val sessChan = (awaiting foldLeft Map[Symbol, ParticipantChannel]()) { case (result, awaitedRole) =>
-      println("awaitedRole: " + awaitedRole)
-      if (role == awaitedRole) addMap(result, awaitedRole, self)
+      if (role == awaitedRole) result // we don't support messages to self through session channel
       else {
-        val proxy = new AMQPActorProxy(sessExchange, role)
-        addMap(result, awaitedRole, proxy)
+        // binds the channel to the current actor (Actor.self). 
+        // self is the only actor that can receive on the channel
+        val chanFrom = new actors.Channel[Any]() 
+        val chanTo = new actors.Channel[Any](proxy)
+        proxy ! NewSourceRole(awaitedRole, chanFrom)
+        proxy ! NewDestinationRole(awaitedRole, chanTo)
+        result + (awaitedRole -> new ParticipantChannel(chanFrom, chanTo))
       }
     }
-    println(sessChan)
     act(sessChan)
   }
 
