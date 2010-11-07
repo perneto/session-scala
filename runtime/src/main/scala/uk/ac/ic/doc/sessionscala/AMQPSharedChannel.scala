@@ -88,48 +88,48 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     exit()
   }
 
-  case class Invite(role: Symbol, sessExchange: String) {
-    def replyIfRoleMatches(acceptRole: Symbol, replyTo: OC): Boolean = {
-      val matches = role == acceptRole
-      if (matches) replyTo ! sessExchange
-      matches
-    }
-  }
-
+  case class Invite(role: Symbol, sessExchange: String) 
   case class Accept(role: Symbol)
 
   val matchMakerActor = actor { 
     println("started matchmaker")
-    def matchAndLoop(invites: List[Invite], accepts: List[(Symbol,OC)]) {
-      println("trying to match invites: " + invites + " with accepts: " + accepts)
-      import java.util.LinkedList
-      import scalaj.collection.Imports._
-      val mAccepts = new LinkedList(accepts asJava)
-      val mInvites = new LinkedList(invites asJava)
-      accepts foreach { case pair@(role, replyTo) =>
-        val it = mInvites.iterator
-        var looping = true
-        while (it.hasNext && looping) {
-          val i = it.next
-          if (i.replyIfRoleMatches(role, replyTo)) {
-            mAccepts.remove(pair)
-            it.remove()
-            looping = false
-          }
-        }
+    
+    var invites = Map.empty[Symbol, List[String]]
+    var accepts = Map.empty[Symbol, List[OC]]
+
+    def matchAccept(acceptRole: Symbol, acceptSender: OC) {
+      invites get acceptRole match {
+        case Some(x :: xs) =>
+          acceptSender ! x
+          if (xs == Nil) invites -= acceptRole 
+          else invites += (acceptRole -> xs)
+        case _ =>
+          invites -= acceptRole
+          accepts += acceptRole -> (acceptSender :: accepts.getOrElse(acceptRole, Nil))
       }
-      loop(List(mInvites.asScala: _*), List(mAccepts.asScala: _*))
     }
-    def loop(invites: List[Invite], accepts: List[(Symbol,OC)]) {
+
+    def matchInvite(invite: Invite) {
+     accepts get invite.role match {
+       case Some(x :: xs) =>
+         x ! invite.sessExchange
+         if (xs == Nil) accepts -= invite.role 
+         else accepts += (invite.role -> xs)
+       case _ =>
+         accepts -= invite.role
+         invites += invite.role -> (invite.sessExchange :: invites.getOrElse(invite.role, Nil))
+     }
+    }
+
+    loop {
       react {
         case i: Invite => 
-          matchAndLoop(i :: invites, accepts)
+          matchInvite(i)
         case Accept(acceptRole: Symbol) => 
-          matchAndLoop(invites, (acceptRole, sender) :: accepts)
+          matchAccept(acceptRole, sender)
         case Exit => println("matchmaker exiting...")
       }
     }
-    loop(List(), List())
   }
 
   def declareSessionQueues(chan: Channel, body: Array[Byte]): (Symbol,String) = {
