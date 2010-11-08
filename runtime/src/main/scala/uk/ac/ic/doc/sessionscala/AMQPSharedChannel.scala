@@ -16,17 +16,51 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   def invite(mapping: (Symbol,String)*): Unit = {
     checkMapping(mapping)
 
-    val chan = initChanAndExchange()
+    val initChan = connectAndInitExchange()
+    val (chan,sessName) = initSessionExchange(initChan)
     mapping foreach { case (role, host) =>
-      //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
-      chan.queueDeclare(host, false, false, false, null)
-      //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
-      chan.queueBind(host, INIT_EXCHANGE, host)
-
-      val msgBytes = ("s1," + role.name + "," + scribbleType).getBytes(CHARSET)
-      chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
+      declareInvitationQueueForHost(chan, host)
+      declareSessionRoleQueue(chan, sessName, role)
+      publishInvite(chan, role, host)
     }
     close(chan)
+  }
+
+  def publishInvite(chan: Channel, role: Symbol, host: String) {
+    val msgBytes = ("s1," + role.name + "," + scribbleType).getBytes(CHARSET)
+    chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
+  }
+
+  def declareInvitationQueueForHost(chan: Channel, host: String) {
+    //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
+    chan.queueDeclare(host, false, false, false, null)
+    //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
+    chan.queueBind(host, INIT_EXCHANGE, host)
+  }
+  
+  def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
+    val roleQueue = sessName + role.name
+    chan.queueDeclare(roleQueue, false, false, false, null)
+    chan.queueBind(roleQueue, sessName, role.name)
+  }
+
+  def initSessionExchange(initChan: Channel): (Channel,String) = {
+    var i = 1; var notDeclared = true; var chan = initChan
+    def sessName = "s" + i
+    while (notDeclared) {
+      try {
+        println("initSessionExchange trying exchange name: " + sessName + ", i: " + i)
+        chan.exchangeDeclarePassive(sessName) // throws ioe if exchange does not exist. This closes the channel, why oh why?
+        // exchange already exists, try another name
+        i += 1
+      } catch {
+        case ioe: java.io.IOException => 
+          chan = chan.getConnection.createChannel // rabbitmq client api stupidness
+          chan.exchangeDeclare(sessName, "direct") // this only runs if the exchange didn't already exists
+          notDeclared = false
+      }
+    }
+    (chan, sessName)
   }
 
   def close(chan: Channel) {
@@ -63,7 +97,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
 
   val invitationReceiverActor = actor { 
     println("Starting invitation receiver actor...")
-    val chan = initChanAndExchange()
+    val chan = connectAndInitExchange()
     chan.queueDeclare(localhost, false, false, false, null)
     // noAck = true, automatically sends acks
     val consumerTag = chan.basicConsume(localhost, true, new SendMsgConsumer(chan, self))
@@ -72,7 +106,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     loop {
       react {
         case body: Array[Byte] =>
-          val (invitedRole,sessExchange) = declareSessionQueues(chan, body)
+          val (invitedRole,sessExchange) = openInvite(body)
           matchMakerActor ! Invite(invitedRole, sessExchange)
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
@@ -80,6 +114,14 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
           closeAndExit(chan, consumerTag)
       }
     }
+  }
+
+  def openInvite(body: Array[Byte]): (Symbol,String) = {
+    val msg = new String(body, CHARSET)
+    val Array(exchange, role, protocol) = msg.split(",")
+    // todo: check protocol is compatible with the local protocol
+    println("received for session: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
+    (Symbol(role), exchange)
   }
 
   def closeAndExit(chan: Channel, consumerTag: String) {
@@ -132,19 +174,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     }
   }
 
-  def declareSessionQueues(chan: Channel, body: Array[Byte]): (Symbol,String) = {
-    val msg = new String(body, CHARSET)
-    val Array(exchange, role, protocol) = msg.split(",")
-    println("creating: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
-
-    chan.exchangeDeclare(exchange, "direct")
-    val roleQueue = exchange + role
-    chan.queueDeclare(roleQueue, false, false, false, null)
-    chan.queueBind(roleQueue, exchange, role)
-
-    (Symbol(role), exchange)
-  }
-
   val proxyRegistryActor = actor {
     def loop(listProxies: List[Actor]) {
       react {
@@ -158,6 +187,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     loop(Nil)
   }
 
+  // todo: proper serialization
   val INT_CODE: Byte = 0
   val STRING_CODE: Byte = 1
   val BIG_ENOUGH = 8192
@@ -274,7 +304,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     act(sessChan)
   }
 
-  def initChanAndExchange(): Channel = {
+  def connectAndInitExchange(): Channel = {
     val chan = connect(factory)
     chan.exchangeDeclare(INIT_EXCHANGE, "direct")
     chan
