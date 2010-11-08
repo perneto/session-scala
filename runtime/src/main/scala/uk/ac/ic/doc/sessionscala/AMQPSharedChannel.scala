@@ -5,6 +5,7 @@ import com.rabbitmq.client._
 import SharedChannel._
 import scala.actors.{Channel => _, _}
 import Actor._
+import collection.mutable
 
 class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
@@ -21,13 +22,13 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     mapping foreach { case (role, host) =>
       declareInvitationQueueForHost(chan, host)
       declareSessionRoleQueue(chan, sessName, role)
-      publishInvite(chan, role, host)
+      publishInvite(chan, sessName, role, host)
     }
     close(chan)
   }
 
-  def publishInvite(chan: Channel, role: Symbol, host: String) {
-    val msgBytes = ("s1," + role.name + "," + scribbleType).getBytes(CHARSET)
+  def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
+    val msgBytes = (sessExchange + "," + role.name + "," + scribbleType).getBytes(CHARSET)
     chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
   }
 
@@ -136,40 +137,32 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   val matchMakerActor = actor { 
     println("started matchmaker")
     
-    var invites = Map.empty[Symbol, List[String]]
-    var accepts = Map.empty[Symbol, List[OC]]
+    val invites = mutable.Map.empty[Symbol, List[String]]
+    val accepts = mutable.Map.empty[Symbol, List[OC]]
 
-    def matchAccept(acceptRole: Symbol, acceptSender: OC) {
-      invites get acceptRole match {
+    def matchMsg[T1,T2](map: mutable.Map[Symbol, List[T1]], key: Symbol, value: T2, otherMap: mutable.Map[Symbol, List[T2]])(action: T1 => Unit) {
+      map get key match {
         case Some(x :: xs) =>
-          acceptSender ! x
-          if (xs == Nil) invites -= acceptRole 
-          else invites += (acceptRole -> xs)
+          action(x)
+          if (xs == Nil) map -= key 
+          else map += (key -> xs) // key already there so this is actually an update, not an add
         case _ =>
-          invites -= acceptRole
-          accepts += acceptRole -> (acceptSender :: accepts.getOrElse(acceptRole, Nil))
+          map -= key
+          otherMap += (key -> (value :: otherMap.getOrElse(key, Nil)))
       }
-    }
-
-    def matchInvite(invite: Invite) {
-     accepts get invite.role match {
-       case Some(x :: xs) =>
-         x ! invite.sessExchange
-         if (xs == Nil) accepts -= invite.role 
-         else accepts += (invite.role -> xs)
-       case _ =>
-         accepts -= invite.role
-         invites += invite.role -> (invite.sessExchange :: invites.getOrElse(invite.role, Nil))
-     }
     }
 
     loop {
       react {
         case i: Invite => 
-          matchInvite(i)
+          matchMsg(accepts, i.role, i.sessExchange, invites) { acceptSender =>
+            acceptSender ! i.sessExchange
+          }
         case Accept(acceptRole: Symbol) => 
-          matchAccept(acceptRole, sender)
-        case Exit => println("matchmaker exiting...")
+          matchMsg(invites, acceptRole, sender, accepts) { sessExchange =>
+            sender ! sessExchange
+          }
+        case Exit => println("Matchmaker exiting")
       }
     }
   }
@@ -190,8 +183,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   // todo: proper serialization
   val INT_CODE: Byte = 0
   val STRING_CODE: Byte = 1
+  val JAVA_OBJECT_CODE: Byte = -127
   val BIG_ENOUGH = 8192
   import java.nio.ByteBuffer
+  import java.io._
   def serialize(srcRole: Symbol, msg: Any): Array[Byte] = {
     val buf = ByteBuffer.allocate(BIG_ENOUGH)
     val srcBytes = srcRole.name.getBytes(CHARSET)
@@ -206,7 +201,14 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       case i: Int => 
         buf.put(INT_CODE)
         buf.putInt(i)
-      case x => throw new IllegalArgumentException("Serialization not supported for: " + x)
+      case x => 
+        println("Warning - using non-interoperable Java serialization for " + x)
+        buf.put(JAVA_OBJECT_CODE)
+        val arrayOs = new ByteArrayOutputStream
+        val oos = new ObjectOutputStream(arrayOs)
+        oos.writeObject(x)
+        oos.close()
+        buf.put(arrayOs.toByteArray())
     }
     val result = Array.ofDim[Byte](buf.position)
     buf.flip()
@@ -221,15 +223,23 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     buf.get(roleBytes)
     val role = Symbol(new String(roleBytes, CHARSET))
     val typeCode = buf.get()
-    val result = typeCode match {
-      case INT_CODE => (role, buf.getInt()) // big-endian
+    val value = typeCode match {
+      case INT_CODE => buf.getInt() // big-endian
       case STRING_CODE =>
         val length = buf.getInt()
         val stringBytes = Array.ofDim[Byte](length)
         buf.get(stringBytes)
-        (role, new String(stringBytes, CHARSET))
+        new String(stringBytes, CHARSET)
+      case JAVA_OBJECT_CODE =>
+        println("Warning - decoding non-interoperable Java object")
+        val bytes = Array.ofDim[Byte](buf.limit - buf.position)
+        buf.get(bytes)
+        val ois = new ObjectInputStream(new ByteArrayInputStream(bytes))
+        ois.close()
+        ois.readObject()
       case t => throw new IllegalArgumentException("Unsupported type code in deserialize: " + t)
     }
+    val result = (role, value)
     println("deserialize: " + result)
     result
   }
@@ -238,7 +248,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])
   case class DeserializedMsgReceive(fromRole: Symbol, body: Any)
 
-  import collection.mutable
   class AMQPActorProxy(exchange: String, role: Symbol) extends Actor { 
       val chan = connect(factory)
       val roleQueue = exchange + role.name
