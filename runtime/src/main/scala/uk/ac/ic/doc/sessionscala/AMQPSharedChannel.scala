@@ -6,6 +6,7 @@ import SharedChannel._
 import scala.actors.{Channel => _, _}
 import Actor._
 import collection.mutable
+import java.util.Arrays
 
 class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
@@ -15,8 +16,45 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
   def invite(mapping: (Symbol,String)*): Unit = {
-    checkMapping(mapping)
+    def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
+      val msgBytes = (sessExchange + "," + role.name + "," + scribbleType).getBytes(CHARSET)
+      chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
+    }
 
+    def declareInvitationQueueForHost(chan: Channel, host: String) {
+      //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
+      chan.queueDeclare(host, false, false, false, null)
+      //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
+      chan.queueBind(host, INIT_EXCHANGE, host)
+    }
+
+    def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
+      val roleQueue = sessName + role.name
+      chan.queueDeclare(roleQueue, false, false, false, null)
+      chan.queueBind(roleQueue, sessName, role.name)
+    }
+
+    def initSessionExchange(initChan: Channel): (Channel,String) = {
+      var i = 1; var notDeclared = true; var chan = initChan
+      def sessName = "s" + i
+      while (notDeclared) {
+        try {
+          println("initSessionExchange trying exchange name: " + sessName + ", i: " + i)
+          chan.exchangeDeclarePassive(sessName) // throws ioe if exchange does not exist. This closes the channel, why oh why?
+          // exchange already exists, try another name
+          i += 1
+        } catch {
+          case ioe: java.io.IOException =>
+            chan = chan.getConnection.createChannel // rabbitmq client api stupidness
+            chan.exchangeDeclare(sessName, "direct") // this only runs if the exchange didn't already exists
+            notDeclared = false
+        }
+      }
+      (chan, sessName)
+    }
+
+    checkMapping(mapping)
+  
     val initChan = connectAndInitExchange()
     val (chan,sessName) = initSessionExchange(initChan)
     mapping foreach { case (role, host) =>
@@ -25,43 +63,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       publishInvite(chan, sessName, role, host)
     }
     close(chan)
-  }
-
-  def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
-    val msgBytes = (sessExchange + "," + role.name + "," + scribbleType).getBytes(CHARSET)
-    chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
-  }
-
-  def declareInvitationQueueForHost(chan: Channel, host: String) {
-    //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
-    chan.queueDeclare(host, false, false, false, null)
-    //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
-    chan.queueBind(host, INIT_EXCHANGE, host)
-  }
-  
-  def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
-    val roleQueue = sessName + role.name
-    chan.queueDeclare(roleQueue, false, false, false, null)
-    chan.queueBind(roleQueue, sessName, role.name)
-  }
-
-  def initSessionExchange(initChan: Channel): (Channel,String) = {
-    var i = 1; var notDeclared = true; var chan = initChan
-    def sessName = "s" + i
-    while (notDeclared) {
-      try {
-        println("initSessionExchange trying exchange name: " + sessName + ", i: " + i)
-        chan.exchangeDeclarePassive(sessName) // throws ioe if exchange does not exist. This closes the channel, why oh why?
-        // exchange already exists, try another name
-        i += 1
-      } catch {
-        case ioe: java.io.IOException => 
-          chan = chan.getConnection.createChannel // rabbitmq client api stupidness
-          chan.exchangeDeclare(sessName, "direct") // this only runs if the exchange didn't already exists
-          notDeclared = false
-      }
-    }
-    (chan, sessName)
   }
 
   def close(chan: Channel) {
@@ -93,7 +94,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
 
   class SendMsgConsumer(chan: Channel, dest: Actor) extends DefaultConsumer(chan) {
     override def handleDelivery(consumerTag: String, env: Envelope, prop: AMQP.BasicProperties, body: Array[Byte]) {
-      println("Received for dst: "+dest+", body: " + body)
+      println("Received for dst: "+dest+", body: " + Arrays.toString(body))
       dest ! body
     }
   }
@@ -114,9 +115,15 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
           println("Invitation receiver exiting") 
-          closeAndExit(chan, consumerTag)          
+          close(chan, consumerTag)
+          exit()
       }
     }
+  }
+
+  def close(chan: Channel, consumerTag: String) {
+    chan.basicCancel(consumerTag)
+    close(chan)
   }
 
   def openInvite(body: Array[Byte]): (Symbol,String) = {
@@ -125,12 +132,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     // todo: check protocol is compatible with the local protocol
     println("received for session: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
     (Symbol(role), exchange)
-  }
-
-  def closeAndExit(chan: Channel, consumerTag: String) {
-    chan.basicCancel(consumerTag) 
-    close(chan)
-    exit()
   }
 
   case class Invite(role: Symbol, sessExchange: String) 
@@ -158,11 +159,11 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       react {
         case i: Invite => 
           matchMsg(accepts, i.role, i.sessExchange, invites) { acceptSender =>
-            acceptSender ! i.sessExchange
+            acceptSender ! i.sessExchange  //todo: give list of local proxies to proxy registry so it can give it to all proxies
           }
         case Accept(acceptRole: Symbol) => 
           matchMsg(invites, acceptRole, sender, accepts) { sessExchange =>
-            sender ! sessExchange
+            sender ! sessExchange // todo: ditto above
           }
         case Exit =>
           println("Matchmaker exiting")
@@ -171,28 +172,32 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     }
   }
 
+  case class ConfirmExited(role: Symbol)
+
   val proxyRegistryActor = actor {
-    def loop(listProxies: List[Actor]) {
+    var mapProxies = Map.empty[Symbol, Actor]
+    def sendAll(msg: Any) = mapProxies.values foreach (_ ! msg)
+    loop {
       react {
-        case proxy: Actor => loop(proxy :: listProxies)
-        case Exit => {
-          println("Proxy registry terminating proxies: " + listProxies)
-          listProxies foreach (_ ! Exit)
-        }
-      }
+        case (role: Symbol, proxy: Actor) =>
+          mapProxies += (role -> proxy)
+          sendAll(mapProxies)
+        case Exit =>
+          println("Proxy registry exiting")
+          exit()
+      }  
     }
-    loop(Nil)
   }
 
   // todo: proper serialization
   val INT_CODE: Byte = 0
   val STRING_CODE: Byte = 1
   val JAVA_OBJECT_CODE: Byte = -127
-  val EXIT_SIGNAL_CODE: Byte = 127
   val BIG_ENOUGH = 8192
   import java.nio.ByteBuffer
   import java.io._
   def serialize(srcRole: Symbol, msg: Any): Array[Byte] = {
+    println("serialize, msg: " + msg)
     val buf = ByteBuffer.allocate(BIG_ENOUGH)
     val srcBytes = srcRole.name.getBytes(CHARSET)
     assert(srcBytes.length < 256)
@@ -206,9 +211,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       case i: Int => 
         buf.put(INT_CODE)
         buf.putInt(i)
-      case ExitSignal =>
-        buf.put(EXIT_SIGNAL_CODE)
-      case x => 
+      case x =>
         println("Warning - using non-interoperable Java serialization for " + x)
         buf.put(JAVA_OBJECT_CODE)
         val arrayOs = new ByteArrayOutputStream
@@ -237,8 +240,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
         val stringBytes = Array.ofDim[Byte](length)
         buf.get(stringBytes)
         new String(stringBytes, CHARSET)
-      case EXIT_SIGNAL_CODE =>
-        ExitSignal
       case JAVA_OBJECT_CODE =>
         println("Warning - decoding non-interoperable Java object")
         val bytes = Array.ofDim[Byte](buf.limit - buf.position)
@@ -258,9 +259,17 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   case class DeserializedMsgReceive(fromRole: Symbol, body: Any)
 
   class AMQPActorProxy(exchange: String, role: Symbol) extends Actor {
-    def publish(dstRole: Symbol, msg: Array[Byte]) {
-      println("Proxy for "+role+" is sending message " + msg + " to exchange " + exchange + " with routingKey: " + dstRole.name)
-      chan.basicPublish(exchange, dstRole.name, null, msg)
+    var mapProxies = Map.empty[Symbol, Actor] // always empty at the moment, will implement optimized local communication later
+
+    def publish(dstRole: Symbol, msg: Any) {
+      mapProxies.get(dstRole) match {
+        case Some(localProxy: Actor) =>
+          println("Direct message send to local proxy: " + localProxy + ", msg: " + msg)
+          localProxy ! DeserializedMsgReceive(role, msg)
+        case None => // always this case at the moment, will implement optimized local communication later
+          println("Proxy for "+role+" is sending message " + msg + " to exchange " + exchange + " with routingKey: " + dstRole.name)
+          chan.basicPublish(exchange, dstRole.name, null, serialize(role, msg))
+      }
     }
 
     val chan = connect(factory)
@@ -277,38 +286,33 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     var reactBody: PartialFunction[Any, Unit] = {
       case NewDestinationRole(dstRole, actorChan) =>
         reactBody = reactBody orElse {
-          case actorChan ! msg => publish(dstRole, serialize(role, msg))
+          case actorChan ! msg => publish(dstRole, msg)
         }
       case rawMsg: Array[Byte] =>
-        println("Proxy for " +role+ " received a message")
         val (srcRole, msg) = deserialize(rawMsg)
-        msg match {
-          case ExitSignal =>
-            exitSignals += srcRole
-            if (exitSignals == srcRoleChans.keySet) self ! Terminate
-          case other => self ! DeserializedMsgReceive(srcRole, other)
-        }
+        println("Proxy for " +role+ " received from: " + srcRole + ", msg: " + msg)
+        self ! DeserializedMsgReceive(srcRole, msg)
       case NewSourceRole(role, actorChan) =>
         srcRoleChans += (role -> actorChan)
         println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
       case DeserializedMsgReceive(role, msg) if srcRoleChans.isDefinedAt(role) =>
+        // in case the mapping is not defined yet, the message will wait in the mailbox until it eventually is
         println("sending " + msg + " to channel " + srcRoleChans(role))
         srcRoleChans(role) ! msg
       case Exit =>
-        srcRoleChans.keys foreach { remoteRole =>
-          publish(remoteRole, serialize(role, ExitSignal))
-        }
-      case Terminate =>
         println("Proxy for role "+role+" exiting")
-        closeAndExit(chan, consumerTag)
+        close(chan, consumerTag)
+        exit()
     }
 
     def act = {
-      proxyRegistryActor ! self
+      proxyRegistryActor ! (role, self)
       loop {
-        react(reactBody)
+        receive(reactBody)
       }
-    } 
+    }
+
+    override def toString = "AMQPActorProxy(exchange=" + exchange + ", role=" + role + ")"
   }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
@@ -317,6 +321,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     println("sending blocking message")
     val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
     println("got reply from matchmaker")
+    // to implement optimized local communication, should receive list of local proxies from matchmaker along with
+    // sessExchange. Probably requires changing the API to have all local accepts at once - then we can wait for
+    // all invites, and be sure of which roles are local. With current approach, I am sending some messages over
+    // amqp at first, then switching to local messages as other local proxies come up 
 
     val proxy = new AMQPActorProxy(sessExchange, role)
     proxy.start
@@ -333,6 +341,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       }
     }
     act(sessChan)
+    proxy ! Exit
   }
 
   def connectAndInitExchange(): Channel = {
