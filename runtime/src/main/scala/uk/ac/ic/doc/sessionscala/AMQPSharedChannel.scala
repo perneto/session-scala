@@ -88,6 +88,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   }
 
   case object Exit
+  case object Terminate
+  case object ExitSignal
 
   class SendMsgConsumer(chan: Channel, dest: Actor) extends DefaultConsumer(chan) {
     override def handleDelivery(consumerTag: String, env: Envelope, prop: AMQP.BasicProperties, body: Array[Byte]) {
@@ -112,7 +114,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
           println("Invitation receiver exiting") 
-          closeAndExit(chan, consumerTag)
+          closeAndExit(chan, consumerTag)          
       }
     }
   }
@@ -162,7 +164,9 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
           matchMsg(invites, acceptRole, sender, accepts) { sessExchange =>
             sender ! sessExchange
           }
-        case Exit => println("Matchmaker exiting")
+        case Exit =>
+          println("Matchmaker exiting")
+          exit()
       }
     }
   }
@@ -184,6 +188,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   val INT_CODE: Byte = 0
   val STRING_CODE: Byte = 1
   val JAVA_OBJECT_CODE: Byte = -127
+  val EXIT_SIGNAL_CODE: Byte = 127
   val BIG_ENOUGH = 8192
   import java.nio.ByteBuffer
   import java.io._
@@ -201,6 +206,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       case i: Int => 
         buf.put(INT_CODE)
         buf.putInt(i)
+      case ExitSignal =>
+        buf.put(EXIT_SIGNAL_CODE)
       case x => 
         println("Warning - using non-interoperable Java serialization for " + x)
         buf.put(JAVA_OBJECT_CODE)
@@ -230,6 +237,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
         val stringBytes = Array.ofDim[Byte](length)
         buf.get(stringBytes)
         new String(stringBytes, CHARSET)
+      case EXIT_SIGNAL_CODE =>
+        ExitSignal
       case JAVA_OBJECT_CODE =>
         println("Warning - decoding non-interoperable Java object")
         val bytes = Array.ofDim[Byte](buf.limit - buf.position)
@@ -248,38 +257,51 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])
   case class DeserializedMsgReceive(fromRole: Symbol, body: Any)
 
-  class AMQPActorProxy(exchange: String, role: Symbol) extends Actor { 
-      val chan = connect(factory)
-      val roleQueue = exchange + role.name
-      // self instead of this gives the actor for the thread creating this object
-      // self is only valid in the act method
-      val consumerTag = chan.basicConsume(roleQueue, true, new SendMsgConsumer(chan, this))
-      // noAck = true, automatically sends acks todo: probably should be false here
-      println("Proxy for role "+role+" is consuming messages on queue: "+roleQueue+"...")
+  class AMQPActorProxy(exchange: String, role: Symbol) extends Actor {
+    def publish(dstRole: Symbol, msg: Array[Byte]) {
+      println("Proxy for "+role+" is sending message " + msg + " to exchange " + exchange + " with routingKey: " + dstRole.name)
+      chan.basicPublish(exchange, dstRole.name, null, msg)
+    }
 
-      val srcRoleChans = mutable.Map[Symbol, actors.Channel[Any]]()
+    val chan = connect(factory)
+    val roleQueue = exchange + role.name
+    // self instead of this gives the actor for the thread creating this object
+    // self is only valid in the act method
+    val consumerTag = chan.basicConsume(roleQueue, true, new SendMsgConsumer(chan, this))
+    // noAck = true, automatically sends acks todo: probably should be false here
+    println("Proxy for role "+role+" is consuming messages on queue: "+roleQueue+"...")
 
-      var reactBody: PartialFunction[Any, Unit] = {
-        case NewDestinationRole(dstRole, actorChan) =>
-          reactBody = reactBody orElse {
-            case actorChan ! msg => 
-              println("Proxy for "+role+" is sending message " + msg + " to exchange " + exchange + " with routingKey: " + dstRole.name)
-              chan.basicPublish(exchange, dstRole.name, null, serialize(role, msg))
-          }
-        case rawMsg: Array[Byte] =>
-          println("Proxy for " +role+ " received a message")
-          val (srcRole, msg) = deserialize(rawMsg)
-          self ! DeserializedMsgReceive(srcRole, msg)
-        case NewSourceRole(role, actorChan) =>
-          srcRoleChans += (role -> actorChan)
-          println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
-        case DeserializedMsgReceive(role, msg) if srcRoleChans.isDefinedAt(role) =>
-          println("sending " + msg + " to channel " + srcRoleChans(role))
-          srcRoleChans(role) ! msg
-        case Exit => 
-          println("Proxy for role "+role+" exiting")
-          closeAndExit(chan, consumerTag) 
-      }
+    val srcRoleChans = mutable.Map[Symbol, actors.Channel[Any]]()
+    val exitSignals = mutable.Set[Symbol]()
+
+    var reactBody: PartialFunction[Any, Unit] = {
+      case NewDestinationRole(dstRole, actorChan) =>
+        reactBody = reactBody orElse {
+          case actorChan ! msg => publish(dstRole, serialize(role, msg))
+        }
+      case rawMsg: Array[Byte] =>
+        println("Proxy for " +role+ " received a message")
+        val (srcRole, msg) = deserialize(rawMsg)
+        msg match {
+          case ExitSignal =>
+            exitSignals += srcRole
+            if (exitSignals == srcRoleChans.keySet) self ! Terminate
+          case other => self ! DeserializedMsgReceive(srcRole, other)
+        }
+      case NewSourceRole(role, actorChan) =>
+        srcRoleChans += (role -> actorChan)
+        println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
+      case DeserializedMsgReceive(role, msg) if srcRoleChans.isDefinedAt(role) =>
+        println("sending " + msg + " to channel " + srcRoleChans(role))
+        srcRoleChans(role) ! msg
+      case Exit =>
+        srcRoleChans.keys foreach { remoteRole =>
+          publish(remoteRole, serialize(role, ExitSignal))
+        }
+      case Terminate =>
+        println("Proxy for role "+role+" exiting")
+        closeAndExit(chan, consumerTag)
+    }
 
     def act = {
       proxyRegistryActor ! self

@@ -27,8 +27,9 @@ object BuyerSellerAMQP {
             case NotOK =>
               val reason = s('Buyer).?[String]
           }
-          println("Seller: finished")
+          println("*****************Seller: finished")
         }
+        println("############## Seller: sharedChannel.accept exited")
       }
 
       sharedChannel.accept('Buyer) { s =>
@@ -44,9 +45,10 @@ object BuyerSellerAMQP {
           s('Seller) ! "Too expensive"
 
         }
-        println("Buyer: finished")
+        println("*****************Buyer: finished")
       }
+      println("############## Buyer: sharedChannel.accept exited")
     }
-    println("closed shared channel")
+    println("$$$$$$$$$$$$$$$$closed shared channel")
   }
 }
