@@ -5,14 +5,14 @@ object SharedChannel {
     if (awaiting.isEmpty) throw new IllegalArgumentException("At least one role is required")
     new SharedChannelSameVM(awaiting)
   }
-  def createAMQPChannel(awaiting: Set[Symbol], brokerHost: String = "localhost", port: Int = 5672, user: String = "guest", password: String = "guest"): SharedChannel = new AMQPSharedChannel(awaiting, brokerHost, port, user, password)
+  def createAMQPChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost: String = "localhost", port: Int = 5672, user: String = "guest", password: String = "guest"): SharedChannel = new AMQPSharedChannel(awaiting, brokerHost, port, user, password)
 
   def localhost: String = java.net.InetAddress.getLocalHost.getCanonicalHostName
 
-  def withAMQPChannel[T](awaiting: Set[Symbol], brokerHost: String = "localhost", 
+  def withAMQPChannel[T](awaiting: Set[Symbol], protocolFile: String = "", brokerHost: String = "localhost", 
                          port: Int = 5672, user: String = "guest", 
                          password: String = "guest")(block: SharedChannel => T): T = {
-    val shared = createAMQPChannel(awaiting, brokerHost, port, user, password)
+    val shared = createAMQPChannel(awaiting, protocolFile, brokerHost, port, user, password)
     try { block(shared) } finally { shared.close() }
   }
 }

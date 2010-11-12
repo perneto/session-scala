@@ -8,10 +8,10 @@ import Actor._
 import collection.mutable
 import java.util.Arrays
 
-class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
+class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
 
-  val scribbleType = "protocol Foo {}"
+  val scribbleType = if (protocolFile != "") io.File(protocolFile).slurp else ""
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
@@ -192,6 +192,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   // todo: proper serialization
   val INT_CODE: Byte = 0
   val STRING_CODE: Byte = 1
+  val TRUE_CODE: Byte = 2
+  val FALSE_CODE: Byte = 3
   val JAVA_OBJECT_CODE: Byte = -127
   val BIG_ENOUGH = 8192
   import java.nio.ByteBuffer
@@ -211,6 +213,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       case i: Int => 
         buf.put(INT_CODE)
         buf.putInt(i)
+      case true =>
+        buf.put(TRUE_CODE)
+      case false =>
+        buf.put(FALSE_CODE)
       case x =>
         println("Warning - using non-interoperable Java serialization for " + x)
         buf.put(JAVA_OBJECT_CODE)
@@ -240,6 +246,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
         val stringBytes = Array.ofDim[Byte](length)
         buf.get(stringBytes)
         new String(stringBytes, CHARSET)
+      case TRUE_CODE => true
+      case FALSE_CODE => false
       case JAVA_OBJECT_CODE =>
         println("Warning - decoding non-interoperable Java object")
         val bytes = Array.ofDim[Byte](buf.limit - buf.position)
