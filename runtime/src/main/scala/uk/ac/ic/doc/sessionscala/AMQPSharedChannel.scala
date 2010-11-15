@@ -15,9 +15,12 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
+  val INVITE_SEPARATOR = "$"
+
   def invite(mapping: (Symbol,String)*): Unit = {
     def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
-      val msgBytes = (sessExchange + "," + role.name + "," + scribbleType).getBytes(CHARSET)
+      val msgBytes = (sessExchange + INVITE_SEPARATOR
+                    + role.name + INVITE_SEPARATOR + scribbleType).getBytes(CHARSET)
       chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
     }
 
@@ -128,7 +131,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
 
   def openInvite(body: Array[Byte]): (Symbol,String) = {
     val msg = new String(body, CHARSET)
-    val Array(exchange, role, protocol) = msg.split(",")
+    val Array(exchange, role, protocol) = msg.split(INVITE_SEPARATOR)
     // todo: check protocol is compatible with the local protocol
     println("received for session: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
     (Symbol(role), exchange)
