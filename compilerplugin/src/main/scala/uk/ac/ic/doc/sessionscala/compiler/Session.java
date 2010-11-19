@@ -88,7 +88,7 @@ public class Session {
         checkNotEmpty("recursive call");
         Activity a = remaining.get(0);
         if (! (a instanceof Recursion && ((Recursion) a).getLabel().equals(r.getLabel()))) 
-          throw new SessionTypeCheckingException("Expected " + a + " but got " + r);
+          throw new SessionTypeCheckingException("Expected " + a + " but got " + r + " (label "+r.getLabel()+")");
         return dropFirst();
     }
 

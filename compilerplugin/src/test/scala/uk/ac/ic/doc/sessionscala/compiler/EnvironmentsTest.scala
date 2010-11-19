@@ -223,7 +223,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   def sessionMethod(method: Symbol, chan: Name): SessionTypingEnvironment = {
     var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(fooMethod, List(chan))
+    env.enterSessionMethod(method, List(chan))
   }
   
   def inferred(env: SessionTypingEnvironment, method: Symbol, chan: Name): Recur = 
@@ -612,6 +612,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   """protocol Foo {
        role Alice, Bob;
        X: {
+         //Int from Alice to Bob;
          Y: {
            choice from Alice to Bob {
              Int { #X; }
@@ -624,10 +625,12 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   val xmethod = empty.newMethod(mkTermName("methodX"))
   val ymethod = empty.newMethod(mkTermName("methodY"))
-  ignore("inferred, recursive method call, multiple recursion labels") {
+  test("inferred, recursive method call, multiple recursion labels") {
     var env = sessionMethod(xmethod, sessChan)
+    //env = env.send(sessChan, "Bob", intT)
     env = env.delegation(ymethod, List(sessChan))
     env = env.leaveSessionMethod
+    assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, sessChan)))
     
     env = env.enterSessionMethod(ymethod, List(sessChan))
     env = env.enterThen
@@ -639,10 +642,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
 
+    assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, sessChan)))
+    assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(ymethod, sessChan)))    
+
     env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, multiRecurModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.delegation(fooMethod, List(sessChan))
+    env = env.delegation(xmethod, List(sessChan))
     env = env.leaveJoin
   }
   	
