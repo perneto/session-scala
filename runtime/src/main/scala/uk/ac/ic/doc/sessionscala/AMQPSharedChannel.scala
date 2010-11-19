@@ -11,32 +11,13 @@ import java.util.Arrays
 class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
 
-  val scribbleType = if (protocolFile != "") io.File(protocolFile).slurp else ""
+  val scribbleType = if (protocolFile != "") io.Source.fromFile(protocolFile).getLines else "<no protocol given>"
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
   val INVITE_SEPARATOR = "$"
 
   def invite(mapping: (Symbol,String)*): Unit = {
-    def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
-      val msgBytes = (sessExchange + INVITE_SEPARATOR
-                    + role.name + INVITE_SEPARATOR + scribbleType).getBytes(CHARSET)
-      chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
-    }
-
-    def declareInvitationQueueForHost(chan: Channel, host: String) {
-      //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
-      chan.queueDeclare(host, false, false, false, null)
-      //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
-      chan.queueBind(host, INIT_EXCHANGE, host)
-    }
-
-    def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
-      val roleQueue = sessName + role.name
-      chan.queueDeclare(roleQueue, false, false, false, null)
-      chan.queueBind(roleQueue, sessName, role.name)
-    }
-
     def initSessionExchange(initChan: Channel): (Channel,String) = {
       var i = 1; var notDeclared = true; var chan = initChan
       def sessName = "s" + i
@@ -57,15 +38,50 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     }
 
     checkMapping(mapping)
-  
+
     val initChan = connectAndInitExchange()
     val (chan,sessName) = initSessionExchange(initChan)
+    close(chan)
+    invite(sessName, mapping: _*)
+  }
+
+  def invite(sessName: String, mapping: (Symbol,String)*): Unit = {
+    def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
+      val msgBytes = (sessExchange + INVITE_SEPARATOR
+                    + role.name + INVITE_SEPARATOR + scribbleType).getBytes(CHARSET)
+      chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
+    }
+
+    def declareInvitationQueueForHost(chan: Channel, host: String) {
+      //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
+      chan.queueDeclare(host, false, false, false, null)
+      //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
+      chan.queueBind(host, INIT_EXCHANGE, host)
+    }
+
+    def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
+      val roleQueue = sessName + role.name
+      chan.queueDeclare(roleQueue, false, false, false, null)
+      chan.queueBind(roleQueue, sessName, role.name)
+    }
+
+    val chan = connect(factory)
     mapping foreach { case (role, host) =>
       declareInvitationQueueForHost(chan, host)
       declareSessionRoleQueue(chan, sessName, role)
       publishInvite(chan, sessName, role, host)
     }
     close(chan)
+  }
+
+  def forwardInvite(mapping: (Symbol,String)*): Unit = {
+    mapping foreach { case (role, host) =>
+      println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
+      checkRoleAwaiting(role)
+      val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
+      println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
+      invite(sessExchange, role -> host)
+    }
   }
 
   def close(chan: Channel) {
@@ -131,7 +147,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
 
   def openInvite(body: Array[Byte]): (Symbol,String) = {
     val msg = new String(body, CHARSET)
-    val Array(exchange, role, protocol) = msg.split(INVITE_SEPARATOR)
+    println(msg)
+    val array = msg.split("\\" + INVITE_SEPARATOR)
+    array foreach println
+    val Array(exchange, role, protocol) = array
     // todo: check protocol is compatible with the local protocol
     println("received for session: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
     (Symbol(role), exchange)
@@ -232,7 +251,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     val result = Array.ofDim[Byte](buf.position)
     buf.flip()
     buf.get(result)
-    println("serialize (" + srcRole + "," + msg + "): " + java.util.Arrays.toString(result))
+    println("serialize (" + srcRole + "," + msg + "): " + Arrays.toString(result))
     result
   }
   def deserialize(msg: Array[Byte]): (Symbol, Any) = {

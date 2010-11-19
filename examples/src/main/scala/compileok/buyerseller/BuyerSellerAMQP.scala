@@ -10,7 +10,10 @@ object BuyerSellerAMQP {
     // Scribble file also contains roles, could
     // generate set of roles automatically
     withAMQPChannel(Set('Buyer, 'Seller)) { sharedChannel =>
+
       sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
+
+      sharedChannel.forwardInvite('Buyer -> localhost, 'Seller -> localhost)
 
       println("running...")
 

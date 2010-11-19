@@ -33,6 +33,7 @@ class SharedChannelSameVM(awaiting: Set[Symbol]) extends SharedChannel(awaiting)
   }
 
   def invite(mapping: (Symbol,String)*): Unit = {}
+  def forwardInvite(mapping: (Symbol,String)*): Unit = {}
   def accept(role: Symbol)(act: ActorFun): Unit = {}
 
 }
