@@ -378,7 +378,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
 
   def connectAndInitExchange(): Channel = {
     val chan = connect(factory)
-    chan.exchangeDeclare(INIT_EXCHANGE, "direct")
+    //chan.exchangeDeclare(INIT_EXCHANGE, "direct")  no need to declare amq.direct, spec says it's always there by default
     chan
   }
 }

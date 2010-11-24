@@ -7,7 +7,7 @@ import com.rabbitmq.client.ConnectionFactory
  */
 
 object AMQPUtils {
-  val INIT_EXCHANGE = "Init"
+  val INIT_EXCHANGE = "amq.direct"
   val CHARSET = "ISO-8859-1"
 
   def createFactory(brokerHost: String, port: Int, user: String, password: String): ConnectionFactory = {
