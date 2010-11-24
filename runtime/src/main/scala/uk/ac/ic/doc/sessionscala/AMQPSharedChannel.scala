@@ -7,6 +7,7 @@ import scala.actors.{Channel => _, _}
 import Actor._
 import collection.mutable
 import java.util.Arrays
+import java.io.File
 
 class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
@@ -40,7 +41,11 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     val initChan = connectAndInitExchange()
     val (chan,sessName) = initSessionExchange(initChan)
     close(chan)
-    val scribbleType = if (protocolFile != "") io.Source.fromFile(protocolFile).foldLeft("")(_ + _) else "<no protocol given>"
+    val source =
+      if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
+      else if (protocolFile == "") null
+      else io.Source.fromURL(protocolFile)
+    val scribbleType = if (source != null) source.foldLeft("")(_ + _) else "<no protocol given>"
     inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
