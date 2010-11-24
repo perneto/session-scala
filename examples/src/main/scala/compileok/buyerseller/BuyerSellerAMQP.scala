@@ -11,7 +11,7 @@ object BuyerSellerAMQP {
     // generate set of roles automatically
     withAMQPChannel(Set('Buyer, 'Seller)) { sharedChannel =>
 
-      sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
 
       sharedChannel.forwardInvite('Buyer -> localhost)
 

@@ -8,16 +8,14 @@ import Actor._
 import collection.mutable
 import java.util.Arrays
 
-class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
+class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String) extends SharedChannel(awaiting) {
   val factory = createFactory(brokerHost, port, user, password)
-
-  val scribbleType = if (protocolFile != "") io.Source.fromFile(protocolFile).getLines else "<no protocol given>"
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
   val INVITE_SEPARATOR = "$"
 
-  def invite(mapping: (Symbol,String)*): Unit = {
+  def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
     def initSessionExchange(initChan: Channel): (Channel,String) = {
       var i = 1; var notDeclared = true; var chan = initChan
       def sessName = "s" + i
@@ -42,13 +40,14 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     val initChan = connectAndInitExchange()
     val (chan,sessName) = initSessionExchange(initChan)
     close(chan)
-    invite(sessName, mapping: _*)
+    val scribbleType = if (protocolFile != "") io.Source.fromFile(protocolFile).foldLeft("")(_ + _) else "<no protocol given>"
+    inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
-  def invite(sessName: String, mapping: (Symbol,String)*): Unit = {
+  def inviteImpl(sessName: String, protocol: String, mapping: (Symbol,String)*): Unit = {
     def publishInvite(chan: Channel, sessExchange: String, role: Symbol, host: String) {
       val msgBytes = (sessExchange + INVITE_SEPARATOR
-                    + role.name + INVITE_SEPARATOR + scribbleType).getBytes(CHARSET)
+                    + role.name + INVITE_SEPARATOR + protocol).getBytes(CHARSET)
       chan.basicPublish(INIT_EXCHANGE, host, null, msgBytes)
     }
 
@@ -78,9 +77,9 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     mapping foreach { case (role, host) =>
       println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
       checkRoleAwaiting(role)
-      val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
+      val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
       println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
-      invite(sessExchange, role -> host)
+      inviteImpl(sessExchange, protocol, role -> host)
     }
   }
 
@@ -129,8 +128,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     loop {
       react {
         case body: Array[Byte] =>
-          val (invitedRole,sessExchange) = openInvite(body)
-          matchMakerActor ! Invite(invitedRole, sessExchange)
+          val (invitedRole,sessExchange,protocol) = openInvite(body)
+          matchMakerActor ! Invite(invitedRole, sessExchange, protocol)
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit => 
           println("Invitation receiver exiting") 
@@ -145,24 +144,22 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     close(chan)
   }
 
-  def openInvite(body: Array[Byte]): (Symbol,String) = {
+  def openInvite(body: Array[Byte]) = {
     val msg = new String(body, CHARSET)
     println(msg)
-    val array = msg.split("\\" + INVITE_SEPARATOR)
-    array foreach println
-    val Array(exchange, role, protocol) = array
+    val Array(exchange, role, protocol) = msg.split("\\" + INVITE_SEPARATOR)
     // todo: check protocol is compatible with the local protocol
     println("received for session: exchange: " + exchange + ", role: " + role + ", protocol: " + protocol)
-    (Symbol(role), exchange)
+    (Symbol(role), exchange, protocol)
   }
 
-  case class Invite(role: Symbol, sessExchange: String) 
+  case class Invite(role: Symbol, sessExchange: String, protocol: String) 
   case class Accept(role: Symbol)
 
   val matchMakerActor = actor { 
     println("started matchmaker")
     
-    val invites = mutable.Map.empty[Symbol, List[String]]
+    val invites = mutable.Map.empty[Symbol, List[(String,String)]] // List[(ExchangeName, Protocol)]
     val accepts = mutable.Map.empty[Symbol, List[OC]]
 
     def matchMsg[T1,T2](map: mutable.Map[Symbol, List[T1]], key: Symbol, value: T2, otherMap: mutable.Map[Symbol, List[T2]])(action: T1 => Unit) {
@@ -170,22 +167,22 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
         case Some(x :: xs) =>
           action(x)
           if (xs == Nil) map -= key 
-          else map += (key -> xs) // key already there so this is actually an update, not an add
+          else map.update(key, xs)
         case _ =>
           map -= key
-          otherMap += (key -> (value :: otherMap.getOrElse(key, Nil)))
+          otherMap.update(key, value :: otherMap.getOrElse(key, Nil))
       }
     }
 
     loop {
       react {
         case i: Invite => 
-          matchMsg(accepts, i.role, i.sessExchange, invites) { acceptSender =>
-            acceptSender ! i.sessExchange  //todo: give list of local proxies to proxy registry so it can give it to all proxies
+          matchMsg(accepts, i.role, (i.sessExchange, i.protocol), invites) { acceptSender =>
+            acceptSender ! (i.sessExchange, i.protocol)  //todo: give list of local proxies to proxy registry so it can give it to all proxies
           }
         case Accept(acceptRole: Symbol) => 
-          matchMsg(invites, acceptRole, sender, accepts) { sessExchange =>
-            sender ! sessExchange // todo: ditto above
+          matchMsg(invites, acceptRole, sender, accepts) { sessExchAndProtocol =>
+            sender ! sessExchAndProtocol // todo: ditto above
           }
         case Exit =>
           println("Matchmaker exiting")
@@ -349,7 +346,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocolFile: String, brokerHost:
     println("accept: " + role + ", awaiting: " + awaiting)
     checkRoleAwaiting(role)
     println("sending blocking message")
-    val sessExchange = (matchMakerActor !? Accept(role)).asInstanceOf[String]
+    val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
     println("got reply from matchmaker")
     // to implement optimized local communication, should receive list of local proxies from matchmaker along with
     // sessExchange. Probably requires changing the API to have all local accepts at once - then we can wait for
