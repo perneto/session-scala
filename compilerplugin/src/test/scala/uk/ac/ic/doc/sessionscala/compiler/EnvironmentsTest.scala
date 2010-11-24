@@ -40,6 +40,32 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env.enterJoin(sharedChan, joinAs, sessChan)
   }
 
+  import scalaj.collection.Imports._
+
+  val empty = definitions.EmptyPackage
+  val fooMethod = empty.newMethod(mkTermName("foo"))
+
+  def sessionMethod(method: Symbol, chan: Name): SessionTypingEnvironment = {
+    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env.enterSessionMethod(method, List(chan))
+  }
+
+  def inferred(env: SessionTypingEnvironment, method: Symbol, chan: Name): LabelledBlock =
+    env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
+                                    .inferredSessionType(method, chan)
+
+  def checkInferred(env: SessionTypingEnvironment, meth: Symbol, chan: Name, label: String, block: List[Activity]) {
+    val inf = inferred(env, meth, chan)
+    val expected = createLabelledBlock(label, block)
+    assert(inf === expected)
+  }
+
+  def sessionMethod(method: Symbol, chan1: Name, chan2: Name): SessionTypingEnvironment = {
+    val env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env.enterSessionMethod(method, List(chan1, chan2))
+  }    
+
+
   test("top-level enter join, unregistered channel: error") {
     intercept[SessionTypeCheckingException] {
       topEnv.enterJoin(sharedChan, "A", sessChan)
@@ -216,25 +242,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
   }
   
-  import scalaj.collection.Imports._
-
-  val empty = definitions.EmptyPackage
-  val fooMethod = empty.newMethod(mkTermName("foo"))
-
-  def sessionMethod(method: Symbol, chan: Name): SessionTypingEnvironment = {
-    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(method, List(chan))
-  }
-  
-  def inferred(env: SessionTypingEnvironment, method: Symbol, chan: Name): Recur = 
-    env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
-                                    .inferredSessionType(method, chan)
-
-  def checkInferred(env: SessionTypingEnvironment, meth: Symbol, chan: Name, label: String, block: List[Activity]) {
-    val inf = inferred(env, meth, chan) 
-    inf should be (createRecur(label, block))
-  }  
-
   test("method inference, one send and receive") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.send(sessChan, "Bob", stringT)
@@ -243,12 +250,12 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     
     // all inferred methods are inferred as potentially recursive,
     // and use their name as recursion variable. (todo: later need to allow for overloading)
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, bobRole, stringTRef),
         createInteraction(bobRole, null, stringTRef)
     ))
   }
-  
+
   test("method inference, branching, common part before branching") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.send(sessChan, "Bob", stringT)
@@ -260,7 +267,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, bobRole, stringTRef),
         createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
@@ -277,7 +284,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createChoice(bobRole, null, List(
             (stringTRef, List(
               createInteraction(null, aliceRole, intTRef)
@@ -300,7 +307,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
     
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, aliceRole, objectTRef),
         createChoice(null, aliceRole, List(
             (stringTRef, List(createInteraction(aliceRole, null, floatTRef))),
@@ -322,7 +329,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         // todo: right now whens are in a list so Choice.equals is order-sensitive. need to change it to a set
         createChoice(null, aliceRole, emptyBody(List(intTRef, floatTRef, stringTRef)))
     ))
@@ -360,7 +367,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, aliceRole, intTRef)
     ))
   }
@@ -377,7 +384,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, aliceRole, charSequenceTRef), // send: infer supertype
         createInteraction(aliceRole, null, stringTRef) // receive: infer subtype
     ))
@@ -390,15 +397,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(fooMethod, List(sessChan)) 
     env = env.leaveSessionMethod
     
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
         createInteraction(null, aliceRole, stringTRef),
-        createRecursion("foo")
+        createRecursion("X1")
     ))
-  }
-
-  def sessionMethod(method: Symbol, chan1: Name, chan2: Name): SessionTypingEnvironment = {
-    val env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(method, List(chan1, chan2))
   }
 
   test("method inference, interleaved sessions, basic send-receive") {
@@ -408,10 +410,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.receive(sessChan2, "Bob", intT)
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List (
+    checkInferred(env, fooMethod, sessChan, "X1", List (
       createInteraction(null, aliceRole, stringTRef)
     ))
-    checkInferred(env, fooMethod, sessChan2, "foo", List (
+    checkInferred(env, fooMethod, sessChan2, "X1", List (
       createInteraction(bobRole, null, intTRef)
     ))
   }
@@ -430,10 +432,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List (
+    checkInferred(env, fooMethod, sessChan, "X1", List (
       createChoice(null, aliceRole, emptyBody(List(intTRef, stringTRef)))
     ))
-    checkInferred(env, fooMethod, sessChan2, "foo", List (
+    checkInferred(env, fooMethod, sessChan2, "X1", List (
       createInteraction(bobRole, null, intTRef)
     ))
   }
@@ -457,11 +459,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod
 
-    checkInferred(env, fooMethod, sessChan, "foo", List(
+    checkInferred(env, fooMethod, sessChan, "X1", List(
       createInteraction(null, bobRole, stringTRef),
       createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
-    checkInferred(env, fooMethod, sessChan2, "foo", List (
+    checkInferred(env, fooMethod, sessChan2, "X1", List (
       createInteraction(aliceRole, null, intTRef),
       createInteraction(bobRole, null, intTRef)
     ))
@@ -631,7 +633,8 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(ymethod, List(sessChan))
     env = env.leaveSessionMethod
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, sessChan)))
-    
+    println("after assert")
+
     env = env.enterSessionMethod(ymethod, List(sessChan))
     env = env.enterThen
     env = env.send(sessChan, "Bob", intT)

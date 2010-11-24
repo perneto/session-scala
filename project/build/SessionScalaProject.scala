@@ -13,7 +13,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
     override def fork = forkRun
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.1.1"
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
-    val scalaj_collection = "org.scalaj" %% "scalaj-collection" % "1.0"
+    val scalaj_collection = "org.scalaj" % "scalaj-collection_2.8.0" % "1.0"
   }
 
   class Examples(info: ProjectInfo) extends DefaultProject(info) {
@@ -31,7 +31,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
     val scribble_conformance = "org.scribble.bundles" % "org.scribble.protocol.conformance" % "2.0.0-SNAPSHOT"
     val antlr = "org.antlr" % "antlr-runtime" % "3.2" // shouldn't be needed, something funny with scribble deps
 
-    val scalaj_collection = "org.scalaj" %% "scalaj-collection" % "1.0"
+    val scalaj_collection = "org.scalaj" % "scalaj-collection_2.8.0" % "1.0"
   }
 
   lazy val runtime = project("runtime", "runtime", new Runtime(_))

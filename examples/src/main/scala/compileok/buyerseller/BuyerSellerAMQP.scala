@@ -13,7 +13,7 @@ object BuyerSellerAMQP {
 
       sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
 
-      sharedChannel.forwardInvite('Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.forwardInvite('Buyer -> localhost)
 
       println("running...")
 

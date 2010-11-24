@@ -88,7 +88,9 @@ public class Session {
         checkNotEmpty("recursive call");
         Activity a = remaining.get(0);
         if (! (a instanceof Recursion && ((Recursion) a).getLabel().equals(r.getLabel()))) 
-          throw new SessionTypeCheckingException("Expected " + a + " but got " + r + " (label "+r.getLabel()+")");
+          throw new SessionTypeCheckingException("Expected " + a
+                  + ((a instanceof Recursion) ? " (label "+ ((Recursion) a).getLabel() + ")" : "")
+                  +" but got " + r + " (label "+r.getLabel()+")");
         return dropFirst();
     }
 
@@ -276,10 +278,10 @@ public class Session {
         return c.getFromRole() == null && c.getToRole() != null;
     }
     
-    public Recur getRecur() {
+    public LabelledBlock getRecur() {
         if (remaining.isEmpty()) return null;
         Activity act = remaining.get(0);
-        if (act instanceof Recur) return (Recur) act;
+        if (act instanceof LabelledBlock) return (LabelledBlock) act;
         return null; 
     }
 }
