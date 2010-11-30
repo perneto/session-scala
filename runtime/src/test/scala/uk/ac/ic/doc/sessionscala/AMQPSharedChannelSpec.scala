@@ -10,7 +10,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   test("invite not exhaustive: error") {
     withAMQPChannel(Set('Alice, 'Bob)) { shared =>
       intercept[IllegalArgumentException] {
-        shared.invite('Alice -> localhost) // missing Bob
+        shared.invite("", 'Alice -> localhost) // missing Bob
       }
     }
     Thread.sleep(500) // race condition between afterEach and invitation receiver, afterEach deletes queue after receiver created it
@@ -19,7 +19,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   test("invite of unexpected role: error") {
     withAMQPChannel(Set('Alice)) { shared =>
       intercept[IllegalArgumentException] {
-        shared.invite('Alice -> localhost, 'Foo -> localhost)
+        shared.invite("", 'Alice -> localhost, 'Foo -> localhost)
       }
     }
     Thread.sleep(500) // race condition between afterEach and invitation receiver, afterEach deletes queue after receiver created it
@@ -56,7 +56,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
     var didRun = false
     withAMQPChannel(Set('Alice, 'Bob)) { shared =>
       expectTimeout(1000) {
-        shared.invite('Alice -> localhost, 'Bob -> "foohost")
+        shared.invite("", 'Alice -> localhost, 'Bob -> "foohost")
         shared.accept('Bob) { s =>
           didRun = true
         }
@@ -67,7 +67,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
 
   def withShared(block: SharedChannel => Unit) {
     withAMQPChannel(Set('Alice, 'Bob)) { shared =>
-      shared.invite('Alice -> localhost, 'Bob -> localhost)
+      shared.invite("", 'Alice -> localhost, 'Bob -> localhost)
       block(shared)
     }
   }
