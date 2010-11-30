@@ -7,6 +7,7 @@ package compileok
 import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.SharedChannel
 import SharedChannel._
+
 /*
 2 protocol OOI_Command_Instrument {
 3 role User, CI_Authority, Instrument;
@@ -34,6 +35,40 @@ import SharedChannel._
 25 }
 26 }
 27 }
+
+
+session CmdInstrument =
+ roles user[=1] : int,
+       instrument,
+       instrument_Registry ,
+       instrument_Agent
+
+ global main =
+  InterfaceReq(string) from user to instrument_Registry;
+
+  InterfaceData(string) from instrument_Registry to user;
+
+  StdAccess from user to instrument_Agent;
+
+  choice from instrument_Agent to user {
+    Accept.(
+      loop:
+        choice from user to instrument_Agent {
+          More_commands.(
+            Commands(string) from user to instrument_Agent;
+            Commands(string) from instrument_Agent to instrument;
+            Response(int) from instrument to instrument_Agent;
+            Response(int) from instrument_Agent to user;
+            #loop)
+        | Quit.(Leave from instrument_Agent to instrument)}
+      )
+  | Reject(string).(
+     Err from instrument_Agent to instrument
+    )
+  }
+
+
+
  */
 object OOICommandInstrument {
   def main(args: Array[String]) {
