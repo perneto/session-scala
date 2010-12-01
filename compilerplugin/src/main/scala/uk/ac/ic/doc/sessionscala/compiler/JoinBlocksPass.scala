@@ -53,11 +53,12 @@ abstract class JoinBlocksPass extends PluginComponent
           reporter.warning(tree.pos, "The @protocol annotation only has an effect on SharedChannel instances")
           super.traverse(tree)
 
-        case Apply(Apply(Select(Ident(chanIdent), _), Literal(role)::Nil),
+        case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
-        if sym == acceptMethod =>
+        if sym == joinMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
           try {
+            pos = tree.pos
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
             env = env.leaveJoin          
