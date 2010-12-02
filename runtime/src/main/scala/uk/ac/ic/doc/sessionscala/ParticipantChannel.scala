@@ -13,7 +13,7 @@ class ParticipantChannel(val chanFrom: Channel[Any], val chanTo: OutputChannel[A
       case x: R => x
   }
 
-  def react(f: PartialFunction[Any, Unit]) = chanFrom.receive(f)
+  def react(f: PartialFunction[Any, Unit]) = chanFrom.react(f)
 
   def receive[R](f: PartialFunction[Any, R]) = chanFrom.receive(f)
 }
