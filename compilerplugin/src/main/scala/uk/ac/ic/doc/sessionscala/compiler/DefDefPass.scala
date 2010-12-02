@@ -16,12 +16,12 @@ abstract class DefDefPass extends PluginComponent
 	def isSessionChannelType(t: Type): Boolean = {
     val function1 = definitions.FunctionClass(1)
     val sessionChannel = typeRef(function1.owner.tpe, function1,
-            List(definitions.StringClass.tpe, participantChannelClass.tpe))
-    //println(t + " <:< " + sessionChannel)
+            List(definitions.SymbolClass.tpe, participantChannelClass.tpe))
+    //println(t + " <:< " + sessionChannel + ": " + (t <:< sessionChannel))
     t <:< sessionChannel
   }
 
-  def sessionChannelName(tpe: Type): List[Name] = tpe match {
+  def sessionChannelNames(tpe: Type): List[Name] = tpe match {
     case MethodType(argTypes, _) =>
       (for (argS <- argTypes if isSessionChannelType(argS.tpe))
         yield Some(argS.name)) flatten
@@ -35,7 +35,7 @@ abstract class DefDefPass extends PluginComponent
 		case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
         println("method def: " + name + ", symbol: " + tree.symbol)
 
-        val chanNames = sessionChannelName(tree.symbol.tpe)
+        val chanNames = sessionChannelNames(tree.symbol.tpe)
         if (!chanNames.isEmpty) {
           if (!tparams.isEmpty) reporter.error(tree.pos,
               "Type parameters not supported for session methods")
