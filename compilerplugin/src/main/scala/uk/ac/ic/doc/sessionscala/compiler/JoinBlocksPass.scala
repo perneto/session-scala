@@ -5,7 +5,8 @@ import org.scribble.protocol.model.ProtocolModel
 import tools.nsc.plugins.PluginComponent
 import util.control.ControlThrowable
 import java.io.{File, FileInputStream}
-import tools.nsc.{Global, Phase}
+import tools.nsc.Phase
+
 
 abstract class JoinBlocksPass extends PluginComponent
                                  with SessionTypingEnvironments
@@ -13,14 +14,14 @@ abstract class JoinBlocksPass extends PluginComponent
                                  with SessionTypeCheckingTraversers {
   import global._
 
-  val defdefpass: DefDefPass
-	
+  var inferred: InferredTypeRegistry = null
+
   class AbortException extends ControlThrowable
 
   class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
-    def initEnvironment = new JoinBlockTopLevelEnv // todo: connect passes
+    def initEnvironment = new JoinBlockTopLevelEnv(inferred)
 
     def parseFile(filename: String, pos: Position): ProtocolModel = {
       var globalModel: ProtocolModel = null;
@@ -61,9 +62,9 @@ abstract class JoinBlocksPass extends PluginComponent
             pos = tree.pos
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
-            env = env.leaveJoin          
+            env = env.leaveJoin
           } catch {
-            case e: SessionTypeCheckingException => 
+            case e: SessionTypeCheckingException =>
               reporter.error(pos, e.getMessage)
           }
 

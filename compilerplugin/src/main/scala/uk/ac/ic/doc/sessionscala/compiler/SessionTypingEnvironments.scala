@@ -274,6 +274,8 @@ trait SessionTypingEnvironments {
     def leaveSessionMethod: SessionTypingEnvironment = this
 
     def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type): SessionTypedElements = throw new IllegalStateException
+
+    def inferred: InferredTypeRegistry = throw new IllegalStateException("this environment does not have inferred types")
   }
 
   abstract class AbstractDelegatingEnv(val parent: SessionTypingEnvironment) 
@@ -356,6 +358,7 @@ trait SessionTypingEnvironments {
     }
 
     override def toString = "MethodSessionTypeInferenceTopLevelEnv{ste: " + ste + "}"
+    override def inferred = this
   }
 
   class InMethodInferenceEnv(parent: SessionTypingEnvironment, val ste: SessionTypedElements, 

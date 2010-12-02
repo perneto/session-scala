@@ -27,27 +27,27 @@ abstract class DefDefPass extends PluginComponent
         yield Some(argS.name)) flatten
     case _ => Nil
   }
-  
+
   class SessionMethodDefTraverser extends SessionTypeCheckingTraverser {
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
     
     override def traverse(tree: Tree) = tree match {
-			case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
-  	    //println("method def: " + name + ", symbol: " + tree.symbol)
-  	
-  	    val chanNames = sessionChannelName(tree.symbol.tpe)
-  	    if (!chanNames.isEmpty) {
-  	      if (!tparams.isEmpty) reporter.error(tree.pos,
-  	          "Type parameters not supported for session methods")
-  	      //println(chanNames)
-  	      env = env.enterSessionMethod(tree.symbol, chanNames)
-  	      traverse(rhs)
-  	      env = env.leaveSessionMethod
-  	    } else {
-  	      super.traverse(tree)
-  	    }
-			case _ => super.traverse(tree)
-		}
+		case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
+        println("method def: " + name + ", symbol: " + tree.symbol)
+
+        val chanNames = sessionChannelName(tree.symbol.tpe)
+        if (!chanNames.isEmpty) {
+          if (!tparams.isEmpty) reporter.error(tree.pos,
+              "Type parameters not supported for session methods")
+          println("enter session method, chans: " + chanNames)
+          env = env.enterSessionMethod(tree.symbol, chanNames)
+          traverse(rhs)
+          env = env.leaveSessionMethod
+        } else {
+          super.traverse(tree)
+        }
+      case _ => super.traverse(tree)
+    }
   }
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
@@ -55,10 +55,12 @@ abstract class DefDefPass extends PluginComponent
       println("DefDefPass starting")
 
       //global.treeBrowsers.create().browse(unit.body)
-      val typeChecker = new SessionMethodDefTraverser
-      typeChecker(unit.body)
-      println(typeChecker.env)
+      val inferenceTraverser = new SessionMethodDefTraverser
+      inferenceTraverser(unit.body)
+      println(inferenceTraverser.env)
+      nextPass.inferred = inferenceTraverser.env.inferred.asInstanceOf[nextPass.InferredTypeRegistry]
     }
   }
 
+  val nextPass: JoinBlocksPass
 }
