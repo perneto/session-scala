@@ -151,7 +151,6 @@ trait SessionTypeCheckingTraversers {
       } catch {
         case e: SessionTypeCheckingException =>
           reporter.error(pos, e.getMessage)
-          throw e
       }
     }
 

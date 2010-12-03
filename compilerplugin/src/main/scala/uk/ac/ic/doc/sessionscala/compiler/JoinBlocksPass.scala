@@ -71,7 +71,6 @@ abstract class JoinBlocksPass extends PluginComponent
           } catch {
             case e: SessionTypeCheckingException =>
               reporter.error(pos, e.getMessage)
-              throw e
           }
 
         case _ =>
