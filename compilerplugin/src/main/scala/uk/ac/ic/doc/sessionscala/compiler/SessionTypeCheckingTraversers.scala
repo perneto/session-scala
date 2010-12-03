@@ -39,10 +39,13 @@ trait SessionTypeCheckingTraversers {
         tree match {
           case Apply(Select(Apply(Select(Ident(session),_),Apply(_, Literal(role)::Nil)::Nil),_),arg::Nil)
           if sym == bangMethod && env.isSessionChannel(session) =>
-            //println("bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
-            //        + ", session: " + session + ", role: " + role)
+            println("***** bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
+                    + ", session: " + session + ", role: " + role)
+            println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
             pos = tree.pos
-            env = env.send(session, role.stringValue, arg.tpe)
+            val t = definitions.getClass(arg.tpe.typeSymbol.fullName).tpe // fixme: nasty hack
+            println("t: " + t)
+            env = env.send(session, role.stringValue, t)
             traverse(arg)
 
           case TypeApply(
@@ -56,7 +59,7 @@ trait SessionTypeCheckingTraversers {
           if sym == qmarkMethod && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-            //println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
+            println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
             env = env.receive(session, role.stringValue, tree.tpe)
             super.traverse(tree)
@@ -72,7 +75,7 @@ trait SessionTypeCheckingTraversers {
                  ),
                  (f@Function(_,Match(_,cases)))::Nil
                )
-          if sym == receiveMethod && env.isSessionChannel(session) =>
+          if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
               //println("receiveMethod, session: " + session + ", role: " + role
               //        + ", cases: " + cases)
               pos = tree.pos
@@ -82,16 +85,15 @@ trait SessionTypeCheckingTraversers {
                   reporter.error(c.guard.pos,
                     "Receive clauses on session channels (branching) do not support guards yet")
                 } else {
-                  def processBranch = {
-                    pos = c.pat.pos
-                    env = env.enterChoiceReceiveBranch(c.pat.tpe)
-                    traverse(c.body)
-                    pos = c.body.pos
-                    env = env.leaveChoiceReceiveBranch
-                  }
                   c.pat match {
-                    case Select(_,name) => processBranch
-                    case Ident(name) => processBranch
+                    case Select(_,_) | Ident(_) | Bind(_,_) =>
+                      pos = c.pat.pos
+                      val t = c.pat.tpe
+                      val msgTpe = definitions.getClass(t.typeSymbol.fullName).tpe // fixme: other nasty hack
+                      env = env.enterChoiceReceiveBranch(msgTpe)
+                      traverse(c.body)
+                      pos = c.body.pos
+                      env = env.leaveChoiceReceiveBranch
                     case _ =>
                       reporter.error(c.pat.pos,
                         "Receive clauses on session channels (branching) do not support complex patterns yet")
@@ -115,6 +117,8 @@ trait SessionTypeCheckingTraversers {
           // todo: support pattern matching on standard receives, checking that all
           // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
 
+          // todo: deal with method nesting and name shadowing
+
           case Assign(lhs,rhs) if isSessionChannel(rhs) => linearityError(lhs,rhs)
           case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
 
@@ -127,6 +131,19 @@ trait SessionTypeCheckingTraversers {
             traverse(elsep)
             env = env.leaveIf
 
+          case DefDef(_,name,tparams,_,_,rhs) =>
+            println("method def: " + name + ", symbol: " + tree.symbol)
+
+            val chanNames = sessionChannelNames(tree.symbol.tpe)
+            if (!chanNames.isEmpty) {
+              if (!tparams.isEmpty) reporter.error(tree.pos,
+                  "Type parameters not supported for session methods")
+              println("enter session method, chans: " + chanNames)
+              visitSessionMethod(tree.symbol, rhs, chanNames)
+            } else {
+              super.traverse(tree)
+            }
+
           case _ =>
             super.traverse(tree)
         }
@@ -137,5 +154,23 @@ trait SessionTypeCheckingTraversers {
           throw e
       }
     }
+
+    def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name])
+
+    def isSessionChannelType(t: Type): Boolean = {
+      val function1 = definitions.FunctionClass(1)
+      val sessionChannel = typeRef(function1.owner.tpe, function1,
+              List(definitions.SymbolClass.tpe, participantChannelClass.tpe))
+      //println(t + " <:< " + sessionChannel + ": " + (t <:< sessionChannel))
+      t <:< sessionChannel
+    }
+
+    def sessionChannelNames(tpe: Type): List[Name] = tpe match {
+      case MethodType(argTypes, _) =>
+        (for (argS <- argTypes if isSessionChannelType(argS.tpe))
+          yield Some(argS.name)) flatten
+      case _ => Nil
+    }
+    
   }
 }

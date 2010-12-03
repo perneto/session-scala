@@ -9,7 +9,7 @@ import org.scribble.protocol.model._
  * Created by: omp08
  */
 
-class SessionTest extends FunSuite with SessionTypingEnvironments
+class SessionTest extends FunSuite with ScalaTypeSystemComponent
         with ScribbleParsing
         with ScalaCompilerSetup
         with ShouldMatchers {

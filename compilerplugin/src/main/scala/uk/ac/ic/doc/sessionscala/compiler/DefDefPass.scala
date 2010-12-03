@@ -9,44 +9,18 @@ import tools.nsc.{Global, Phase}
 
 abstract class DefDefPass extends PluginComponent
                              with SessionTypingEnvironments
+                             with ScalaTypeSystemComponent
                              with SessionDefinitions
                              with SessionTypeCheckingTraversers {
   import global._
 
-	def isSessionChannelType(t: Type): Boolean = {
-    val function1 = definitions.FunctionClass(1)
-    val sessionChannel = typeRef(function1.owner.tpe, function1,
-            List(definitions.SymbolClass.tpe, participantChannelClass.tpe))
-    //println(t + " <:< " + sessionChannel + ": " + (t <:< sessionChannel))
-    t <:< sessionChannel
-  }
-
-  def sessionChannelNames(tpe: Type): List[Name] = tpe match {
-    case MethodType(argTypes, _) =>
-      (for (argS <- argTypes if isSessionChannelType(argS.tpe))
-        yield Some(argS.name)) flatten
-    case _ => Nil
-  }
-
-  class SessionMethodDefTraverser extends SessionTypeCheckingTraverser {
+	class SessionMethodDefTraverser extends SessionTypeCheckingTraverser {
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    
-    override def traverse(tree: Tree) = tree match {
-		case DefDef(_,name,tparams,vparamss,tpt,rhs) =>
-        println("method def: " + name + ", symbol: " + tree.symbol)
 
-        val chanNames = sessionChannelNames(tree.symbol.tpe)
-        if (!chanNames.isEmpty) {
-          if (!tparams.isEmpty) reporter.error(tree.pos,
-              "Type parameters not supported for session methods")
-          println("enter session method, chans: " + chanNames)
-          env = env.enterSessionMethod(tree.symbol, chanNames)
-          traverse(rhs)
-          env = env.leaveSessionMethod
-        } else {
-          super.traverse(tree)
-        }
-      case _ => super.traverse(tree)
+    override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
+      env = env.enterSessionMethod(method, chanNames)
+      traverse(body)
+      env = env.leaveSessionMethod
     }
   }
 

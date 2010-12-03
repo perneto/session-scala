@@ -118,7 +118,7 @@ public class Session {
             }
         }
         throw new SessionTypeCheckingException("Expected a branch label subtype among: "
-                + whensToString(whens) + "but got: " + msgSig);
+                + whensToString(whens) + ", but got: " + msgSig);
     }
 
     public Session visitBranch(MessageSignature label, Role srcRole) {

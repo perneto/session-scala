@@ -15,6 +15,7 @@ trait SessionDefinitions {
   lazy val qmarkMethod = definitions.getMember(participantChannelClass, "$qmark")
   lazy val bangMethod = definitions.getMember(participantChannelClass, "$bang")
   lazy val receiveMethod = definitions.getMember(participantChannelClass, "receive")
+  lazy val reactMethod = definitions.getMember(participantChannelClass, "receive")
 }
 
 

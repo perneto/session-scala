@@ -5,27 +5,26 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scribble.protocol.model.TypeReference
 
 class TypeMappingTest extends FunSuite
-                      with SessionTypingEnvironments
+                      with ScalaTypeSystemComponent
                       with ScalaCompilerSetup
                       with ScribbleParsing
                       with ShouldMatchers {
 
   import global._
 
+  lazy val t = definitions.getClass("scala.None").tpe
+
   test("map object type, scala -> scribble") {
-    ScalaTypeSystem.scalaToScribble(
-      definitions.getClass("scala.None").tpe) should be === (new TypeReference("None"))
+    ScalaTypeSystem.scalaToScribble(t) should be === (ScalaTypeReference(t))
   }
 
   test("map object type, scribble -> scala") {
-    ScalaTypeSystem.scribbleToScala(Nil, new TypeReference("None")) should be === (
-            definitions.getClass("scala.None").tpe
-            )
+    ScalaTypeSystem.scribbleToScala(Nil, ScalaTypeReference(t)) should be === (t)
+    ScalaTypeSystem.scribbleToScala(Nil, new TypeReference("None")) should be === (t)
   }
 
   test("map user-defined object") {
-    ScalaTypeSystem.scalaToScribble(
-    definitions.getModule("compileok.buyerseller.OK").tpe) should be === (new TypeReference("OK"))
-      
+    val okTpe = definitions.getModule("compileok.buyerseller.OK").tpe
+    ScalaTypeSystem.scalaToScribble(okTpe) should be === (ScalaTypeReference(okTpe))      
   }
 }

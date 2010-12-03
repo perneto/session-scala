@@ -3,68 +3,17 @@ package uk.ac.ic.doc.sessionscala.compiler
 import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
-import java.util.{List => JList}
 import tools.nsc.Global
-import tools.nsc.util.BatchSourceFile
 import scalaj.collection.Imports._
 import java.io._
     
 trait SessionTypingEnvironments {
+  self: ScalaTypeSystemComponent =>
   val scribbleJournal: Journal
   val global: Global
   import global.{Block => _, _}
 
   val projector = new ProtocolProjectorImpl
-
-  object ScalaTypeSystem extends HostTypeSystem {
-    lazy val rootCtx = global.analyzer.rootContext(
-        new CompilationUnit(new BatchSourceFile("<sessiontyping>", "")))
-
-    def scalaToScribble(t: Type): TypeReference = {
-      val s = t.toString // fixme: temporary hack
-      val i = s.indexOf('(')
-      val end = if (i > 0) i else s.length
-      val lastDot = s.lastIndexOf('.')
-      var substring = s.substring(lastDot + 1, end)
-      if (substring.equals("type")) {
-        val before = s.substring(0, lastDot)
-        substring = before.substring(before.lastIndexOf('.') + 1, before.length)
-      }
-      //println("Converted Scala type: " + t + " to Scribble type: " + substring)
-      new TypeReference(substring)
-    }
-
-    def scribbleToScala(imports: Seq[ImportList], tref: TypeReference): Type = {
-      val found: Seq[Type] = imports.map({i: ImportList =>
-        val javaPackage = i.getLocation
-        assert(javaPackage != null)
-
-        val typeImport: TypeImport = i.getTypeImport(tref.getName)
-        if (typeImport != null) {
-          val dataType = typeImport.getDataType
-          assert(dataType.getFormat == "java")
-          val javaClassName = dataType.getDetails
-          Some(definitions.getClass(javaPackage + "." + javaClassName).tpe)
-        } else None
-      }).flatten
-      if (found.length == 1) found(0)
-      else if (found.length > 2) throw new IllegalStateException(
-        "Should not happen: found more than 1 matching import for " + tref)
-      else {
-        val l = rootCtx.imports.map(_.importedSymbol(newTypeName(tref.getName)))
-                .filter(_ != NoSymbol)
-        if (l.length >= 1) l(0).tpe // order: scala.Predef, scala, java.lang
-        else throw new SessionTypeCheckingException("Could not find pre-defined type: " + tref.getName + ". Imports list is: " + imports)
-      }
-    }
-
-    def isSubtype(subtype: TypeReference, supertype: TypeReference, imports: JList[ImportList]) =
-      isSubType(scribbleToScala(imports.asScala, subtype),
-                scribbleToScala(imports.asScala, supertype))
-
-  }
-
-  val typeSystem = ScalaTypeSystem
 
   type SharedChannels = Map[Name, ProtocolModel]
   type Sessions = Map[Name, Session]
@@ -110,9 +59,7 @@ trait SessionTypingEnvironments {
         if (m == method) found = label
       if (found == null) {
         val l = newLabel()
-        val ret = (copy(labels = labels + (l -> method)), l)
-        println("registerMethod: " + ret)
-        ret
+        (copy(labels = labels + (l -> method)), l)
       } else (this, found)
     }
     def newLabel() = {
@@ -311,7 +258,7 @@ trait SessionTypingEnvironments {
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type) =
       parent.branchComplete(parentSte, chan, branch1, branch2, label)
-}
+  }
 
   abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
     val parent = null
@@ -376,13 +323,13 @@ trait SessionTypingEnvironments {
     }
 
     override def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
-      val inter = createInteraction(null, new Role(role), new TypeReference(typeSystem.scalaToScribble(msgType)))
+      val inter = createInteraction(null, new Role(role), typeSystem.scalaToScribble(msgType))
       //println("send, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
 
     override def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
-      val inter = createInteraction(new Role(role), null, new TypeReference(typeSystem.scalaToScribble(msgType)))
+      val inter = createInteraction(new Role(role), null, typeSystem.scalaToScribble(msgType))
       //println("receive, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
@@ -411,10 +358,7 @@ trait SessionTypingEnvironments {
       val inf = newSte.getInferredFor(method) map { case (chan, listInf) =>
         (chan -> List(createLabelledBlock(label, listInf)))
       }
-      val newSte2 = newSte.updated(method, inf)
-      println("leaveSessionMethod, newSte2: " + newSte2)
-
-      parent.updated(newSte2)
+      parent.updated(newSte.updated(method, inf))
     }
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: Type) = {
@@ -718,14 +662,12 @@ trait SessionTypingEnvironments {
 
     // Similar to normal typechecking, this can be a choice selection as well as a normal interaction
     def sendOrReceive(sess: Session, i: Interaction) = {
-      // fixme: store inferred as scala types, not typereferences - no imports known at inference time, currently hacked
       val tRef = i.getMessageSignature.getTypeReferences.get(0)
       val src = i.getFromRole
       val dsts = i.getToRoles
       val dst = if (dsts.isEmpty) null else dsts.get(0)
-      //println("sendOrReceive - " + i)
-      // not defining an interaction(Interaction) method, since the above fixme will require a type translation here
-      sess.interaction(src, dst, i.getMessageSignature.getTypeReferences.get(0))
+      println("sendOrReceive - " + i + ", tRef: " + tRef)
+      sess.interaction(src, dst, tRef)
     }
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type) = {

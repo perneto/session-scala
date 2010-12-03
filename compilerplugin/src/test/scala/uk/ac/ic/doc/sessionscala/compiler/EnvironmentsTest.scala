@@ -9,6 +9,7 @@ import org.scalatest.matchers.ShouldMatchers
  */
 
 class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
+                                        with ScalaTypeSystemComponent
                                         with ScalaCompilerSetup
                                         with ScribbleParsing
                                         with ShouldMatchers {
@@ -27,11 +28,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val anyT = definitions.AnyClass.tpe
   val charSequenceT = definitions.getClass("java.lang.CharSequence").tpe
   
-  val stringTRef = new TypeReference("String")
-  val charSequenceTRef = new TypeReference("CharSequence")
-  val intTRef = new TypeReference("Int")
-  val floatTRef = new TypeReference("Float")
-  val objectTRef = new TypeReference("Object")
+  val stringTRef = ScalaTypeReference(stringT)
+  val charSequenceTRef = ScalaTypeReference(charSequenceT)
+  val intTRef = ScalaTypeReference(intT)
+  val floatTRef = ScalaTypeReference(floatT)
+  val objectTRef = ScalaTypeReference(objectT)
   val aliceRole = new Role("Alice")
   val bobRole = new Role("Bob")
 

@@ -11,7 +11,8 @@ import tools.nsc.Phase
 abstract class JoinBlocksPass extends PluginComponent
                                  with SessionTypingEnvironments
                                  with SessionDefinitions
-                                 with SessionTypeCheckingTraversers {
+                                 with SessionTypeCheckingTraversers
+                                 with ScalaTypeSystemComponent {
   import global._
 
   var inferred: InferredTypeRegistry = null
@@ -35,6 +36,10 @@ abstract class JoinBlocksPass extends PluginComponent
         throw new AbortException
       }
       globalModel
+    }
+
+    override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
+      // do nothing, and skip visiting the method body as it's checked by DefDefPass
     }
 
     override def traverse(tree: Tree) {
@@ -66,6 +71,7 @@ abstract class JoinBlocksPass extends PluginComponent
           } catch {
             case e: SessionTypeCheckingException =>
               reporter.error(pos, e.getMessage)
+              throw e
           }
 
         case _ =>
