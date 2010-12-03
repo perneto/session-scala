@@ -4,7 +4,7 @@ import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala._
 
 
-object BuyerSellerRecursive {
+object BuyerSellerRecursiveTest {
   def main(args: Array[String]) {
     @protocol("buyersellerrec.scribble")
     val sharedChannel = SharedChannel.createLocalChannel(Set('Buyer, 'Seller))

@@ -67,6 +67,7 @@ abstract class JoinBlocksPass extends PluginComponent
             pos = tree.pos
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
+            pos = tree.pos
             env = env.leaveJoin
           } catch {
             case e: SessionTypeCheckingException =>

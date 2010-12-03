@@ -4,7 +4,7 @@ import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.{protocol, SharedChannel}
 
 
-object BuyerSeller {
+object BuyerSellerTest {
   def main(args: Array[String]) {
     @protocol("buyerseller.scribble")
     // Scribble file also contains roles, could

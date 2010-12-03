@@ -7,9 +7,9 @@ import uk.ac.ic.doc.sessionscala.{ParticipantChannel, protocol, SharedChannel}
  * Created by: omp08
  */
 
-object BadAssignment {
+object BadAssignmentTest {
   def m {
-    @protocol("../buyerseller.scribble")
+    @protocol("../compileok/buyerseller/buyerseller.scribble")
     val sharedChan = SharedChannel.createLocalChannel(Set('Buyer, 'Seller))
 
     actor {

@@ -8,9 +8,9 @@ import actors.Actor.actor
  * Created by: omp08
  */
 
-object BadBranching {
+object BadBranchingTest {
   def m {
-    @protocol("buyerseller.scribble")
+    @protocol("../compileok/buyerseller/buyerseller.scribble")
     val sharedChan = SharedChannel.createLocalChannel(Set('Buyer, 'Seller))
 
     actor {
