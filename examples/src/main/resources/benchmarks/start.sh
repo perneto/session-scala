@@ -17,7 +17,7 @@ start_monitor() {
 }
 
 start_client() {
-  ssh -f $1 "pwd && echo $1: start $2 && $BENCHMARKS/include.sh && start_role '$2' $3"
+  ssh -f $1 "echo $1: start $2 && . $BENCHMARKS/include.sh && start_role '$2' $3"
 }
 
 
