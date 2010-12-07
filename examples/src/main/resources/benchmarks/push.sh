@@ -1,8 +1,12 @@
 #!/bin/bash
 
-hg push ssh://shade02/session-scala
-hg push ssh://shadexx/session-scala
-hg push ssh://shade04/session-scala
-hg push ssh://treebeard/session-scala
-hg push ssh://matrix13/session-scala
-hg push ssh://matrix16/session-scala
+push() {
+  hg push ssh://$1/session-scala
+  ssh $1 "cd session-scala && hg up"
+}
+push shade02
+push shadexx
+push shade04
+push treebeard
+push matrix13
+push matrix16
