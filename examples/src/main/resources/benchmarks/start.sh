@@ -13,7 +13,11 @@ BROKER=10.1.0.254 # shade07
 . include.sh
 
 start_monitor() {
-  ssh $1 "echo $1: $BENCHMARKS/start_monitor.sh"
+  ssh -f $1 "echo $1: start monitor && $BENCHMARKS/start_monitor.sh"
+}
+
+start_client() {
+  ssh -f $1 "pwd && echo $1: start $2 && cd $BENCHMARKS && . include.sh && start_role '$2' $3"
 }
 
 
@@ -24,8 +28,8 @@ start_monitor $MON1
 start_monitor $MON2
 start_monitor $MON3
 
-ssh $CLIENT1 "echo $CLIENT1: && cd $BENCHMARKS && . include.sh && start_role 'Inviter' $MON1"
-ssh $CLIENT2 "echo $CLIENT2: && cd $BENCHMARKS && . include.sh && start_role 'Buyer' $MON2"
-ssh $CLIENT3 "echo $CLIENT3: && cd $BENCHMARKS && . include.sh && start_role 'Seller' $MON3"
+start_client $CLIENT1 Inviter $MON1
+start_client $CLIENT2 Buyer $MON2
+start_client $CLIENT3 Seller $MON3
 
 ssh $BROKER "rabbitmqctl stop"
