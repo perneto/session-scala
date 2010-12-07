@@ -14,5 +14,6 @@ start_role() {
   cd session-scala
   hg up
   sbt "project runtime" update package "project examples" package
+  echo scala -cp $RUNTIME_LIB:$RUNTIME_JAR:$EXAMPLES_JAR benchmark.buyerseller.$1 $2
   scala -cp $RUNTIME_LIB:$RUNTIME_JAR:$EXAMPLES_JAR benchmark.buyerseller.$1 $2
 }

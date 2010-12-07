@@ -17,7 +17,7 @@ start_monitor() {
 }
 
 start_client() {
-  ssh -f $1 "echo $1: start $2 && . $BENCHMARKS/include.sh && start_role '$2' $3"
+  ssh $1 "echo $1: start $2 && . $BENCHMARKS/include.sh && start_role '$2' $3"
 }
 
 
@@ -28,9 +28,10 @@ start_monitor $MON1
 start_monitor $MON2
 start_monitor $MON3
 
-start_client $CLIENT1 Inviter $MON1
-start_client $CLIENT2 Buyer $MON2
-start_client $CLIENT3 Seller $MON3
+start_client $CLIENT1 Inviter $MON1 &
+start_client $CLIENT2 Buyer $MON2 &
+start_client $CLIENT3 Seller $MON3 # not in background
 
-sleep 5
+sleep 10
 ssh $BROKER "rabbitmqctl stop"
+ssh $MON1 "kill $"
