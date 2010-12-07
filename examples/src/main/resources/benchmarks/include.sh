@@ -1,13 +1,6 @@
 #!/bin/bash
 
 
-session-scala_update() {
-  (cd session-scala; hg pull -u)
-}
-sessml_update() {
-   (cd SessML; svn up && make)
-}
-
 ROOT=/home/omp08/session-scala
 BENCHMARKS=$ROOT/examples/src/main/resources/benchmarks
 RT_LIB_DIR=$ROOT/runtime/lib_managed/2.8.1/compile/
@@ -19,7 +12,6 @@ EXAMPLES_JAR=session-scala/examples/target/scala_2.8.1/examples_2.8.1-0.1.jar
 # $2: IP address of monitor (or AMQP broker)
 start_role() {
   cd session-scala
-  hg pull -u https://session-scala.googlecode.com/hg/
   sbt package
   scala -cp $RUNTIME_LIB:$RUNTIME_JAR:$EXAMPLES_JAR benchmark.buyerseller.$1 $2
 }
