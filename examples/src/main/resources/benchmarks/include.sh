@@ -12,6 +12,6 @@ EXAMPLES_JAR=session-scala/examples/target/scala_2.8.1/examples_2.8.1-0.1.jar
 # $2: IP address of monitor (or AMQP broker)
 start_role() {
   cd session-scala
-  sbt package
+  sbt update package
   scala -cp $RUNTIME_LIB:$RUNTIME_JAR:$EXAMPLES_JAR benchmark.buyerseller.$1 $2
 }
