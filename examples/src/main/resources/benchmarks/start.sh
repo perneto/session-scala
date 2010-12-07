@@ -21,7 +21,7 @@ start_client() {
 }
 
 
-ssh $BROKER "rabbitmq-server" > rabbitmq-server.out &
+ssh -f $BROKER "rabbitmq-server" > rabbitmq-server.out 
 echo Started rabbitmq-server
 
 start_monitor $MON1
@@ -32,4 +32,5 @@ start_client $CLIENT1 Inviter $MON1
 start_client $CLIENT2 Buyer $MON2
 start_client $CLIENT3 Seller $MON3
 
+sleep 5
 ssh $BROKER "rabbitmqctl stop"

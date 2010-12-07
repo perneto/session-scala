@@ -8,8 +8,9 @@ sessml_update() {
    (cd SessML; svn up && make)
 }
 
-BENCHMARKS=session-scala/examples/src/main/resources/benchmarks
-RT_LIB_DIR=session-scala/runtime/lib_managed/2.8.1/compile/
+ROOT=/home/omp08/session-scala
+BENCHMARKS=$ROOT/examples/src/main/resources/benchmarks
+RT_LIB_DIR=$ROOT/runtime/lib_managed/2.8.1/compile/
 RUNTIME_LIB=$RT_LIB_DIR/amqp-client-2.1.1.jar:$RT_LIB_DIR/commons-cli-1.1.jar:$RT_LIB_DIR/commons-io-1.2.jar:$RT_LIB_DIR/scalaj-collection_2.8.0-1.0.jar
 RUNTIME_JAR=session-scala/runtime/target/scala_2.8.1/runtime_2.8.1-0.1.jar
 EXAMPLES_JAR=session-scala/examples/target/scala_2.8.1/examples_2.8.1-0.1.jar
