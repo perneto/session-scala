@@ -13,6 +13,6 @@ EXAMPLES_JAR=session-scala/examples/target/scala_2.8.1/examples_2.8.1-0.1.jar
 start_role() {
   cd session-scala
   hg up
-  sbt update package
+  sbt "project runtime" update package "project examples" package
   scala -cp $RUNTIME_LIB:$RUNTIME_JAR:$EXAMPLES_JAR benchmark.buyerseller.$1 $2
 }

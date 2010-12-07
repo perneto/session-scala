@@ -13,7 +13,7 @@ BROKER=10.1.0.254 # shade07
 . include.sh
 
 start_monitor() {
-  ssh -f $1 "echo $1: start monitor && (cd $ROOT && hg up) && $BENCHMARKS/start_monitor.sh"
+  ssh -f $1 "echo $1: start monitor && cd $BENCHMARKS && hg up && ./start_monitor.sh"
 }
 
 start_client() {
