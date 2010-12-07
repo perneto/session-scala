@@ -24,8 +24,8 @@ start_monitor $MON1
 start_monitor $MON2
 start_monitor $MON3
 
-ssh $CLIENT1 "echo $CLIENT1: cd $BENCHMARKS && . include.sh && start_role 'Inviter' $MON1"
-ssh $CLIENT2 "echo $CLIENT2: cd $BENCHMARKS && . include.sh && start_role 'Buyer' $MON2"
-ssh $CLIENT3 "echo $CLIENT3: cd $BENCHMARKS && . include.sh && start_role 'Seller' $MON3"
+ssh $CLIENT1 "echo $CLIENT1: && cd $BENCHMARKS && . include.sh && start_role 'Inviter' $MON1"
+ssh $CLIENT2 "echo $CLIENT2: && cd $BENCHMARKS && . include.sh && start_role 'Buyer' $MON2"
+ssh $CLIENT3 "echo $CLIENT3: && cd $BENCHMARKS && . include.sh && start_role 'Seller' $MON3"
 
 ssh $BROKER "rabbitmqctl stop"
