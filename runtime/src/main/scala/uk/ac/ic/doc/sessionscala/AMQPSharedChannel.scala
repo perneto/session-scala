@@ -218,10 +218,38 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
   val STRING_CODE: Byte = 1
   val TRUE_CODE: Byte = 2
   val FALSE_CODE: Byte = 3
+  val LABELLED_CODE: Byte = 4
   val JAVA_OBJECT_CODE: Byte = -127
   val BIG_ENOUGH = 8192
   import java.nio.ByteBuffer
   import java.io._
+  def serialize(msg: Any, buf: ByteBuffer): Unit = msg match {
+    case s: String =>
+      buf.put(STRING_CODE)
+      buf.putInt(s.length)
+      buf.put(s.getBytes(CHARSET))
+    case i: Int =>
+      buf.put(INT_CODE)
+      buf.putInt(i)
+    case true =>
+      buf.put(TRUE_CODE)
+    case false =>
+      buf.put(FALSE_CODE)
+    case x if hasUnapply(x) =>
+      buf.put(LABELLED_CODE)
+      serialize(typeName(x), buf)
+      // todo
+    case x if hasUnapplySeq(x) =>
+      // todo
+    case x =>
+      println("Warning - using non-interoperable Java serialization for " + x)
+      buf.put(JAVA_OBJECT_CODE)
+      val arrayOs = new ByteArrayOutputStream
+      val oos = new ObjectOutputStream(arrayOs)
+      oos.writeObject(x)
+      oos.close()
+      buf.put(arrayOs.toByteArray())
+  }
   def serialize(srcRole: Symbol, msg: Any): Array[Byte] = {
     println("serialize, msg: " + msg)
     val buf = ByteBuffer.allocate(BIG_ENOUGH)
@@ -229,33 +257,17 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     assert(srcBytes.length < 256)
     buf.put(srcBytes.length.asInstanceOf[Byte])
     buf.put(srcBytes)
-    msg match {
-      case s: String => 
-        buf.put(STRING_CODE)
-        buf.putInt(s.length)
-        buf.put(s.getBytes(CHARSET))
-      case i: Int => 
-        buf.put(INT_CODE)
-        buf.putInt(i)
-      case true =>
-        buf.put(TRUE_CODE)
-      case false =>
-        buf.put(FALSE_CODE)
-      case x =>
-        println("Warning - using non-interoperable Java serialization for " + x)
-        buf.put(JAVA_OBJECT_CODE)
-        val arrayOs = new ByteArrayOutputStream
-        val oos = new ObjectOutputStream(arrayOs)
-        oos.writeObject(x)
-        oos.close()
-        buf.put(arrayOs.toByteArray())
-    }
+
+    serialize(msg, buf)
     val result = Array.ofDim[Byte](buf.position)
     buf.flip()
     buf.get(result)
     println("serialize (" + srcRole + "," + msg + "): " + Arrays.toString(result))
     result
   }
+  def typeName(x: Any): String = "TODO"
+  def hasUnapply(x: Any): Boolean = false
+  def hasUnapplySeq(x: Any): Boolean = false
   def deserialize(msg: Array[Byte]): (Symbol, Any) = {
     val buf = ByteBuffer.wrap(msg)
     val length = buf.get()

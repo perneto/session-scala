@@ -36,74 +36,49 @@ import SharedChannel._
 26 }
 27 }
 
-
-session CmdInstrument =
- roles user[=1] : int,
-       instrument,
-       instrument_Registry ,
-       instrument_Agent
-
- global main =
-  InterfaceReq(string) from user to instrument_Registry;
-
-  InterfaceData(string) from instrument_Registry to user;
-
-  StdAccess from user to instrument_Agent;
-
-  choice from instrument_Agent to user {
-    Accept.(
-      loop:
-        choice from user to instrument_Agent {
-          More_commands.(
-            Commands(string) from user to instrument_Agent;
-            Commands(string) from instrument_Agent to instrument;
-            Response(int) from instrument to instrument_Agent;
-            Response(int) from instrument_Agent to user;
-            #loop)
-        | Quit.(Leave from instrument_Agent to instrument)}
-      )
-  | Reject(string).(
-     Err from instrument_Agent to instrument
-    )
-  }
-
-
-
  */
+case class Id(name: String)
+class Data
+class ListCommands
+
 object OOICommandInstrument {
   def main(args: Array[String]) {
     withAMQPChannel(Set('User, 'CI_Authority, 'Instrument, 'Instrument_Registry, 'Instrument_Agent)) { sharedChannel =>
 
-      sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.invite("", 'User -> localhost, 'CI_Authority -> localhost, 'Instrument -> localhost, 'Instrument_Registry -> localhost, 'Instrument_Agent -> localhost)
 
       actor {
-        sharedChannel.accept('Seller) { s =>
-          val item = s('Buyer).?[String]
-          s('Buyer) ! 2000
-          s('Buyer).receive {
-            case address: String =>
-              val deliveryDate = s('Buyer).?[String]
-              println("placing order: " + item + " " + address + " " + deliveryDate)
-            case 'quit =>
-          }
-          println("*****************Seller: finished")
+        sharedChannel.accept('User) { s =>
+          //s('Instrument_Registry) ! 'interfaceReq(Id("submarine"))
+          //s('Instrument_Registry).?
+          println("*************** User: finished")
         }
-        println("############## Seller: sharedChannel.accept exited")
       }
 
-      sharedChannel.accept('Buyer) { s =>
-        s('Seller) ! "Widget A"
-        val quote = s('Seller).?[Int]
-        if (quote < 1000) {
-          s('Seller) ! "123 Penny Lane"
-          s('Seller) ! "4/6/2011 10:00 UTC-7"
-        } else {
-          s('Seller) ! 'quit
+      actor {
+        sharedChannel.accept('CI_Authority) { s =>
+          println("***************** CI_Authority: finished")
         }
-        println("*****************Buyer: finished")
       }
-      println("############## Buyer: sharedChannel.accept exited")
+
+      actor {
+        sharedChannel.accept('Instrument) { s =>
+          println("***************** Instrument: finished")
+        }
+      }
+
+      actor {
+        sharedChannel.accept('Instrument_Registry) { s =>
+          println("***************** Instrument_Registry: finished")
+        }
+      }
+
+      //actor {
+        sharedChannel.accept('Instrument_Agent) { s =>
+          println("***************** Instrument_Agent: finished")
+        }
+      //}
+
     }
-    println("$$$$$$$$$$$$$$$$closed shared channel")
   }
 }
