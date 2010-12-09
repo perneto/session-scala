@@ -7,7 +7,6 @@ import com.rabbitmq.client.ConnectionFactory
  */
 
 object AMQPUtils {
-  val INIT_EXCHANGE = "amq.direct"
   
   def createFactory(brokerHost: String, port: Int, user: String, password: String): ConnectionFactory = {
     val factory = new ConnectionFactory
@@ -26,13 +25,5 @@ object AMQPUtils {
   def connectDefaults() = {
     val factory = new ConnectionFactory
     factory.newConnection.createChannel
-  }
-
-  def contains[K,V](seq: Seq[(K,V)], k: K): Boolean = {
-   for ((key, _) <- seq) {
-     if (k == key) return true
-   }
-   false
- }
-  
+  }  
 }

@@ -15,6 +15,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
+  val INIT_EXCHANGE = "amq.direct"
+
   def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
     def checkMapping(mapping: Seq[(Symbol,String)]) {
       val declaredRoles = Set() ++ mapping map (_._1)
