@@ -18,7 +18,7 @@ trait AMQPMessageFormats {
             + role.name + INVITE_SEPARATOR + protocol).getBytes(CHARSET)
   }
 
-  def openInvite(body: Array[Byte]) = {
+  def openInvite(body: Array[Byte]): (Symbol, String, String) = {
     val msg = new String(body, CHARSET)
     println(msg)
     val Array(exchange, role, protocol) = msg.split("\\" + INVITE_SEPARATOR)
