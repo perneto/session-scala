@@ -8,12 +8,10 @@ import java.io._
  * Created by: omp08
  */
 
-trait AMQPMessageFormats {
-  self: AMQPSharedChannel =>
+trait AMQPMessageFormats {  
+  private val CHARSET = "ISO-8859-1"
 
-  val CHARSET = "ISO-8859-1"
-
-  val INVITE_SEPARATOR = "$"
+  private val INVITE_SEPARATOR = "$"
 
   def serializeInvite(sessExchange: String, role: Symbol, protocol: String): Array[Byte] = {
     (sessExchange + INVITE_SEPARATOR
