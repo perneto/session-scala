@@ -111,7 +111,7 @@ class SharedChannelJoinSpec extends FunSuite with ShouldMatchers with Timeouts {
       s('Foo) ! 'a'
     }}
 
-    Thread.sleep(500) // needs to be longer than the sleep in Bar! otherwise message will not have arrived yet
+    Thread.sleep(800) // needs to be longer than the sleep in Bar! otherwise message will not have arrived yet
     assert(barOk)
     assert(quuxOk)
   }
