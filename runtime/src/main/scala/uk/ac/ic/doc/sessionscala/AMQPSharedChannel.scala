@@ -1,21 +1,27 @@
 package uk.ac.ic.doc.sessionscala
 
 import AMQPUtils._
-import com.rabbitmq.client.__
+import com.rabbitmq.client._
 import scala.actors.{Channel => _, _}
 import java.io.File
 
-class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, user: String, password: String)
+class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port: Int, val user: String, val password: String)
         extends SharedChannel(awaiting)
         with AMQPMessageFormats
         with MatchmakerActorComponent
         with AMQPActorProxyComponent
-        with CoordinationActorsComponent {
-  val factory = createFactory(brokerHost, port, user, password)
+        with CoordinationActorsComponent
+        with AMQPConnectionComponent {
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
   def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
+    def checkMapping(mapping: Seq[(Symbol,String)]) {
+      val declaredRoles = Set() ++ mapping map (_._1)
+      if (declaredRoles != awaiting)
+        throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
+    }
+
     def initSessionExchange(initChan: Channel): (Channel,String) = {
       var i = 1; var notDeclared = true; var chan = initChan
       def sessName = "s" + i
@@ -35,6 +41,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       (chan, sessName)
     }
 
+
     checkMapping(mapping)
 
     val initChan = connectAndInitExchange()
@@ -44,7 +51,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
       if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
       else if (protocolFile == "") null
       else io.Source.fromURL(protocolFile)
-    val scribbleType = if (source != null) source.foldLeft("")(_ + _) else "<no protocol given>"
+    val scribbleType = if (source != null) source.foldLeft("")(_ + _)
+                       else "<no protocol given>"
     inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
@@ -82,25 +90,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     }
   }
 
-  def close(chan: Channel) {
-    chan.getConnection.close()
-  }
-
-  def checkMapping(mapping: Seq[(Symbol,String)]) {
-    val declaredRoles = Set() ++ mapping map (_._1)
-    if (declaredRoles != awaiting)
-      throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
-  }
-
   override def close() {
     invitationReceiverActor ! Exit
     matchMakerActor ! Exit
     proxyRegistryActor ! Exit
-  }
-
-  def close(chan: Channel, consumerTag: String) {
-    chan.basicCancel(consumerTag)
-    close(chan)
   }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
@@ -132,9 +125,4 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     proxy ! Exit
   }
 
-  def connectAndInitExchange(): Channel = {
-    val chan = connect(factory)
-    //chan.exchangeDeclare(INIT_EXCHANGE, "direct")  no need to declare amq.direct, spec says it's always there by default
-    chan
-  }
 }

@@ -10,7 +10,10 @@ import collection.mutable
  */
 
 trait AMQPActorProxyComponent {
-  thisObject: AMQPSharedChannel=> //MatchmakerActorComponent with AMQPMessageFormats => // funny name because self is used up by Actor.self
+  thisObject: MatchmakerActorComponent
+         with AMQPMessageFormats
+         with AMQPConnectionComponent
+         with CoordinationActorsComponent => // funny name because self is used up by Actor.self
 
   case class NewDestinationRole(role: Symbol, chan: actors.Channel[Any])
   case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])

@@ -8,7 +8,10 @@ import SharedChannel.localhost
  */
 
 trait CoordinationActorsComponent {
-  thisObject: MatchmakerActorComponent with AMQPActorProxyComponent with AMQPSharedChannel =>
+  thisObject: MatchmakerActorComponent
+          with AMQPMessageFormats
+          with AMQPActorProxyComponent
+          with AMQPConnectionComponent =>
   
   val invitationReceiverActor = actor {
     println("Starting invitation receiver actor...")
