@@ -12,8 +12,9 @@ object Buyer {
   def main(args: Array[String]) {
     val brokerHost = args(0)
     withAMQPChannel(Set('Buyer, 'Seller), brokerHost) { sharedChannel =>
+      println("Buyer: before accept")
       sharedChannel.accept('Buyer) { s =>
-        println("Buyer started")
+        println("Buyer accepted")
         s('Seller) ! Title("Widget A")
         val quote = s('Seller).?[Int]
         if (quote < 1000) {
