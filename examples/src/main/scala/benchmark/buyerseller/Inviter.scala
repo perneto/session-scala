@@ -13,7 +13,7 @@ object Inviter {
     val brokerHost = args(0)
     withAMQPChannel(Set('Buyer, 'Seller), brokerHost) { sharedChannel =>
 
-      sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.invite("", 'Buyer -> "shadeXX", 'Seller -> "shade04")
     }
     println("Inviter exiting")
   }
