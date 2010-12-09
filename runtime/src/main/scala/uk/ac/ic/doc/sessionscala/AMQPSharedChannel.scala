@@ -198,8 +198,6 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
     }
   }
 
-  case class ConfirmExited(role: Symbol)
-
   val proxyRegistryActor = actor {
     var mapProxies = Map.empty[Symbol, Actor]
     def sendAll(msg: Any) = mapProxies.values foreach (_ ! msg)
