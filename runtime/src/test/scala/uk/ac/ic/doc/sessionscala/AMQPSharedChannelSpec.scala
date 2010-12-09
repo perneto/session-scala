@@ -111,7 +111,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   override def afterEach() {
     val chan = AMQPUtils.connectDefaults()
     try {
-      chan.exchangeDelete(AMQPUtils.INIT_EXCHANGE)
+      //chan.exchangeDelete(AMQPUtils.INIT_EXCHANGE) using standard amq.direct now, so no delete
       chan.queueDelete(localhost)
       chan.exchangeDelete("s1")
       chan.queueDelete("s1Alice")
