@@ -21,7 +21,7 @@ start_client() {
 }
 
 
-ssh -f $BROKER "if ! rabbitmqctl status ; then rabbitmq-server; fi" > rabbitmq-server.out 
+ssh -f $BROKER "if ! rabbitmqctl -q status ; then rabbitmq-server; fi" > rabbitmq-server.out 
 echo Started rabbitmq-server
 
 start_monitor $MON1
@@ -32,6 +32,5 @@ start_client $CLIENT1 Inviter $MON1 &
 start_client $CLIENT2 Buyer $MON2 &
 start_client $CLIENT3 Seller $MON3 # not in background
 
-sleep 10
 ssh $BROKER "rabbitmqctl stop"
 #ssh $MON1 "kill $"
