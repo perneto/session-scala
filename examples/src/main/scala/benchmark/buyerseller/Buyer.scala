@@ -13,6 +13,7 @@ object Buyer {
     val brokerHost = args(0)
     withAMQPChannel(Set('Buyer, 'Seller), brokerHost) { sharedChannel =>
       sharedChannel.accept('Buyer) { s =>
+        println("Buyer started")
         s('Seller) ! Title("Widget A")
         val quote = s('Seller).?[Int]
         if (quote < 1000) {

@@ -14,6 +14,7 @@ object Seller {
     val brokerHost = args(0)
     withAMQPChannel(Set('Buyer, 'Seller), brokerHost) { sharedChannel =>
       sharedChannel.accept('Seller) { s =>
+        println("Seller started")
         val item = s('Buyer).?[Title]
         s('Buyer) ! 2000
         s('Buyer).receive {

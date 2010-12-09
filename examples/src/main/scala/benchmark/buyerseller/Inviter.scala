@@ -15,5 +15,6 @@ object Inviter {
 
       sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
     }
+    println("Inviter exiting")
   }
 }
