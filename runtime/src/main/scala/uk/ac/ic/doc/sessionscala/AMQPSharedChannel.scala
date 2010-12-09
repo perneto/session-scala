@@ -181,11 +181,13 @@ class AMQPSharedChannel(awaiting: Set[Symbol], brokerHost: String, port: Int, us
 
     loop {
       react {
-        case i: Invite => 
+        case i: Invite =>
+          println("matchmaker: got invite " + i)
           matchMsg(accepts, i.role, (i.sessExchange, i.protocol), invites) { acceptSender =>
             acceptSender ! (i.sessExchange, i.protocol)  //todo: give list of local proxies to proxy registry so it can give it to all proxies
           }
         case Accept(acceptRole: Symbol) => 
+          println("matchmaker: got accept for role " + acceptRole)
           matchMsg(invites, acceptRole, sender, accepts) { sessExchAndProtocol =>
             sender ! sessExchAndProtocol // todo: ditto above
           }
