@@ -9,7 +9,11 @@ object SharedChannel {
                         port: Int = 5672, user: String = "guest", password: String = "guest"): SharedChannel =
     new AMQPSharedChannel(awaiting, brokerHost, port, user, password)
 
-  def localhost: String = java.net.InetAddress.getLocalHost.getCanonicalHostName
+  def localhost: String = {
+    val name = java.net.InetAddress.getLocalHost.getCanonicalHostName
+    println("localhost: " + name)
+    name
+  }
 
   def withAMQPChannel[T](awaiting: Set[Symbol], brokerHost: String = "localhost",
                          port: Int = 5672, user: String = "guest", 

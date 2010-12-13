@@ -104,6 +104,7 @@ trait AMQPActorProxyComponent {
     }
 
     def extractLabel(msg: Any): (Symbol, Any) = msg match {
+      case label: Symbol => (label, "")
       case (label: Symbol, x) => (label, x)
       case (label: Symbol, a,b) => (label, (a,b))
       case (label: Symbol, a,b,c) => (label, (a,b,c))

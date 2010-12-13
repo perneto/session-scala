@@ -21,7 +21,7 @@ object Buyer {
           s('Seller) ! "123 Penny Lane"
           s('Seller) ! "4/6/2011 10:00 UTC-7"
         } else {
-          s('Seller) ! Quit
+          s('Seller) ! 'quit
         }
         println("*****************Buyer: finished")
       }
