@@ -46,6 +46,7 @@ trait CoordinationActorsComponent {
           mapProxies += (role -> proxy)
           sendAll(mapProxies)
         case Exit =>
+          sendAll(Exit)
           println("Proxy registry exiting")
           exit()
       }
