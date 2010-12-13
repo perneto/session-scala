@@ -20,7 +20,7 @@ object Seller {
         s('Buyer) ! 2000
         s('Buyer).receive {
           case ('address, address: String) =>
-            val deliveryDate: String = s('Buyer).?
+            val (_,deliveryDate: String) = s('Buyer).?
             println("placing order: " + item + " " + address + " " + deliveryDate)
           case Quit =>
         }

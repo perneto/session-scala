@@ -17,14 +17,14 @@ object BuyerSellerTest {
     actor {
       sharedChannel.join('Seller) { s =>
         println("Seller: started")
-        val o = s('Buyer).?[Order]
+        val (_,o: Order) = s('Buyer).?
         s('Buyer) ! 2000
         s('Buyer).receive {
           case OK =>
             s('Buyer) ! new Invoice(2000)
-            val payment = s('Buyer).?[Payment]
+            val (_,payment: Payment) = s('Buyer).?
           case NotOK =>
-            val reason = s('Buyer).?[String]
+            val (_,reason: String) = s('Buyer).?
         }
         println("Seller: finished")
       }
@@ -34,10 +34,10 @@ object BuyerSellerTest {
       sharedChannel.join('Buyer) { s =>
         println("Buyer: started")
         s('Seller) ! new Order(100)
-        val price = s('Seller).?[Int]
+        val (_,price: Int) = s('Seller).?
         if (price < 10000) {
           s('Seller) ! OK
-          val invoice = s('Seller).?[Invoice]
+          val (_,invoice: Invoice) = s('Seller).?
           s('Seller) ! new Payment(price)
         } else {
           s('Seller) ! NotOK

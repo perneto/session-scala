@@ -21,7 +21,7 @@ start_client() {
 }
 
 
-ssh -f $BROKER "if ! rabbitmqctl -q status ; then rabbitmq-server; fi" > rabbitmq-server.out 
+ssh -f $BROKER "if ! (rabbitmqctl status >/dev/null 2>&1) ; then rabbitmq-server; fi" > rabbitmq-server.out 
 echo Started rabbitmq-server
 
 start_monitor $MON1

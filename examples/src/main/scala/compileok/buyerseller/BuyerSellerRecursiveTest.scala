@@ -12,17 +12,17 @@ object BuyerSellerRecursiveTest {
     actor {
       sharedChannel.join('Seller) { s =>
         println("Seller: started")
-        val o = s('Buyer).?[Order]      
+        val (_,o) = s('Buyer).?
         def quoteRecursionSeller(s: SessionChannel, quote: Int) {
           s('Buyer) ! quote
           s('Buyer).receive {
             case OK =>
               s('Buyer) ! Invoice(quote)
-              val payment = s('Buyer).?[Payment]
+              val (_,payment) = s('Buyer).?
             //case s: String => todo: this should be allowed,
             // a choice receive can have more branches than spec by subtyping
             case NotOK =>
-              val reason = s('Buyer).?[String]
+              val (_,reason) = s('Buyer).?
               quoteRecursionSeller(s, quote - 100)
           }
         }
@@ -36,10 +36,10 @@ object BuyerSellerRecursiveTest {
         println("Buyer: started")
         s('Seller) ! Order(100)
         def quoteRecursionBuyer(s: SessionChannel) {
-          val price = s('Seller).?[Int]
+          val (_,price: Int) = s('Seller).?
           if (price < 1950) {
             s('Seller) ! OK
-            val invoice = s('Seller).?[Invoice]
+            val (_,invoice: Invoice) = s('Seller).?
             s('Seller) ! Payment(price)
           } else {
             s('Seller) ! NotOK
