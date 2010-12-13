@@ -70,6 +70,11 @@ trait AMQPActorProxyComponent {
         exit()
     }
 
+    override def !(msg: Any) {
+      println(this + " received: " + msg)
+      super.!(msg)
+    }
+
     def act = {
       proxyRegistryActor ! (role, self)
       loop { receive(reactBody) }
