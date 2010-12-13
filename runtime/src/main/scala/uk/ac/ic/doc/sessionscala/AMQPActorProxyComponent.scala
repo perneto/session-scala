@@ -65,7 +65,7 @@ trait AMQPActorProxyComponent {
         println("sending (" + label + ", "+ msg + ")"+" to channel " + srcRoleChans(role))
         srcRoleChans(role) ! buildTuple(label,msg)
       case Exit =>
-        println("Proxy for role "+role+" exiting")
+        println("#############################Proxy for role "+role+" exiting")
         close(chan, consumerTag)
         exit()
     }
