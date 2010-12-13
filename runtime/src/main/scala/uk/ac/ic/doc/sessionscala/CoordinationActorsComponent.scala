@@ -47,11 +47,11 @@ trait CoordinationActorsComponent {
       react {
         case (role: Symbol, proxy: Actor) =>
           mapProxies += (role -> proxy)
-          println("updated mapProxies: " + mapProxies)
           sendAll(mapProxies)
         case Exit =>
-          sendAll(Exit)
           println("Proxy registry exiting")
+          // no need to send Exit to proxies here, this is done at the end of the accept
+          // method in AMQPSharedChannel
           exit()
       }
     }

@@ -124,6 +124,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
       }
     }
     act(sessChan)
+    println("accept: call to act finished")
     proxy ! Exit
   }
 
