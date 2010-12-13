@@ -40,13 +40,14 @@ trait CoordinationActorsComponent {
   val proxyRegistryActor = actor {
     var mapProxies = Map.empty[Symbol, Actor]
     def sendAll(msg: Any) = {
-      println("proxy registry sending to all proxies: " + msg)
+      println("proxy registry sending: " + msg + " to proxies: " + mapProxies)
       mapProxies.values foreach (_ ! msg)
     }
     loop {
       react {
         case (role: Symbol, proxy: Actor) =>
           mapProxies += (role -> proxy)
+          println("updated mapProxies: " + mapProxies)
           sendAll(mapProxies)
         case Exit =>
           sendAll(Exit)
