@@ -73,6 +73,7 @@ trait AMQPActorProxyComponent {
     override def !(msg: Any) {
       println(this + " received: " + msg)
       super.!(msg)
+      println("mailboxSize: " + this.mailboxSize)
     }
 
     def act = {
