@@ -2,6 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.Actor
 import Actor._
+import messageformats.AMQPMessageFormats
 import SharedChannel.localhost
 /**
  * Created by: omp08
@@ -25,6 +26,7 @@ trait CoordinationActorsComponent {
       react {
         case body: Array[Byte] =>
           val (invitedRole,sessExchange,protocol) = openInvite(body)
+          // todo: check protocol is compatible with the local protocol
           matchMakerActor ! Invite(invitedRole, sessExchange, protocol)
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Exit =>

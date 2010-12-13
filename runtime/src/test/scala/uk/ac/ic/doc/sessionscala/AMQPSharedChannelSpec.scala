@@ -6,7 +6,7 @@ import actors.Actor._
 import org.scalatest.{BeforeAndAfterEach, FunSuite, BeforeAndAfterAll}
 
 class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers with BeforeAndAfterEach {
-  
+
   test("invite not exhaustive: error") {
     withAMQPChannel(Set('Alice, 'Bob)) { shared =>
       intercept[IllegalArgumentException] {
@@ -89,7 +89,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
           println("ALICE STARTED")
           s('Bob) ! 4242
           println("ALICE SENT 4242 TO BOB")
-          val recv = s('Bob).?[Any]
+          val (_label,recv) = s('Bob).?
           println("ALICE RECEIVED: " + recv)
           aliceOk = recv == "foo"
         }}
@@ -98,7 +98,8 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
           println("BOB STARTED")
           s('Alice) ! "foo"
           println("BOB SENT foo TO ALICE")
-          val recv = s('Alice).?[Any]
+          val (_label,recv) = s('Alice).?
+          
           println("BOB RECEIVED: " + recv)
           bobOk = recv == 4242
         }

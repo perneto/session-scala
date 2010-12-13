@@ -13,19 +13,21 @@ trait AMQPConnectionComponent {
   val port: Int
   val user: String
   val password: String
-  val factory = createFactory(brokerHost, port, user, password)
+  private val factory = createFactory(brokerHost, port, user, password)
 
   def close(chan: Channel) {
     chan.getConnection.close()
   }
-  
+
+  def connect() = AMQPUtils.connect(factory)
+
   def close(chan: Channel, consumerTag: String) {
     chan.basicCancel(consumerTag)
     close(chan)
   }
 
   def connectAndInitExchange(): Channel = {
-    val chan = connect(factory)
+    val chan = connect()
     //chan.exchangeDeclare(INIT_EXCHANGE, "direct")  no need to declare amq.direct, spec says it's always there by default
     chan
   }    

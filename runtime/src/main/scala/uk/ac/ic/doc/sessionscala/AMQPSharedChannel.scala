@@ -1,17 +1,17 @@
 package uk.ac.ic.doc.sessionscala
 
-import AMQPUtils._
 import com.rabbitmq.client._
+import messageformats.AMQPMessageFormats
 import scala.actors.{Channel => _, _}
 import java.io.File
 
 class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port: Int, val user: String, val password: String)
         extends SharedChannel(awaiting)
+        with AMQPConnectionComponent
         with AMQPMessageFormats
         with MatchmakerActorComponent
         with AMQPActorProxyComponent
-        with CoordinationActorsComponent
-        with AMQPConnectionComponent {
+        with CoordinationActorsComponent {
 
   def join(role: Symbol)(act: ActorFun): Unit = { throw new IllegalStateException("TODO") }
 
@@ -72,7 +72,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
       chan.queueBind(roleQueue, sessName, role.name)
     }
 
-    val chan = connect(factory)
+    val chan = connect()
     mapping foreach { case (role, host) =>
       declareInvitationQueueForHost(chan, host)
       declareSessionRoleQueue(chan, sessName, role)

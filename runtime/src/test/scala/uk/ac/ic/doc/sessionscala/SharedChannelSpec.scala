@@ -97,8 +97,8 @@ class SharedChannelJoinSpec extends FunSuite with ShouldMatchers with Timeouts {
     var barOk = false; var quuxOk = false
     actor {
       chan.join('Foo) { s =>
-        barOk = s('Bar).?[Int] == 42
-        quuxOk = s('Quux).?[Char] == 'a'
+        barOk = s('Bar).? == 42
+        quuxOk = s('Quux).? == 'a'
       }
     }
 

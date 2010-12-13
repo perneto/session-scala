@@ -16,11 +16,11 @@ object Seller {
       println("Seller: before accept")
       sharedChannel.accept('Seller) { s =>
         println("Seller accepted")
-        val item = s('Buyer).?[Title]
+        val ('title, item: String) = s('Buyer).?
         s('Buyer) ! 2000
         s('Buyer).receive {
-          case address: String =>
-            val deliveryDate = s('Buyer).?[String]
+          case ('address, address: String) =>
+            val deliveryDate: String = s('Buyer).?
             println("placing order: " + item + " " + address + " " + deliveryDate)
           case Quit =>
         }
