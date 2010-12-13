@@ -22,7 +22,7 @@ object Seller {
           case ('address, address: String) =>
             val (_,deliveryDate: String) = s('Buyer).?
             println("placing order: " + item + " " + address + " " + deliveryDate)
-          case 'quit => println("received 'quit")
+          case ('quit,_) => println("received 'quit")
         }
         println("*****************Seller: finished")
       }
