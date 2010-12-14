@@ -25,10 +25,5 @@ trait AMQPConnectionComponent {
     chan.basicCancel(consumerTag)
     close(chan)
   }
-
-  def connectAndInitExchange(): Channel = {
-    val chan = connect()
-    //chan.exchangeDeclare(INIT_EXCHANGE, "direct")  no need to declare amq.direct, spec says it's always there by default
-    chan
-  }    
+    
 }

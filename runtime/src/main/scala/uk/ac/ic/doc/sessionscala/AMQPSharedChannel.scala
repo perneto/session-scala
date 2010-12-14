@@ -35,7 +35,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
           i += 1
         } catch {
           case ioe: java.io.IOException =>
-            chan = chan.getConnection.createChannel // rabbitmq client api stupidness
+            chan = chan.getConnection.createChannel // amqp stupidness, cf above
             chan.exchangeDeclare(sessName, "direct") // this only runs if the exchange didn't already exists
             notDeclared = false
         }
@@ -46,7 +46,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
 
     checkMapping(mapping)
 
-    val initChan = connectAndInitExchange()
+    val initChan = connect()
     val (chan,sessName) = initSessionExchange(initChan)
     close(chan)
     val source =

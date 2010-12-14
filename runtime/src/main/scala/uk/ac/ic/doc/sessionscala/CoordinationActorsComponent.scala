@@ -18,7 +18,7 @@ trait CoordinationActorsComponent {
   
   val invitationReceiverActor = actor {
     println("Starting invitation receiver actor...")
-    val chan = connectAndInitExchange()
+    val chan = connect()
     chan.queueDeclare(localhost, false, false, false, null)
     // noAck = true, automatically sends acks
     val consumerTag = chan.basicConsume(localhost, true, new SendMsgConsumer(chan, self))

@@ -6,7 +6,7 @@ object SharedChannel {
     new SharedChannelSameVM(awaiting)
   }
   def createAMQPChannel(awaiting: Set[Symbol], brokerHost: String = "localhost",
-                        port: Int = 5672, user: String = "", password: String = ""): SharedChannel =
+                        port: Int = 5672, user: String = "guest", password: String = "guest"): SharedChannel =
     new AMQPSharedChannel(awaiting, brokerHost, port, user, password)
 
   def localhost: String = {
