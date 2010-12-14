@@ -93,9 +93,9 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
   }
 
   override def close() {
-    invitationReceiverActor ! Exit
-    matchMakerActor ! Exit
-    proxyRegistryActor ! Exit
+    invitationReceiverActor ! Quit
+    matchMakerActor ! Quit
+    proxyRegistryActor ! Quit
   }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
@@ -124,8 +124,8 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
       }
     }
     act(sessChan)
-    println("accept: call to act finished")
-    proxy ! Exit
+    println("!!!!!!!!!!!!!!!!accept: call to act finished")
+    proxy ! Quit
   }
 
 }

@@ -54,14 +54,14 @@ trait AMQPMessageFormats extends ShortMessageFormat with LongMessageFormat {
       val sessMsg = FORMAT.extractor.apply(sessName, srcRole, dstRole, label, msg)
       sessMsg.serialize(buf)
     }
-    println("serialize (" + srcRole + "," + msg + "): " + Arrays.toString(result))
+    //println("serialize (" + srcRole + "," + msg + "): " + Arrays.toString(result))
     result
   }
 
   def deserialize(msg: Array[Byte]): (Symbol, Symbol, Any) = {
     val sessMsg = FORMAT.parser.unapply(msg).get
     val result = FORMAT.extractor.unapply(sessMsg).get
-    println("deserialize: " + result)
+    //println("deserialize: " + result)
     result
   }
 

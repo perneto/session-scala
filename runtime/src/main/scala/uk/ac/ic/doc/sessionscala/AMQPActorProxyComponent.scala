@@ -1,17 +1,20 @@
-package uk.ac.ic.doc.sessionscala
+//package uk.ac.ic.doc.sessionscala
+package scala.actors
 
 import actors._
 import Actor._
+import uk.ac.ic.doc.sessionscala._
 import AMQPUtils._
 import collection.mutable
 import messageformats.AMQPMessageFormats
+
 
 /**
  * Created by: omp08
  */
 
 trait AMQPActorProxyComponent {
-  thisObject: AMQPMessageFormats
+  this: AMQPMessageFormats
          with AMQPConnectionComponent
          with CoordinationActorsComponent => // funny name because self is used up by Actor.self
 
@@ -57,14 +60,14 @@ trait AMQPActorProxyComponent {
         println("Proxy for " + role + " received from: "
                 + srcRole + ", label: " + label + ", msg: " + msg)
         self ! DeserializedMsgReceive(srcRole, label, msg)
-      case NewSourceRole(role, actorChan) =>
-        srcRoleChans += (role -> actorChan)
+      case NewSourceRole(srcRole, actorChan) =>
+        srcRoleChans += (srcRole -> actorChan)
         println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
       case DeserializedMsgReceive(role, label, msg) if srcRoleChans.isDefinedAt(role) =>
         // in case the mapping is not defined yet, the message will wait in the mailbox until it eventually is
         println("sending (" + label + ", "+ msg + ")"+" to channel " + srcRoleChans(role))
         srcRoleChans(role) ! buildTuple(label,msg)
-      case Exit =>
+      case Quit =>
         println("#############################Proxy for role "+role+" exiting")
         close(chan, consumerTag)
         exit()
@@ -73,12 +76,15 @@ trait AMQPActorProxyComponent {
     override def !(msg: Any) {
       println(this + " received: " + msg)
       super.!(msg)
-      println("mailboxSize: " + this.mailboxSize)
+      print(this + ": mailbox: ")
+      this.mailbox.foreach(print(_,_))
+      println()
+      println(this + ": srcRoleChans: " + srcRoleChans + ", reactBody.isDefinedAt(Quit): " + reactBody.isDefinedAt(Quit) + ", reactBody: " + reactBody)
     }
 
     def act = {
       proxyRegistryActor ! (role, self)
-      loop { receive(reactBody) }
+      loop { react(reactBody) }
     }
 
     override def toString = "AMQPActorProxy(sessExchangeName=" + sessExchangeName + ", role=" + role + ")"

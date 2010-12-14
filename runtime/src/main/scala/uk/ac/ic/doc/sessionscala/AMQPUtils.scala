@@ -18,6 +18,7 @@ object AMQPUtils {
   }
 
   def connect(factory: ConnectionFactory) = {
+    println("Connecting to AMQP broker at: " + factory.getHost + ", port: " + factory.getPort + ", user: " + factory.getUsername)
     val connection = factory.newConnection
     connection.createChannel
   }

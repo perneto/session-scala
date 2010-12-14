@@ -1,7 +1,7 @@
 package uk.ac.ic.doc.sessionscala
 
 import collection.mutable
-    
+
 /**
  * Created by: omp08
  */
@@ -10,7 +10,6 @@ trait MatchmakerActorComponent {
 
   case class Invite(role: Symbol, sessExchange: String, protocol: String)
   case class Accept(role: Symbol)
-  case object Exit
 
   import actors.Actor._
   val matchMakerActor = actor {
@@ -43,7 +42,7 @@ trait MatchmakerActorComponent {
           matchMsg(invites, acceptRole, sender, accepts) { sessExchAndProtocol =>
             sender ! sessExchAndProtocol // todo: ditto above
           }
-        case Exit =>
+        case Quit =>
           println("Matchmaker exiting")
           exit()
       }
