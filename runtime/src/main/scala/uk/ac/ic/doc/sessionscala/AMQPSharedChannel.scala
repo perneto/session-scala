@@ -24,6 +24,14 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
         throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
     }
 
+    def randomInitSessionExchange(chan: Channel): (Channel,String) = {
+      val rand = (new java.util.Random).nextInt(10000)
+      var sessName = rand.toString
+      while (sessName.length < 4) sessName = "0" + sessName
+      chan.exchangeDeclare(sessName, "direct")
+      (chan, sessName)
+    }
+
     def initSessionExchange(initChan: Channel): (Channel,String) = {
       var i = 1; var notDeclared = true; var chan = initChan
       def sessName = "s" + i
@@ -47,7 +55,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
     checkMapping(mapping)
 
     val initChan = connect()
-    val (chan,sessName) = initSessionExchange(initChan)
+    val (chan,sessName) = randomInitSessionExchange(initChan)
     val source =
       if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
       else if (protocolFile == "") null
