@@ -1,6 +1,5 @@
 package uk.ac.ic.doc.sessionscala
 
-import com.rabbitmq.client._
 import messageformats.AMQPMessageFormats
 import scala.actors.{Channel => _, _}
 import java.io.File
@@ -24,16 +23,16 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
         throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
     }
 
-    def randomInitSessionExchange(chan: Channel): (Channel,String) = {
+    def randomInitSessionExchange(): String = {
       val rand = (new java.util.Random).nextInt(10000)
       var sessName = rand.toString
       while (sessName.length < 4) sessName = "0" + sessName
-      chan.exchangeDeclare(sessName, "direct")
-      (chan, sessName)
+      connectionManagerActor ! ('exchangeDeclare, sessName)
+      sessName
     }
 
-    def initSessionExchange(initChan: Channel): (Channel,String) = {
-      var i = 1; var notDeclared = true; var chan = initChan
+    def initSessionExchange(): String = {
+      var i = 1; var notDeclared = true; var chan = connect()
       def sessName = "s" + i
       while (notDeclared) {
         try {
@@ -48,62 +47,57 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
             notDeclared = false
         }
       }
-      (chan, sessName)
+      close(chan)
+      sessName
     }
 
 
     checkMapping(mapping)
 
-    val initChan = connect()
-    val (chan,sessName) = randomInitSessionExchange(initChan)
+    val sessName = randomInitSessionExchange()
     val source =
       if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
       else if (protocolFile == "") null
       else io.Source.fromURL(protocolFile)
     val scribbleType = if (source != null) source.foldLeft("")(_ + _)
                        else "<no protocol given>"
-    inviteImpl(chan, sessName, scribbleType, mapping: _*)
-    close(chan)
+    inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
-  def inviteImpl(chan: Channel, sessName: String, protocol: String, mapping: (Symbol,String)*): Unit = {
-    def declareInvitationQueueForHost(chan: Channel, host: String) {
-      //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
-      chan.queueDeclare(host, false, false, false, null)
-      //Parameters to queueBind: (queue = host, exchange = INIT_EXCHANGE, routingKey = host)
-      chan.queueBind(host, INIT_EXCHANGE, host)
+  def inviteImpl(sessName: String, protocol: String, mapping: (Symbol,String)*): Unit = {
+    def declareInvitationQueueForHost(host: String) {
+      connectionManagerActor ! ('queueDeclare, host)
+      connectionManagerActor ! ('queueBind, host, INIT_EXCHANGE, host)
     }
 
-    def declareSessionRoleQueue(chan: Channel, sessName: String, role: Symbol) {
+    def declareSessionRoleQueue(sessName: String, role: Symbol) {
       val roleQueue = sessName + role.name
-      chan.queueDeclare(roleQueue, false, false, false, null)
-      chan.queueBind(roleQueue, sessName, role.name)
+      connectionManagerActor ! ('queueDeclare, roleQueue)
+      connectionManagerActor ! ('queueBind, roleQueue, sessName, role.name)
     }
 
     mapping foreach { case (role, host) =>
-      declareInvitationQueueForHost(chan, host)
-      declareSessionRoleQueue(chan, sessName, role)
-      chan.basicPublish(INIT_EXCHANGE, host, null,
-        serializeInvite(sessName, role, protocol))      
+      declareInvitationQueueForHost(host)
+      declareSessionRoleQueue(sessName, role)
+      connectionManagerActor ! ('publish, INIT_EXCHANGE, host, serializeInvite(sessName, role, protocol))
     }
   }
 
   def forwardInvite(mapping: (Symbol,String)*): Unit = {
-    val chan = connect()
     mapping foreach { case (role, host) =>
       println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
       checkRoleAwaiting(role)
       val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
       println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
-      inviteImpl(chan, sessExchange, protocol, role -> host)
+      inviteImpl(sessExchange, protocol, role -> host)
     }
-    close(chan)
   }
 
   override def close() {
     invitationReceiverActor ! Quit
     matchMakerActor ! Quit
     proxyRegistryActor ! Quit
+    connectionManagerActor ! Quit
   }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {

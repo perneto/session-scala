@@ -18,10 +18,9 @@ trait CoordinationActorsComponent {
   
   val invitationReceiverActor = actor {
     println("Starting invitation receiver actor...")
-    val chan = connect()
-    chan.queueDeclare(localhost, false, false, false, null)
+    connectionManagerActor ! (('queueDeclare, localhost))
     // noAck = true, automatically sends acks
-    val consumerTag = chan.basicConsume(localhost, true, new SendMsgConsumer(chan, self))
+    connectionManagerActor ! (('consume, localhost, self))
     println("Invitation receiver is consuming messages...")
 
     loop {
@@ -33,7 +32,6 @@ trait CoordinationActorsComponent {
           println("sent invitation for " + invitedRole + " to matchmaker")
         case Quit =>
           println("Invitation receiver exiting")
-          close(chan, consumerTag)
           exit()
       }
     }

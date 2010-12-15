@@ -28,17 +28,16 @@ trait AMQPActorProxyComponent {
           println("Direct message send to local proxy: " + localProxy + ", msg: " + msg)
           localProxy ! DeserializedMsgReceive(role, label, msg)
         case None => // always this case at the moment, will implement optimized local communication later
-          println("Proxy for "+role+" is sending message " + msg + " to exchange " + sessExchangeName + " with routingKey: " + dstRole.name)
-          chan.basicPublish(sessExchangeName, dstRole.name, null, 
-            serialize(sessExchangeName, role, dstRole, label, msg))
+          println("Proxy for "+role+" is sending label:" +label+ ", message: " + msg + " to exchange: " + sessExchangeName + " with routingKey: " + dstRole.name)
+          connectionManagerActor ! (('publish, sessExchangeName, dstRole.name,
+            serialize(sessExchangeName, role, dstRole, label, msg)))
       }
     }
 
-    val chan = connect()
     val roleQueue = sessExchangeName + role.name
     // self instead of this gives the actor for the thread creating this object
     // self is only valid in the act method
-    val consumerTag = chan.basicConsume(roleQueue, true, new SendMsgConsumer(chan, this))
+    connectionManagerActor ! (('consume, roleQueue, this))
     // noAck = true, automatically sends acks todo: probably should be false here
     println("Proxy for role "+role+" is consuming messages on queue: "+roleQueue+"...")
 
@@ -66,12 +65,13 @@ trait AMQPActorProxyComponent {
         srcRoleChans(role) ! buildTuple(label,msg)
       case Quit =>
         println("#############################Proxy for role "+role+" exiting")
-        close(chan, consumerTag)
+        connectionManagerActor ! (('stop, self))
         exit()
     }
 
     def act = {
       proxyRegistryActor ! (role, self)
+      connectionManagerActor ! (('start, self))
       loop { react(reactBody) }
     }
 

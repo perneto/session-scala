@@ -1,8 +1,11 @@
 package uk.ac.ic.doc.sessionscala
 
-import com.rabbitmq.client.Channel
 import AMQPUtils._
-
+import actors.Actor._
+import com.rabbitmq.client.AMQP.BasicProperties
+import com.rabbitmq.client.{Envelope, DefaultConsumer, Consumer, Channel}
+import java.lang.String
+import actors.{TIMEOUT, Actor}
 
 /**
  * Created by: omp08
@@ -16,6 +19,7 @@ trait AMQPConnectionComponent {
   private val factory = createFactory(brokerHost, port, user, password)
 
   def close(chan: Channel) {
+    println("Closing: " + chan)
     chan.getConnection.close()
   }
 
@@ -25,5 +29,38 @@ trait AMQPConnectionComponent {
     chan.basicCancel(consumerTag)
     close(chan)
   }
-    
+
+  val connectionManagerActor = actor {
+    var proxies = Set[Actor]()
+    val chan = connect()
+
+    loop {
+      react {
+        case ('publish, exchange: String, routingKey: String, msg: Array[Byte]) =>
+          chan.basicPublish(exchange, routingKey, null, msg)
+        case ('exchangeDeclare, name: String) =>
+          chan.exchangeDeclare(name, "direct")
+        case ('queueDeclare, name: String) =>
+          //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
+          chan.queueDeclare(name, false, false, false, null)
+        case ('queueBind, queue: String, exchange: String, routingKey: String) =>
+          chan.queueBind(queue, exchange, routingKey)
+        case ('consume, queue: String, dest: Actor) =>
+          chan.basicConsume(queue, true,
+            new SendMsgConsumer(chan, dest)
+          //  new DefaultConsumer(chan) {
+          //  override def handleDelivery(consumerTag: String, envelope: Envelope,
+          //                              properties: BasicProperties, body: Array[Byte]) = dest ! body
+          //}
+          )
+
+        case ('start, proxy: Actor) => proxies += proxy
+        case ('stop, proxy: Actor) => proxies -= proxy
+        case Quit if proxies.isEmpty =>
+          close(chan)
+          println("@@@@@@@@@@@@@@@ Connection manager actor exiting, connection has been closed")
+          exit()
+      }
+    }
+  }
 }
