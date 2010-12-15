@@ -1,10 +1,7 @@
-//package uk.ac.ic.doc.sessionscala
-package scala.actors
+package uk.ac.ic.doc.sessionscala
 
 import actors._
 import Actor._
-import uk.ac.ic.doc.sessionscala._
-import AMQPUtils._
 import collection.mutable
 import messageformats.AMQPMessageFormats
 
@@ -71,15 +68,6 @@ trait AMQPActorProxyComponent {
         println("#############################Proxy for role "+role+" exiting")
         close(chan, consumerTag)
         exit()
-    }
-
-    override def !(msg: Any) {
-      println(this + " received: " + msg)
-      super.!(msg)
-      print(this + ": mailbox: ")
-      this.mailbox.foreach(print(_,_))
-      println()
-      println(this + ": srcRoleChans: " + srcRoleChans + ", reactBody.isDefinedAt(Quit): " + reactBody.isDefinedAt(Quit) + ", reactBody: " + reactBody)
     }
 
     def act = {

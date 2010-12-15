@@ -48,17 +48,17 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
 
     val initChan = connect()
     val (chan,sessName) = initSessionExchange(initChan)
-    close(chan)
     val source =
       if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
       else if (protocolFile == "") null
       else io.Source.fromURL(protocolFile)
     val scribbleType = if (source != null) source.foldLeft("")(_ + _)
                        else "<no protocol given>"
-    inviteImpl(sessName, scribbleType, mapping: _*)
+    inviteImpl(chan, sessName, scribbleType, mapping: _*)
+    close(chan)
   }
 
-  def inviteImpl(sessName: String, protocol: String, mapping: (Symbol,String)*): Unit = {
+  def inviteImpl(chan: Channel, sessName: String, protocol: String, mapping: (Symbol,String)*): Unit = {
     def declareInvitationQueueForHost(chan: Channel, host: String) {
       //Parameters to queueDeclare: (queue, durable, exclusive, autoDelete, arguments)
       chan.queueDeclare(host, false, false, false, null)
@@ -72,24 +72,24 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
       chan.queueBind(roleQueue, sessName, role.name)
     }
 
-    val chan = connect()
     mapping foreach { case (role, host) =>
       declareInvitationQueueForHost(chan, host)
       declareSessionRoleQueue(chan, sessName, role)
       chan.basicPublish(INIT_EXCHANGE, host, null,
         serializeInvite(sessName, role, protocol))      
     }
-    close(chan)
   }
 
   def forwardInvite(mapping: (Symbol,String)*): Unit = {
+    val chan = connect()
     mapping foreach { case (role, host) =>
       println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
       checkRoleAwaiting(role)
       val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
       println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
-      inviteImpl(sessExchange, protocol, role -> host)
+      inviteImpl(chan, sessExchange, protocol, role -> host)
     }
+    close(chan)
   }
 
   override def close() {

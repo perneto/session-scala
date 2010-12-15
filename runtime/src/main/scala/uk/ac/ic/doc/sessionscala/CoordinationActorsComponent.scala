@@ -4,7 +4,7 @@ import actors.Actor
 import Actor._
 import messageformats.AMQPMessageFormats
 import SharedChannel.localhost
-import actors.{AMQPActorProxyComponent, Actor}
+import actors.Actor
 
 /**
  * Created by: omp08
