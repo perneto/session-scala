@@ -17,7 +17,7 @@ trait LongMessageFormat {
 
       def serializeInvite(sessName: String, invitedRole: Symbol, proto: String) = {
         withBuf { buf =>
-          SessionMsgLong(sessName, Symbol(""), invitedRole, Symbol(""), proto).serialize(buf)
+          SessionMsgLong(sessName, Symbol("Adm"), invitedRole, Symbol("inv"), proto).serialize(buf)
         }
       }
 
@@ -46,7 +46,7 @@ trait LongMessageFormat {
       str += serializeLong(dstRole)
       str += serializeLong(label)
       str += serializeLong(contents)
-      str += serializeLong("") // option field, maybe can be removed altogether ?
+      str += serializeLong("0000") // option field, this is the shortest it can be
       buf.put(str.getBytes(CHARSET))
     }
   }

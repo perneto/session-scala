@@ -9,32 +9,32 @@ object BuyerSellerSimpleAMQP {
   case object Quit
 
   def main(args: Array[String]) {
-    withAMQPChannel(Set('Buyer, 'Seller)) { sharedChannel =>
+    withAMQPChannel(Set('Buyer, 'Seller), port = 5673) { sharedChannel =>
 
-      sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.invite("/Users/omp08/code/SessML/ex/BuyerSeller/BuyerSeller.session",
+        'Buyer -> localhost, 'Seller -> localhost)
 
       actor {
         sharedChannel.accept('Seller) { s =>
-          val ('title,item: String) = s('Buyer).?
-          s('Buyer) ! 2000
+          val ('Title, item: String) = s('Buyer).?
+          s('Buyer) ! ('Quote, 2000)
           s('Buyer).receive {
             case address: String =>
-              val (_,deliveryDate: String) = s('Buyer).?
-              println("placing order: " + item + " " + address + " " + deliveryDate)
-            case ('quit,_) => println("received 'quit")
+              val ('Date, deliveryDate: String) = s('Buyer).?
+            case ('Quit,_) => println("received 'Quit")
           }
           println("*****************Seller: finished")
         }
       }
 
-      sharedChannel.accept('Buyer) { s =>        
-        s('Seller) ! ('title, "Widget A")
-        val (_,quote: Int) = s('Seller).?
+      sharedChannel.accept('Buyer) { s =>
+        s('Seller) ! ('Title, "Widget A")
+        val ('Quote, quote: Int) = s('Seller).?
         if (quote < 1000) {
           s('Seller) ! "123 Penny Lane"
           s('Seller) ! "4/6/2011 10:00 UTC-7"
         } else {
-          s('Seller) ! 'quit
+          s('Seller) ! 'Quit
         }
         println("*****************Buyer: finished")
       }
