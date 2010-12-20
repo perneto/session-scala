@@ -16,6 +16,15 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
 
   val INIT_EXCHANGE = "amq.direct"
 
+  def loadProtocolFile(protocolFile: String): String = {
+    val source =
+      if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
+      else if (protocolFile == "") null
+      else io.Source.fromURL(protocolFile)
+    if (source != null) source.foldLeft("")(_ + _)
+    else "<no protocol given>"
+  }
+
   def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
     def checkMapping(mapping: Seq[(Symbol,String)]) {
       val declaredRoles = Set() ++ mapping map (_._1)
@@ -55,12 +64,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
     checkMapping(mapping)
 
     val sessName = randomInitSessionExchange()
-    val source =
-      if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
-      else if (protocolFile == "") null
-      else io.Source.fromURL(protocolFile)
-    val scribbleType = if (source != null) source.foldLeft("")(_ + _)
-                       else "<no protocol given>"
+    val scribbleType = loadProtocolFile(protocolFile)
     inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
