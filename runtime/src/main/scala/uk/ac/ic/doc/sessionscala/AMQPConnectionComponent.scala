@@ -18,6 +18,11 @@ trait AMQPConnectionComponent {
   val password: String
   private val factory = createFactory(brokerHost, port, user, password)
 
+  // The only instance (except for the initSessionExchange method). It is managed
+  // by the actor below.
+  private val chan = connect()
+
+
   def close(chan: Channel) {
     println("Closing: " + chan)
     chan.getConnection.close()
@@ -25,14 +30,8 @@ trait AMQPConnectionComponent {
 
   def connect() = AMQPUtils.connect(factory)
 
-  def close(chan: Channel, consumerTag: String) {
-    chan.basicCancel(consumerTag)
-    close(chan)
-  }
-
   val connectionManagerActor = actor {
     var proxies = Set[Actor]()
-    val chan = connect()
 
     loop {
       react {
