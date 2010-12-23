@@ -26,7 +26,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
   }
 
   def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
-    def checkMapping(mapping: Seq[(Symbol,String)]) {
+    def checkMapping() {
       val declaredRoles = Set() ++ mapping map (_._1)
       if (declaredRoles != awaiting)
         throw new IllegalArgumentException("Missing or extra roles in invite. Awaiting: " + awaiting + ", invited: " + declaredRoles)
@@ -61,7 +61,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
     }
 
 
-    checkMapping(mapping)
+    checkMapping()
 
     val sessName = randomInitSessionExchange()
     val scribbleType = loadProtocolFile(protocolFile)

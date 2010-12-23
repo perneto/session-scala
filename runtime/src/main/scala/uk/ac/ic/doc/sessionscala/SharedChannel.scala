@@ -14,7 +14,10 @@ object SharedChannel {
     println("localhost: " + name)
     name
   }
-
+  def withLocalChannel[T](awaiting: Set[Symbol])(block: SharedChannel => T): T = {
+    val shared = createLocalChannel(awaiting)
+    try { block(shared) } finally { shared.close() }
+  }
   def withAMQPChannel[T](awaiting: Set[Symbol], brokerHost: String = "localhost",
                          port: Int = 5672, user: String = "guest", 
                          password: String = "guest")(block: SharedChannel => T): T = {
