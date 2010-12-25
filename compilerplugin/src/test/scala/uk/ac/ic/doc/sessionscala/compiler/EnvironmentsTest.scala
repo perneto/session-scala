@@ -659,5 +659,19 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   ignore("scoping of inferred methods") {
     // will require keeping even the join block visitor informed of method definitions,
     // so that it can bring previously inferred methods in and out of scope
+    // or maybe the Symbol objects already have enough info?
+  }
+
+  test("linearity: cannot use session channel after passing it to a method") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.leaveSessionMethod
+
+    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.delegation(fooMethod, List(sessChan))
+    intercept[SessionTypeCheckingException] {
+      env = env.send(sessChan, "Bob", stringT) // reuse of sessChan not allowed
+    }
   }
 }

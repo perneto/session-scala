@@ -39,18 +39,24 @@ trait SessionTypingEnvironments {
     
     def getSharedChan(name: Name) = sharedChannels.get(name)
 
-    def getInferredFor(method: Symbol, chan: Name): LA = 
+    def getInferredFor(method: Symbol, chan: Name): LA =
       getInferredFor(method).getOrElse(chan, Nil)
     def getInferredFor(method: Symbol): Map[Name, LA] = 
       inferred.getOrElse(method, Map())
-    def append(method: Symbol, chan: Name, act: Activity) = 
+    def getInferred(method: Symbol, chan: Name): Option[LabelledBlock] =
+      getInferredFor(method).get(chan).map(l => l(0).asInstanceOf[LabelledBlock])
+
+    def createInferred(method: Symbol, chan: Name): SessionTypedElements =
+      updated(method, getInferredFor(method) + (chan -> Nil))
+
+    def append(method: Symbol, chan: Name, act: Activity) =
       appendAll(method, chan, List(act))
     def appendAll(method: Symbol, chan: Name, acts: LA) =
       updated(method, chan, getInferredFor(method, chan) ::: acts)
     def updated(method: Symbol, chan: Name, inferred: LA): SessionTypedElements =
       updated(method, getInferredFor(method).updated(chan, inferred))
     def dropChan(method: Symbol, chan: Name) =
-      updated(method, chan, Nil)
+      updated(method, getInferredFor(method) - chan)
 
     def methodFor(label: String) = labels.get(label)
     def registerMethod(method: Symbol): (SessionTypedElements, String) = {
@@ -290,13 +296,19 @@ trait SessionTypingEnvironments {
       throw new IllegalStateException("Should not be called")
 
     override def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
-      println("enterSessionMethod, ste: " + ste)
-      new InMethodInferenceEnv(this, ste, fun, sessChans)
+      val newSte = (sessChans foldLeft ste) { case (ste, chan) =>
+        ste.createInferred(fun, chan)
+      }
+      println("enterSessionMethod, ste: " + ste + ", newSte: " + newSte)
+      new InMethodInferenceEnv(this, newSte, fun, sessChans)
     }
 
     def inferredSessionType(method: Symbol, chan: Name): LabelledBlock = {
       //println("inferredSessionType: " + method + ", chan: " + chan + ", inferred: " + ste.getInferredFor(method, chan) + ", ste: " + ste)
-      ste.getInferredFor(method, chan)(0).asInstanceOf[LabelledBlock]
+      ste.getInferred(method, chan) match {
+        case Some(labelledBlock) => labelledBlock
+        case None => throw new IllegalArgumentException("No inferred session type known for: " + method + " and channel: " + chan)
+      }
     }
 
     def methodFor(label: String): Symbol = {
@@ -371,12 +383,15 @@ trait SessionTypingEnvironments {
     }
 
     def sessionBranches(parentSte: SessionTypedElements, branch1: SessionTypedElements, branch2: SessionTypedElements, chan: Name, labelToMerge: Type) = {
-      assert(branch1.getInferredFor(method, chan).length == 1, branch1.getInferredFor(method, chan)) // the first branch wraps its inferred list in a choice, and thereafter this function preserves this invariant
+      // the first branch wraps its inferred list in a choice, and thereafter this function preserves this invariant
+      assert(branch1.getInferredFor(method, chan).length == 1, branch1.getInferredFor(method, chan))
       val choice = branch1.getInferredFor(method, chan)(0).asInstanceOf[Choice]
       val block = branch2.getInferredFor(method, chan)
       val w = createWhen(typeSystem.scalaToScribble(labelToMerge), block)
-      val checkedMerged = ifBranches(branch1.dropChan(method, chan),  branch2.dropChan(method, chan)) // checks the interleaved sessions. 
-      // we need to remove the branch channel to avoid confusion withmerged label sends (choice sends)
+      // we use the ifBranches method for checking the interleaved sessions.
+      // for this to work we need to remove the branch channel to avoid confusion
+      // with merged label sends (choice sends)
+      val checkedMerged = ifBranches(branch1.dropChan(method, chan),  branch2.dropChan(method, chan))
       checkedMerged.append(method, chan, addToChoice(choice, w))
     }
 
@@ -603,8 +618,6 @@ trait SessionTypingEnvironments {
 
     override def delegation(delegator: SessionTypingEnvironment, method: Symbol, channels: List[Name]): SessionTypingEnvironment = {
       val inferred = channels map {c =>
-        assert(notEmpty(infEnv.inferredSessionType(method, c)), "Calling "
-                + method + ": No inferred session type for channel: " + c)
         (c, infEnv.inferredSessionType(method, c))
       }
       println(inferred)
