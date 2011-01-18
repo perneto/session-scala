@@ -43,8 +43,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env.enterJoin(sharedChan, joinAs, sessChan)
   }
 
-  import scalaj.collection.Imports._
-
   val empty = definitions.EmptyPackage
   val fooMethod = empty.newMethod(mkTermName("foo"))
 

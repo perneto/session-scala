@@ -89,11 +89,40 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
     acts.map(alphaRenameRec(_))
   }
 
-  /*
-  class FrozenChannelsEnv(parent: SessionTypingEnvironment, channels: List[Name]) extends AbstractDelegatingEnv(parent) {
 
+  class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment, frozenChannels: List[Name]) extends AbstractDelegatingEnv(parent) {
+    def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels)
+
+    override def send(sessChan: Name, role: String, msgType: Type) = {
+      checkFrozen(sessChan)
+      parent.send(sessChan, role, msgType)
+    }
+
+    override def receive(sessChan: Name, role: String, msgType: Type) = {
+      checkFrozen(sessChan)
+      parent.receive(sessChan, role, msgType)
+    }
+
+    override def delegation(function: Symbol, channels: List[Name]) = {
+      checkFrozen(channels)
+      parent.delegation(function, channels)
+    }
+
+    override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
+      checkFrozen(sessChan)
+      parent.enterChoiceReceiveBlock(sessChan, srcRole)
+    }
+
+    def checkFrozen(chan: Name) {
+      if (frozenChannels.contains(chan))
+        throw new SessionTypeCheckingException("Channel " + chan
+                + " cannot be used anymore in this scope after it has been passed as a method parameter")
+    }
+
+    def checkFrozen(channels: List[Name]) {
+      channels foreach (c => checkFrozen(c))
+    }
   }
-  */
 
   class InProcessEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
@@ -162,8 +191,7 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
           env.updated(chan, advanceOne(chan, sess, recur, List()))
       }
       // todo: new env that forbids any use of s (delegated) (forbid send/receive/delegation, others still ok)
-      //new FrozenChannelsEnv(updated, channels)
-      updated
+      new FrozenChannelsEnv(updated.ste, updated, channels)
     }
 
     def advanceList(chan: Name, sess: Session, acts: Seq[Activity], replaced: List[String]): Session =
