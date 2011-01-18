@@ -10,6 +10,8 @@ import tools.nsc.Phase
 
 abstract class JoinBlocksPass extends PluginComponent
                                  with SessionTypingEnvironments
+                                 with ScribbleModelFactories
+                                 with SessionTypedElementsComponent
                                  with SessionDefinitions
                                  with SessionTypeCheckingTraversers
                                  with ScalaTypeSystemComponent {

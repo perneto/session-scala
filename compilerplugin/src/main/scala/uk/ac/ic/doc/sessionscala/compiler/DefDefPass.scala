@@ -10,6 +10,8 @@ import tools.nsc.{Global, Phase}
 abstract class DefDefPass extends PluginComponent
                              with SessionTypingEnvironments
                              with ScalaTypeSystemComponent
+                             with ScribbleModelFactories
+                             with SessionTypedElementsComponent
                              with SessionDefinitions
                              with SessionTypeCheckingTraversers {
   import global._

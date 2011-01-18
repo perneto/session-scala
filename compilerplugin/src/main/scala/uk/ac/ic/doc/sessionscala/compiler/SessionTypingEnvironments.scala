@@ -5,159 +5,13 @@ import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
 import tools.nsc.Global
 import scalaj.collection.Imports._
-import java.io._
-    
+
 trait SessionTypingEnvironments {
-  self: ScalaTypeSystemComponent =>
+  self: ScalaTypeSystemComponent with ScribbleModelFactories with SessionTypedElementsComponent =>
+
   val scribbleJournal: Journal
   val global: Global
   import global.{Block => _, _}
-
-  val projector = new ProtocolProjectorImpl
-
-  type SharedChannels = Map[Name, ProtocolModel]
-  type Sessions = Map[Name, Session]
-  type LA = List[Activity]
-  type LAA = List[(Activity, Activity)]
-  type InferredMethod = Map[Name, LA]
-  type Inferred = Map[Symbol, InferredMethod]
-    
-  // todo: refactor inferred into one subclass and sessions into the other. STE should be a trait
-  val EmptySTE = new SessionTypedElements
-  case class SessionTypedElements(sharedChannels: SharedChannels, sessions: Sessions, inferred: Inferred, labels: Map[String, Symbol]) {
-    def this() = this(Map(), Map(), Map(), Map())
-    def updated(sessChan: Name, newSess: Session): SessionTypedElements =
-      copy(sessions = sessions.updated(sessChan, newSess))
-
-    def updated(sharedChan: Name, model: ProtocolModel): SessionTypedElements =
-      copy(sharedChannels = sharedChannels.updated(sharedChan, model))
-
-    def updated(newSess: Sessions) = copy(sessions = newSess)
-
-    def updated(method: Symbol, inf: Map[Name, LA]): SessionTypedElements = 
-      copy(inferred = inferred.updated(method, inf))
-    
-    def getSharedChan(name: Name) = sharedChannels.get(name)
-
-    def getInferredFor(method: Symbol, chan: Name): LA =
-      getInferredFor(method).getOrElse(chan, Nil)
-    def getInferredFor(method: Symbol): Map[Name, LA] = 
-      inferred.getOrElse(method, Map())
-    def getInferred(method: Symbol, chan: Name): Option[LabelledBlock] =
-      getInferredFor(method).get(chan).map(l => l(0).asInstanceOf[LabelledBlock])
-
-    def createInferred(method: Symbol, chan: Name): SessionTypedElements =
-      updated(method, getInferredFor(method) + (chan -> Nil))
-
-    def append(method: Symbol, chan: Name, act: Activity) =
-      appendAll(method, chan, List(act))
-    def appendAll(method: Symbol, chan: Name, acts: LA) =
-      updated(method, chan, getInferredFor(method, chan) ::: acts)
-    def updated(method: Symbol, chan: Name, inferred: LA): SessionTypedElements =
-      updated(method, getInferredFor(method).updated(chan, inferred))
-    def dropChan(method: Symbol, chan: Name) =
-      updated(method, getInferredFor(method) - chan)
-
-    def methodFor(label: String) = labels.get(label)
-    def registerMethod(method: Symbol): (SessionTypedElements, String) = {
-      var found: String = null
-      for ((label, m) <- labels if found == null)
-        if (m == method) found = label
-      if (found == null) {
-        val l = newLabel()
-        (copy(labels = labels + (l -> method)), l)
-      } else (this, found)
-    }
-    def newLabel() = {
-      var i = 1
-      while (labels.get("X"+i).isDefined) i += 1
-      println("newLabel: X" + i)
-      "X"+i
-    }
-    def clearAllButLabels = EmptySTE.copy(labels = labels)
-  }
-
-  def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
-    new Interaction(src, dst, new MessageSignature(msgType))
-
-  def createWhen(label: TypeReference): When = 
-    createWhen(label, Nil)
-  def createWhen(label: TypeReference, block: LA): When =
-    createWhen(new MessageSignature(label), block)    
-  def createWhen(label: MessageSignature, block: Block): When = {
-    val w = new When
-    w.setMessageSignature(label)
-    w.setBlock(block)
-    w
-  }
-  def createWhen(label: MessageSignature, block: LA): When = {
-    val b = new Block
-    b.getContents.addAll(block asJava)
-    createWhen(label, b)
-  }
-
-  def emptyBody(branches: List[TypeReference]): List[(TypeReference, LA)] =
-    branches.zipAll(Nil, null, Nil)
-
-  def createChoice(src: Role, dst: Role, branches: List[(TypeReference, LA)]): Choice = {
-    val c = new Choice
-    c.setFromRole(src)
-    c.setToRole(dst)
-    c.getWhens().addAll((branches map {case (tref, block) => createWhen(tref,block)} asJava))
-    c
-  }
-  def createChoice(src: Role, label: TypeReference, block: LA): Choice = {
-    val c = new Choice
-    c.setFromRole(src)
-    c.getWhens.add(createWhen(label, block))
-    c
-  }
-  def createChoice(dst: Role, branches: List[(MessageSignature, LA)]): Choice = {
-    val c = new Choice
-    c.setToRole(dst)
-    branches.foreach {case (label, block) => c.getWhens.add(createWhen(label, block))}
-    c
-  }
-  def createChoice(orig: Choice, branches: Seq[When]): Choice = {
-    val c = new Choice
-    c.setToRole(orig.getToRole)
-    c.setFromRole(orig.getFromRole)
-    branches.foreach(c.getWhens.add(_))
-    c
-  }
-  def addToChoice(c: Choice, w: When) = {
-    val newC = new Choice
-    newC.setToRole(c.getToRole)
-    newC.setFromRole(c.getFromRole)
-    c.getWhens foreach (newC.getWhens.add(_))
-    newC.getWhens.add(w)
-    newC
-  }
-
-  def createLabelledBlock(label: String, block: LA): LabelledBlock = 
-    createLabelledBlock(label, createBlock(block))
-  def createLabelledBlock(label: String, block: Block): LabelledBlock = {
-    val r = new LabelledBlock
-    r.setLabel(label)
-    r.setBlock(block)
-    r
-  }
-
-  def createBlock(contents: Seq[Activity]) = {
-    val b = new Block
-    contents foreach (b.add(_))
-    b
-  }
-
-  def createRecursion(label: String): Recursion = {
-    val r = new Recursion
-    r.setLabel(label)
-    r
-  }
-
-  def notEmpty(recur: LabelledBlock) = !recur.getBlock.getContents.isEmpty
-
-  def isChoiceReceive(c: Choice) = !Session.isSendChoice(c)
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."
   def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
@@ -507,6 +361,7 @@ trait SessionTypingEnvironments {
       //println("enterJoin: " + ste)
       val role = new Role(roleName)
       val globalModel = delegator.getGlobalTypeForChannel(sharedChannel)
+      val projector = new ProtocolProjectorImpl
       val projectedModel = projector.project(globalModel, role, scribbleJournal)
       new InProcessEnv(
         delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)),
