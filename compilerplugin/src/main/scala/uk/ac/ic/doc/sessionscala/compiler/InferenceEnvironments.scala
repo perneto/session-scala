@@ -221,8 +221,9 @@ trait InferenceEnvironments {
     import java.util.LinkedList
     def isSubtype(act1: Activity, act2: Activity) = act1 != null && act2 != null &&
       Session.isSubtype(typeSystem, new LinkedList, act1, act2)
-      // fixme: handle imports. will need to infer Scala types, and only do
-      // type mapping in checking pass, when scribble file is known
+      // Imports not required during inference, as we use the ScalaTypeReference class
+      // to store native Type instances, which already include their fully qualified name.
+      // The imports list is only needed at typechecking time.
   }
 
   class InfChoiceReceiveBlockEnv(val ste: SessionTypedElements,
