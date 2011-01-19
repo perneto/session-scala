@@ -87,10 +87,10 @@ trait InferenceEnvironments {
       inferInteraction(sessChan, inter, delegator)
     }
 
-    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) = {
-      println("delegation, calling method: " + function + ", channels: " + channels)
+    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, delegatedChans: List[Name], returnedChannels: List[Name]) = {
+      println("delegation, calling method: " + function + ", delegatedChans: " + delegatedChans)
       val dSte = delegator.ste
-      val newSte = channels.foldLeft(dSte) {(ste, chan) =>
+      val newSte = delegatedChans.foldLeft(dSte) {(ste, chan) =>
         val (steRegistered, label) = ste.registerMethod(function)
         println("delegation, appending inferred recursion variable: " + label)
         steRegistered.append(method, chan, createRecursion(label))
@@ -106,7 +106,7 @@ trait InferenceEnvironments {
     // this makes merging the inferred branches easier in branchComplete
     override def enterThen(delegator: SessionTypingEnvironment) = new InfThenBlockEnv(ste.clearAllButLabels, delegator)
 
-    override def leaveSessionMethod = {
+    override def leaveSessionMethod(returnedChans: List[Name]) = {
       val (newSte, label) = ste.registerMethod(method)
       val inf = newSte.getInferredFor(method) map { case (chan, listInf) =>
         (chan -> List(createLabelledBlock(label, listInf)))
@@ -147,7 +147,6 @@ trait InferenceEnvironments {
         result.appendAll(method, chan, merge(chan, inferredThen, inferredElse))
       }
     }
-
 
     // assumes either act1 <: act2 or act2 <: act1
     def chooseSide(act1: Activity, act2: Activity) =

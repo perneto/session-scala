@@ -70,12 +70,12 @@ trait CommonEnvironments {
     def enterElse: SessionTypingEnvironment = this
     def leaveIf: SessionTypingEnvironment = this
 
-    def delegation(function: Symbol, channels: List[Name]): SessionTypingEnvironment =
-      delegation(this, function, channels)
-    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]): SessionTypingEnvironment = this
+    def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
+      delegation(this, function, channels, returnedChannels)
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this
 
     def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
-    def leaveSessionMethod: SessionTypingEnvironment = this
+    def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = this
 
     def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type): SessionTypedElements = throw new IllegalStateException
 
@@ -110,8 +110,8 @@ trait CommonEnvironments {
     override def enterElse = parent.enterElse
     override def leaveIf = parent.leaveIf
 
-    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name]) =
-      parent.delegation(delegator, function, channels)
+    override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]) =
+      parent.delegation(delegator, function, channels, returnedChannels)
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type) =
       parent.branchComplete(parentSte, chan, branch1, branch2, label)

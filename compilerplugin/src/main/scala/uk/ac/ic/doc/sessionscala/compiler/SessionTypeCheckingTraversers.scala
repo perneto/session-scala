@@ -107,7 +107,7 @@ trait SessionTypeCheckingTraversers {
           case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
             println("delegation of session channel: " + tree)
             pos = tree.pos
-            env = env.delegation(fun.symbol, getSessionChannels(args))
+            env = env.delegation(fun.symbol, getSessionChannels(args), List())
             super.traverse(tree)
 
           // todo: allow returning session channel from methods after they have advanced the session

@@ -11,7 +11,6 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
           with SessionTypedElementsComponent =>
 
   val scribbleJournal: Journal
-  val global: Global
   import global.{Block => _, _}
 
   def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
@@ -103,9 +102,9 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
       parent.receive(sessChan, role, msgType)
     }
 
-    override def delegation(function: Symbol, channels: List[Name]) = {
+    override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
       checkFrozen(channels)
-      parent.delegation(function, channels)
+      parent.delegation(function, channels, returnedChannels)
     }
 
     override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
@@ -180,24 +179,35 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
 
     override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
 
-    override def delegation(delegator: SessionTypingEnvironment, method: Symbol, channels: List[Name]): SessionTypingEnvironment = {
-      val inferred = channels map {c =>
-        (c, infEnv.inferredSessionType(method, c))
+    def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]) = {
+      val retChansOptions = returnedChans map (Some(_))
+      // delegatedChans is always the same length or longer than returnedChans, so the null parameter is never used
+      (delegatedChans.zipAll(retChansOptions, null, None)) map { case (chan, retChanOption) =>
+        (chan, infEnv.inferredSessionType(method, chan), retChanOption)
       }
-      println(inferred)
-      val updated = (inferred foldLeft delegator) {
-        case (env, (chan, recur)) =>
-          val sess = env.ste.sessions(chan)
-          env.updated(chan, advanceOne(chan, sess, recur, List()))
-      }
-      // todo: new env that forbids any use of s (delegated) (forbid send/receive/delegation, others still ok)
-      new FrozenChannelsEnv(updated.ste, updated, channels)
     }
 
-    def advanceList(chan: Name, sess: Session, acts: Seq[Activity], replaced: List[String]): Session =
-      (acts foldLeft sess) (advanceOne(chan, _, _, replaced))
+    override def delegation(delegator: SessionTypingEnvironment, method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]): SessionTypingEnvironment = {
+      val inferred = retrieveInferred(method, delegatedChans, returnedChans)
+      println(inferred)
+      val updated = (inferred foldLeft delegator) {
+        case (env, (chan, recur, retChanOpt)) =>
+          val sess = env.ste.sessions(chan)
+          val advancedSession = advanceOne(chan, sess, recur, Nil)
+          retChanOpt match {
+            case Some(retChan) =>
+              env.updated(retChan, advancedSession).updated(chan, new Session(sess, List[Activity]() asJava))
+            case None =>
+              env.updated(chan, advancedSession)
+          }
+      }
+      new FrozenChannelsEnv(updated.ste, updated, delegatedChans)
+    }
 
-    def advanceOne(chan: Name, sess: Session, act: Activity, replaced: List[String]): Session = act match {
+    def advanceList(chan: Name, sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
+      (acts foldLeft sess) (advanceOne(chan, _, _, replacedLabels))
+
+    def advanceOne(chan: Name, sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
       case i: Interaction => sendOrReceive(sess, i)
       case c: Choice =>
         /*
@@ -209,7 +219,7 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
         val dst = c.getToRole
         c.getWhens foreach { infWhen => // we iterate on c's branches, so this supports sending less branches than specified for a choice send
           val sessBranch = sess.findMatchingWhen(src, dst, infWhen)
-          advanceList(chan, sessBranch, infWhen.getBlock.getContents.asScala, replaced)
+          advanceList(chan, sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
         }
         sess.dropFirst
       case r: LabelledBlock => 
@@ -217,21 +227,21 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
         if (expectedRecur != null) { // genuine expected recursion in spec
           // don't unroll, just jump into recur contents (otherwise infinite loop)
           val renamedSpec = alphaRename(contents(expectedRecur).asScala, expectedRecur.getLabel, r.getLabel)
-          advanceList(chan, new Session(sess, renamedSpec.asJava), contents(r).asScala, r.getLabel :: replaced)
+          advanceList(chan, new Session(sess, renamedSpec.asJava), contents(r).asScala, r.getLabel :: replacedLabels)
           sess.dropFirst
-        } else { // unnecessary inferred recursion, following general inference scheme
-          advanceList(chan, sess, unroll(r), replaced)
+        } else { // this is an unnecessary inferred recursion, following the general inference scheme
+          advanceList(chan, sess, unroll(r), replacedLabels)
         }
       case r: Recursion =>
-        println("Recursion: " + r.getLabel + ", replaced: " + replaced)
-        if (replaced contains r.getLabel) sess.recursionLabel(r)
+        println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
+        if (replacedLabels contains r.getLabel) sess.dropMatchingRecursionLabel(r)
         else {
           val method = infEnv.methodFor(r.getLabel)
           assert(notEmpty(infEnv.inferredSessionType(method, chan)), "Calling method: "
                 + method + ": No inferred session type for channel: " + chan + " in env: " + infEnv)
           val recur = infEnv.inferredSessionType(method, chan)
           println("inferred for " + method + ", chan: " + chan + ": " + recur)
-          advanceOne(chan, sess, recur, replaced)
+          advanceOne(chan, sess, recur, replacedLabels)
         }
     }
   
@@ -352,6 +362,5 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
       new ElseBlockEnv(parent.ste, parent, ste)
     }
   }
-
 
 }

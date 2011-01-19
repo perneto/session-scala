@@ -22,7 +22,7 @@ abstract class DefDefPass extends PluginComponent
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       env = env.enterSessionMethod(method, chanNames)
       traverse(body)
-      env = env.leaveSessionMethod
+      env = env.leaveSessionMethod(List())
     }
   }
 

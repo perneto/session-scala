@@ -84,7 +84,7 @@ public class Session {
         if (remaining.isEmpty())
             throw new SessionTypeCheckingException("Tried to do "+tried+", but protocol was finished");
     }
-    public Session recursionLabel(Recursion r) {
+    public Session dropMatchingRecursionLabel(Recursion r) {
         checkNotEmpty("recursive call");
         Activity a = remaining.get(0);
         if (! (a instanceof Recursion && ((Recursion) a).getLabel().equals(r.getLabel()))) 
