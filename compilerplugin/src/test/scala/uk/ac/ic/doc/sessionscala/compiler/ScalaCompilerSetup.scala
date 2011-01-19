@@ -8,7 +8,7 @@ import tools.nsc.{Settings, Global}
 
 trait ScalaCompilerSetup {
   val settings = new Settings
-  val scalaVersion = "2.8.0"
+  val scalaVersion = "2.8.1"
   settings.classpath.tryToSet(List(
             "project/boot/scala-"+scalaVersion+"/lib/scala-compiler.jar" +
             ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar" +
