@@ -17,12 +17,12 @@ trait AMQPActorProxyComponent {
 
   case class NewDestinationRole(role: Symbol, chan: actors.Channel[Any])
   case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])
-  case class DeserializedMsgReceive(fromRole: Symbol, label: Symbol, body: Any)
+  case class DeserializedMsgReceive(fromRole: Symbol, label: Symbol, body: Option[Any])
 
   class AMQPActorProxy(sessExchangeName: String, role: Symbol) extends Actor {
     var mapProxies = Map.empty[Symbol, Actor] // always empty at the moment, will implement optimized local communication later
 
-    def publish(dstRole: Symbol, label: Symbol, msg: Any) {
+    def publish(dstRole: Symbol, label: Symbol, msg: Option[Any]) {
       mapProxies.get(dstRole) match {
         case Some(localProxy: Actor) =>
           println("Direct message send to local proxy: " + localProxy + ", msg: " + msg)
@@ -77,47 +77,61 @@ trait AMQPActorProxyComponent {
 
     override def toString = "AMQPActorProxy(sessExchangeName=" + sessExchangeName + ", role=" + role + ")"
 
-    def buildTuple(label: Symbol, msg: Any): Product = msg match {
-      case Tuple1(msg) => (label, msg)
-      case (a,b) => (label, a,b)
-      case (a,b,c) => (label, a,b,c)
-      case (a,b,c,d) => (label, a,b,c,d)
-      case (a,b,c,d,e) => (label, a,b,c,d,e)
-      case (a,b,c,d,e,f) => (label, a,b,c,d,e,f)
-      case (a,b,c,d,e,f,g) => (label, a,b,c,d,e,f,g)
-      case (a,b,c,d,e,f,g,h) => (label, a,b,c,d,e,f,g,h)
-      case (a,b,c,d,e,f,g,h,i) => (label, a,b,c,d,e,f,g,h,i)
-      case (a,b,c,d,e,f,g,h,i,j) => (label, a,b,c,d,e,f,g,h,i,j)
-      case (a,b,c,d,e,f,g,h,i,j,k) => (label, a,b,c,d,e,f,g,h,i,j,k)
-      case (a,b,c,d,e,f,g,h,i,j,k,l) => (label, a,b,c,d,e,f,g,h,i,j,k,l)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)
-      case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)
-      // Scala tuples are defined up to Tuple22, so we covered everything.
-      case x => (label, x)
+    def buildTuple(label: Symbol, opt: Option[Any]): Any = opt match {
+      case Some(msg) => msg match {
+        case Tuple1(msg) => (label, msg)
+        case (a,b) => (label, a,b)
+        case (a,b,c) => (label, a,b,c)
+        case (a,b,c,d) => (label, a,b,c,d)
+        case (a,b,c,d,e) => (label, a,b,c,d,e)
+        case (a,b,c,d,e,f) => (label, a,b,c,d,e,f)
+        case (a,b,c,d,e,f,g) => (label, a,b,c,d,e,f,g)
+        case (a,b,c,d,e,f,g,h) => (label, a,b,c,d,e,f,g,h)
+        case (a,b,c,d,e,f,g,h,i) => (label, a,b,c,d,e,f,g,h,i)
+        case (a,b,c,d,e,f,g,h,i,j) => (label, a,b,c,d,e,f,g,h,i,j)
+        case (a,b,c,d,e,f,g,h,i,j,k) => (label, a,b,c,d,e,f,g,h,i,j,k)
+        case (a,b,c,d,e,f,g,h,i,j,k,l) => (label, a,b,c,d,e,f,g,h,i,j,k,l)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)
+        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)
+        // Scala tuples are defined up to Tuple22, so we covered everything.
+        case x => (label, x)
+        }
+      case None => label
     }
 
-    def extractLabel(msg: Any): (Symbol, Any) = msg match {
-      case label: Symbol => (label, "")
-      case (label: Symbol, x) => (label, x)
-      case (label: Symbol, a,b) => (label, (a,b))
-      case (label: Symbol, a,b,c) => (label, (a,b,c))
-      case (label: Symbol, a,b,c,d) => (label, (a,b,c,d))
-      case (label: Symbol, a,b,c,d,e) => (label, (a,b,c,d,e))
-      case (label: Symbol, a,b,c,d,e,f) => (label, (a,b,c,d,e,f))
-      case (label: Symbol, a,b,c,d,e,f,g) => (label, (a,b,c,d,e,f,g))
-      case (label: Symbol, a,b,c,d,e,f,g,h) => (label, (a,b,c,d,e,f,g,h))
-      case (label: Symbol, a,b,c,d,e,f,g,h,i) => (label, (a,b,c,d,e,f,g,h,i))
-      case (label: Symbol, a,b,c,d,e,f,g,h,i,j) => (label, (a,b,c,d,e,f,g,h,i,j))
-      case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k) => (label, (a,b,c,d,e,f,g,h,i,j,k))
-
-      case x => (Symbol(""), x)
+    def extractLabel(msg: Any): (Symbol, Option[Any]) = msg match {
+      case label: Symbol => (label, None)
+      case x => (x match {
+        case (label: Symbol, x) => (label, x)
+        case (label: Symbol, a,b) => (label, (a,b))
+        case (label: Symbol, a,b,c) => (label, (a,b,c))
+        case (label: Symbol, a,b,c,d) => (label, (a,b,c,d))
+        case (label: Symbol, a,b,c,d,e) => (label, (a,b,c,d,e))
+        case (label: Symbol, a,b,c,d,e,f) => (label, (a,b,c,d,e,f))
+        case (label: Symbol, a,b,c,d,e,f,g) => (label, (a,b,c,d,e,f,g))
+        case (label: Symbol, a,b,c,d,e,f,g,h) => (label, (a,b,c,d,e,f,g,h))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i) => (label, (a,b,c,d,e,f,g,h,i))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j) => (label, (a,b,c,d,e,f,g,h,i,j))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k) => (label, (a,b,c,d,e,f,g,h,i,j,k))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l) => (label, (a,b,c,d,e,f,g,h,i,j,k,l))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t))
+        case (label: Symbol, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) => (label, (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u))
+        case x => (Symbol(""), x)
+      }) match { case (l,m) => (l, Some(m)) }
     }
   }
 }

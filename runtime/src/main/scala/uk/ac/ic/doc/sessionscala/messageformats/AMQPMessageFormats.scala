@@ -44,11 +44,11 @@ trait AMQPMessageFormats extends ShortMessageFormat with LongMessageFormat {
   }
   trait SessionMessageExtractor[S <: SessionMessage] {
     def unapply(sessMsg: S): Option[(Symbol, Symbol, Any)]
-    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Any): S
+    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Option[Any]): S
   }
   
   
-  def serialize(sessName: String, srcRole: Symbol, dstRole: Symbol, label: Symbol, msg: Any): Array[Byte] = {
+  def serialize(sessName: String, srcRole: Symbol, dstRole: Symbol, label: Symbol, msg: Option[Any]): Array[Byte] = {
     println("serialize, msg: " + msg)
     val result = withBuf { buf =>
       val sessMsg = FORMAT.extractor.apply(sessName, srcRole, dstRole, label, msg)
@@ -58,7 +58,7 @@ trait AMQPMessageFormats extends ShortMessageFormat with LongMessageFormat {
     result
   }
 
-  def deserialize(msg: Array[Byte]): (Symbol, Symbol, Any) = {
+  def deserialize(msg: Array[Byte]): (Symbol, Symbol, Option[Any]) = {
     val sessMsg = FORMAT.parser.unapply(msg).get
     val result = FORMAT.extractor.unapply(sessMsg).get
     //println("deserialize: " + result)

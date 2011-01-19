@@ -17,13 +17,13 @@ trait LongMessageFormat {
 
       def serializeInvite(sessName: String, invitedRole: Symbol, proto: String) = {
         withBuf { buf =>
-          SessionMsgLong(sessName, Symbol("Adm"), invitedRole, Symbol("inv"), proto).serialize(buf)
+          SessionMsgLong(sessName, Symbol("Adm"), invitedRole, Symbol("inv"), Some(proto)).serialize(buf)
         }
       }
 
       def openInvite(bytes: Array[Byte]): (Symbol, String, String) = {
         val FromBytes(SessionMsgLong(sessName, _, dstRole, label, contents)) = bytes
-        (dstRole, sessName, contents.asInstanceOf[String])
+        (dstRole, sessName, contents.get.asInstanceOf[String])
       }
     }
   }
@@ -33,12 +33,12 @@ trait LongMessageFormat {
       val SessionMsgLong(_, srcRole, _, label, contents) = sessMsg
       Some((srcRole, label, contents))
     }
-    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Any): SessionMsgLong =
+    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Option[Any]): SessionMsgLong =
       SessionMsgLong(sessName,src,dst,label, contents)
   }
   case class SessionMsgLong(sessName: String, srcRole: Symbol,
                             dstRole: Symbol, label: Symbol,
-                            contents: Any) extends SessionMessage {
+                            contents: Option[Any]) extends SessionMessage {
     def serialize(buf: ByteBuffer) {
       var str = ""
       str += serializeLong(sessName) // sessionid/session name/session exchange name
@@ -50,6 +50,8 @@ trait LongMessageFormat {
       buf.put(str.getBytes(CHARSET))
     }
   }
+
+  def serializeLong(msg: Option[Any]): String = serializeLong(msg.getOrElse(""))
 
   def serializeLong(msg: Any): String = msg match {
     case s: Symbol => serializeLong(s.name)
@@ -72,6 +74,11 @@ trait LongMessageFormat {
     }
   }
 
+  def deserializeOption(buf: ByteBuffer): Option[Any] = deserializeLong(buf) match {
+    case "" => None
+    case x => Some(x)
+  }
+
   def readLength(buf: ByteBuffer): Int = {
     val bytes = Array.ofDim[Byte](4)
     buf.get(bytes)
@@ -92,7 +99,7 @@ trait LongMessageFormat {
         Symbol(readStr(buf)),
         Symbol(readStr(buf)),
         Symbol(readStr(buf)),
-        deserializeLong(buf)))
+        deserializeOption(buf)))
       println("FromBytes, result: " + res)
       res
     }

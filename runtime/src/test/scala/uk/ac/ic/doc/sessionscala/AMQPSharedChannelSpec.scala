@@ -89,7 +89,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
           println("ALICE STARTED")
           s('Bob) ! 4242
           println("ALICE SENT 4242 TO BOB")
-          val (_label,recv) = s('Bob).?
+          val (_label,recv) = s('Bob).??
           println("ALICE RECEIVED: " + recv)
           aliceOk = recv == "foo"
         }}
@@ -98,7 +98,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
           println("BOB STARTED")
           s('Alice) ! "foo"
           println("BOB SENT foo TO ALICE")
-          val (_label,recv) = s('Alice).?
+          val (_label,recv) = s('Alice).??
           
           println("BOB RECEIVED: " + recv)
           bobOk = recv == 4242

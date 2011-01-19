@@ -59,7 +59,7 @@ trait SessionTypeCheckingTraversers {
           if sym == qmarkMethod && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-            println("qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
+            println("***** qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
             env = env.receive(session, role.stringValue, tree.tpe)
             super.traverse(tree)

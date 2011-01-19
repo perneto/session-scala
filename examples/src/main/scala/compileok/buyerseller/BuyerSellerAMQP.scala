@@ -21,14 +21,14 @@ object BuyerSellerAMQP {
       actor {
         sharedChannel.accept('Seller) { s =>
           println("Seller: started")
-          val (_,o: Order) = s('Buyer).?
+          val (_,o: Order) = s('Buyer).??
           s('Buyer) ! 2000
           s('Buyer).receive {
             case OK =>
               s('Buyer) ! new Invoice(2000)
-              val (_,payment: Payment) = s('Buyer).?
+              val (_,payment: Payment) = s('Buyer).??
             case NotOK =>
-              val (_,reason: String) = s('Buyer).?
+              val (_,reason: String) = s('Buyer).??
           }
           println("*****************Seller: finished")
         }
@@ -38,10 +38,10 @@ object BuyerSellerAMQP {
       sharedChannel.accept('Buyer) { s =>
         println("Buyer: started")
         s('Seller) ! new Order(100)
-        val (_,price: Int) = s('Seller).?
+        val (_,price: Int) = s('Seller).??
         if (price < 10000) {
           s('Seller) ! OK
-          val (_,invoice) = s('Seller).?
+          val (_,invoice) = s('Seller).??
           s('Seller) ! new Payment(price)
         } else {
           s('Seller) ! NotOK

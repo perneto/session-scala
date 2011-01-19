@@ -9,7 +9,11 @@ class ParticipantChannel(val chanFrom: Channel[Any], val chanTo: OutputChannel[A
 
   def !(msg: Any) = chanTo ! msg
 
-  def ? = chanFrom.?
+  def ?? = chanFrom.?
+
+  def ?[R] = chanFrom.receive {
+      case x: R => x
+  }
 
   def react(f: PartialFunction[Any, Unit]) = chanFrom.react(f)
 

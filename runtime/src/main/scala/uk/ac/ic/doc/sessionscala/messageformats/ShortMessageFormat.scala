@@ -53,12 +53,12 @@ trait ShortMessageFormat {
       Some((srcRole, label, contents))
     }
 
-    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Any) = {
+    def apply(sessName: String, src: Symbol, dst: Symbol, label: Symbol, contents: Option[Any]) = {
       SessionMsgShort(src, label, contents)
     }
   }
 
-  case class SessionMsgShort(srcRole: Symbol, label: Symbol, contents: Any) extends SessionMessage {
+  case class SessionMsgShort(srcRole: Symbol, label: Symbol, contents: Option[Any]) extends SessionMessage {
     def serialize(buf: ByteBuffer) {
       val srcBytes = srcRole.name.getBytes(CHARSET)
       assert(srcBytes.length < 256)
@@ -80,33 +80,38 @@ trait ShortMessageFormat {
   val LABEL_CODE: Byte = 4
   val TUPLE_CODE: Byte = 5
   val JAVA_OBJECT_CODE: Byte = -127
+  val NO_CONTENTS_CODE: Byte = 127
 
-  def serializeShort(msg: Any, buf: ByteBuffer): Unit = msg match {
-    case s: String =>
-      buf.put(STRING_CODE)
-      buf.putInt(s.length)
-      buf.put(s.getBytes(CHARSET))
-    case i: Int =>
-      buf.put(INT_CODE)
-      buf.putInt(i)
-    case true =>
-      buf.put(TRUE_CODE)
-    case false =>
-      buf.put(FALSE_CODE)
-    case x: Product if x.productArity > 0 =>
-      buf.put(TUPLE_CODE)
-      val len = x.productArity.asInstanceOf[Byte]
-      buf.put(len)
-      x.productIterator foreach (serializeShort(_, buf))
-    case x =>
-      buf.put(JAVA_OBJECT_CODE)
-      val bytes = javaSerializeObject(x)
-      buf.put(bytes)
+  def serializeShort(opt: Option[Any], buf: ByteBuffer): Unit = opt match {
+    case Some(msg) => msg match {
+      case s: String =>
+        buf.put(STRING_CODE)
+        buf.putInt(s.length)
+        buf.put(s.getBytes(CHARSET))
+      case i: Int =>
+        buf.put(INT_CODE)
+        buf.putInt(i)
+      case true =>
+        buf.put(TRUE_CODE)
+      case false =>
+        buf.put(FALSE_CODE)
+      case x: Product if x.productArity > 0 =>
+        buf.put(TUPLE_CODE)
+        val len = x.productArity.asInstanceOf[Byte]
+        buf.put(len)
+        x.productIterator foreach (x => serializeShort(Some(x), buf))
+      case x =>
+        buf.put(JAVA_OBJECT_CODE)
+        val bytes = javaSerializeObject(x)
+        buf.put(bytes)
+      }
+    case None => buf.put(NO_CONTENTS_CODE)
   }
 
-  def deserializeShort(buf: ByteBuffer): Any = {
+  def deserializeShort(buf: ByteBuffer): Option[Any] = {
     val typeCode = buf.get()
-    val value = typeCode match {
+    val value = if (typeCode == NO_CONTENTS_CODE) None
+    else Some( typeCode match {
       case INT_CODE => buf.getInt() // big-endian
       case STRING_CODE =>
         val length = buf.getInt()
@@ -118,7 +123,7 @@ trait ShortMessageFormat {
       case JAVA_OBJECT_CODE =>
         javaDeserializeObject(buf)
       case t => throw new IllegalArgumentException("Unsupported type code in deserialize: " + t)
-    }
+    } )
     println("deserialize: " + value)
     value
   }
