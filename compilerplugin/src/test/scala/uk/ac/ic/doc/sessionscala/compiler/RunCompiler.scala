@@ -2,9 +2,9 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import scala.tools.nsc._
 import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.{Suite, SuperSuite, FunSuite}
-import java.io.{FilenameFilter, File}
+import org.scalatest.{Suite, FunSuite}
 import java.lang.String
+import java.io.{FileReader, BufferedReader, File}
 
 /**
  * Created by: omp08
@@ -44,9 +44,24 @@ object util {
       val path = new File(dir,name)
       if (path.isDirectory)
         scalaFilesInDir(path)
-      else if (path.getName.endsWith("Test.scala"))
-        List(path.getAbsolutePath)
+      else if (path.getName.endsWith("Test.scala")) {
+        withBufferedReader(path) { reader =>
+          if (!reader.readLine.matches("//DISABLED"))
+            List(path.getAbsolutePath)
+          else Nil
+        }
+      }
       else Nil
+    }
+  }
+
+  def withBufferedReader[T](path: File)(block: BufferedReader => T): T = {
+    var reader: BufferedReader = null
+    try {
+      reader = new BufferedReader(new FileReader(path))
+      block(reader)
+    } finally {
+      if (reader != null) reader.close()
     }
   }
 }
