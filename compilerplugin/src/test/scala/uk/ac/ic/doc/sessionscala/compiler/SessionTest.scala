@@ -2,7 +2,6 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
-import tools.nsc.{Settings, Global}
 import org.scribble.protocol.model._
 
 /**

@@ -18,7 +18,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   import global._
 
-  val topEnv = new JoinBlockTopLevelEnv
+  val topEnv = new JoinBlocksPassTopLevelEnv
   val sharedChan = newTermName("sharedChannel")
   val sharedChan2 = newTermName("sharedChan2")
   val sessChan = newTermName("sessionChannel")
@@ -37,6 +37,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val objectTRef = ScalaTypeReference(objectT)
   val aliceRole = new Role("Alice")
   val bobRole = new Role("Bob")
+
+  def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
+      new Interaction(src, dst, new MessageSignature(msgType))
 
   def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
     val env = topEnv.registerSharedChannel(sharedChan, model)
@@ -91,7 +94,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("unexpected send, empty protocol: error") {
     var env = join(emptyProtoModel, "Alice")
     intercept[SessionTypeCheckingException] {
-      env = env.send(sessChan, "Alice", stringT)
+      env = env.send(sessChan, "Alice", sig(stringT))
     }
   }
 
@@ -104,14 +107,14 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("basic protocol, complete") {
     var env = join(sendStringModel, "Alice")
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveJoin
   }
 
   test("basic protocol, wrong message type: error") {
     var env = join(sendStringModel, "Alice")
     intercept[SessionTypeCheckingException] {
-      env = env.send(sessChan, "Bob", objectT) // wrong message type
+      env = env.send(sessChan, "Bob", sig(objectT)) // wrong message type
     }
   }
 
@@ -125,7 +128,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("basic protocol, receive side") {
     var env = join(sendStringModel, "Bob")
-    env = env.receive(sessChan, "Alice", stringT)
+    env = env.receive(sessChan, "Alice", sig(stringT))
     env = env.leaveJoin
   }
 
@@ -141,16 +144,16 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("protocol with choice, chooser side, complete") {
     var env = join(choiceProtoModel, "Alice")
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveJoin
   }
 
   test("protocol with choice, receiver side, complete") {
     var env = join(choiceProtoModel, "Bob")
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveJoin
@@ -160,9 +163,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("choice, if branches on chooser side, complete") {
     var env = join(choiceProtoModel, "Alice")
     env = env.enterThen
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.enterElse
-    env = env.send(sessChan, "Bob", intT)
+    env = env.send(sessChan, "Bob", sig(intT))
     env = env.leaveIf
     env = env.leaveJoin
   }
@@ -170,7 +173,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("choice, supertype on receive covers 2 branches: error")  {
     var env = join(choiceProtoModel, "Bob")
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(anyT)
+    env = env.enterChoiceReceiveBranch(sig(anyT))
     env = env.leaveChoiceReceiveBranch
     intercept[SessionTypeCheckingException] {
       env = env.leaveChoiceReceiveBlock
@@ -181,17 +184,17 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = join(choiceProtoModel, "Bob")
     env = env.enterThen
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
 
     env = env.enterElse
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(charSequenceT)
+    env = env.enterChoiceReceiveBranch(sig(charSequenceT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
         
@@ -211,10 +214,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = join(twoMsgProto, "Alice")
     env = env.registerSharedChannel(sharedChan2, twoMsgProto)
     env = env.enterJoin(sharedChan2, "Bob", sessChan2)
-    env = env.send(sessChan, "Bob", stringT)
-    env = env.receive(sessChan2, "Alice", stringT)
-    env = env.send(sessChan2, "Alice", intT)
-    env = env.receive(sessChan, "Bob", intT)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.receive(sessChan2, "Alice", sig(stringT))
+    env = env.send(sessChan2, "Alice", sig(intT))
+    env = env.receive(sessChan, "Bob", sig(intT))
     env = env.leaveJoin
     env = env.leaveJoin
   }
@@ -224,17 +227,17 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
     env = env.registerSharedChannel(sharedChan2, twoMsgProto)
     env = env.enterJoin(sharedChan2, "Alice", sessChan2)
-    env = env.send(sessChan2, "Bob", stringT)
+    env = env.send(sessChan2, "Bob", sig(stringT))
 
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
 
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.receive(sessChan2, "Bob", sig(intT))
 
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
 
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.receive(sessChan2, "Bob", sig(intT))
 
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
@@ -245,8 +248,8 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   
   test("method inference, one send and receive") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Bob", stringT)
-    env = env.receive(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.receive(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(List())
     
     // all inferred methods are inferred as potentially recursive,
@@ -259,11 +262,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("method inference, branching, common part before branching") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.enterChoiceReceiveBlock(sessChan, "Bob")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(List())
@@ -277,10 +280,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("method inference, branching, non-empty body, nothing before branch") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterChoiceReceiveBlock(sessChan, "Bob")
-    env = env.enterChoiceReceiveBranch(stringT)
-    env = env.send(sessChan, "Alice", intT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.send(sessChan, "Alice", sig(intT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(List())
@@ -298,13 +301,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("method inference, if branches should be merged into choice") {
     var env = sessionMethod(fooMethod, sessChan)
 
-    env = env.send(sessChan, "Alice", objectT)
+    env = env.send(sessChan, "Alice", sig(objectT))
 
     env = env.enterThen
-    env = env.send(sessChan, "Alice", stringT)
-    env = env.receive(sessChan, "Alice", floatT)
+    env = env.send(sessChan, "Alice", sig(stringT))
+    env = env.receive(sessChan, "Alice", sig(floatT))
     env = env.enterElse
-    env = env.send(sessChan, "Alice", intT)
+    env = env.send(sessChan, "Alice", sig(intT))
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
     
@@ -320,12 +323,12 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
 
     env = env.enterThen
-    env = env.send(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Alice", sig(stringT))
     env = env.enterElse
     env = env.enterThen
-    env = env.send(sessChan, "Alice", intT)
+    env = env.send(sessChan, "Alice", sig(intT))
     env = env.enterElse
-    env = env.send(sessChan, "Alice", floatT)
+    env = env.send(sessChan, "Alice", sig(floatT))
     env = env.leaveIf
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
@@ -340,7 +343,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
 
     env = env.enterThen
-    env = env.send(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Alice", sig(stringT))
     env = env.enterElse
     intercept[SessionTypeCheckingException] {
       env = env.leaveIf
@@ -352,7 +355,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
     env = env.enterThen
     env = env.enterElse
-    env = env.send(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Alice", sig(stringT))
     intercept[SessionTypeCheckingException] {
       env = env.leaveIf
     }
@@ -362,9 +365,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
 
     env = env.enterThen
-    env = env.send(sessChan, "Alice", intT)
+    env = env.send(sessChan, "Alice", sig(intT))
     env = env.enterElse
-    env = env.send(sessChan, "Alice", intT)
+    env = env.send(sessChan, "Alice", sig(intT))
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
 
@@ -377,11 +380,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
 
     env = env.enterThen
-    env = env.send(sessChan, "Alice", stringT)
-    env = env.receive(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Alice", sig(stringT))
+    env = env.receive(sessChan, "Alice", sig(stringT))
     env = env.enterElse
-    env = env.send(sessChan, "Alice", charSequenceT)
-    env = env.receive(sessChan, "Alice", charSequenceT)
+    env = env.send(sessChan, "Alice", sig(charSequenceT))
+    env = env.receive(sessChan, "Alice", sig(charSequenceT))
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
 
@@ -394,7 +397,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("method inference, recursion") {
     var env = sessionMethod(fooMethod, sessChan)
     
-    env = env.send(sessChan, "Alice", stringT)
+    env = env.send(sessChan, "Alice", sig(stringT))
     env = env.delegation(fooMethod, List(sessChan), List())
     env = env.leaveSessionMethod(List())
     
@@ -407,8 +410,8 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("method inference, interleaved sessions, basic send-receive") {
     var env = sessionMethod(fooMethod, sessChan, sessChan2)
     
-    env = env.send(sessChan, "Alice", stringT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.send(sessChan, "Alice", sig(stringT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveSessionMethod(List())
 
     checkInferred(env, fooMethod, sessChan, "X1", List (
@@ -423,12 +426,12 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan, sessChan2)
     
     env = env.enterThen
-    env = env.send(sessChan, "Alice", intT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.send(sessChan, "Alice", sig(intT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
 
     env = env.enterElse
-    env = env.send(sessChan, "Alice", stringT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.send(sessChan, "Alice", sig(stringT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
 
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
@@ -444,17 +447,17 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("method inference, interleaved sessions, choice branches") {
     var env = sessionMethod(fooMethod, sessChan, sessChan2)
     
-    env = env.send(sessChan, "Bob", stringT)
-    env = env.receive(sessChan2, "Alice", intT)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.receive(sessChan2, "Alice", sig(intT))
 
     env = env.enterChoiceReceiveBlock(sessChan, "Bob")
 
-    env = env.enterChoiceReceiveBranch(stringT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
-    env = env.enterChoiceReceiveBranch(intT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
     env = env.leaveChoiceReceiveBlock
@@ -475,13 +478,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     
     env = env.enterChoiceReceiveBlock(sessChan, "Bob")
 
-    env = env.enterChoiceReceiveBranch(stringT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
-    env = env.enterChoiceReceiveBranch(intT)
-    env = env.receive(sessChan2, "Bob", intT)
-    env = env.receive(sessChan2, "Bob", intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
+    env = env.receive(sessChan2, "Bob", sig(intT))
 
     intercept[SessionTypeCheckingException] {
       env = env.leaveChoiceReceiveBranch
@@ -491,10 +494,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   test("inferred method call, basic send/receive proto") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(List())
     
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List())
@@ -504,14 +507,14 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("inferred method call, choice proto, receive side") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List())
@@ -521,14 +524,14 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("inferred method call, choice proto, wrong role: error") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterChoiceReceiveBlock(sessChan, "Foo")
-    env = env.enterChoiceReceiveBranch(stringT)
+    env = env.enterChoiceReceiveBranch(sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -539,15 +542,15 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("inferred method call, choice proto, wrong body of when branch: error") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(stringT)
-    env = env.send(sessChan, "Bar", intT) // not in protocol: error
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.send(sessChan, "Bar", sig(intT)) // not in protocol: error
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(intT)
+    env = env.enterChoiceReceiveBranch(sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -558,13 +561,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("inferred method call, choice proto, send side") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterThen
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.enterElse
-    env = env.send(sessChan, "Bob", intT)
+    env = env.send(sessChan, "Bob", sig(intT))
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List())
@@ -574,13 +577,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   test("inferred method call, choice proto, send side, wrong label: error") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterThen
-    env = env.send(sessChan, "Bob", objectT) // should be stringT -> error
+    env = env.send(sessChan, "Bob", sig(objectT)) // should be stringT -> error
     env = env.enterElse
-    env = env.send(sessChan, "Bob", intT)
+    env = env.send(sessChan, "Bob", sig(intT))
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -600,11 +603,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   
   test("inferred, recursive method call - unroll recursion first") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.delegation(fooMethod, List(sessChan), List())
     env = env.leaveSessionMethod(List())
     
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, recurModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List())
@@ -630,7 +633,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val ymethod = empty.newMethod(mkTermName("methodY"))
   test("inferred, recursive method call, multiple recursion labels") {
     var env = sessionMethod(xmethod, sessChan)
-    //env = env.send(sessChan, "Bob", intT)
+    //env = env.send(sessChan, "Bob", sig(intT))
     env = env.delegation(ymethod, List(sessChan), List())
     env = env.leaveSessionMethod(List())
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, sessChan)))
@@ -638,10 +641,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
     env = env.enterSessionMethod(ymethod, List(sessChan))
     env = env.enterThen
-    env = env.send(sessChan, "Bob", intT)
+    env = env.send(sessChan, "Bob", sig(intT))
     env = env.delegation(xmethod, List(sessChan), List())
     env = env.enterElse
-    env = env.send(sessChan, "Bob", stringT)
+    env = env.send(sessChan, "Bob", sig(stringT))
     env = env.delegation(ymethod, List(sessChan), List())
     env = env.leaveIf
     env = env.leaveSessionMethod(List())
@@ -649,7 +652,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, sessChan)))
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(ymethod, sessChan)))    
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, multiRecurModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(xmethod, List(sessChan), List())
@@ -666,12 +669,12 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
     env = env.leaveSessionMethod(List())
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List())
     intercept[SessionTypeCheckingException] {
-      env = env.send(sessChan, "Bob", stringT) // reuse of sessChan not allowed
+      env = env.send(sessChan, "Bob", sig(stringT)) // reuse of sessChan not allowed
     }
   }
 
@@ -685,11 +688,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
     env = env.leaveSessionMethod(List(sessChan))
 
-    env = new JoinBlockTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     val returnedSessChan = newTermName("returnedChan")
     env = env.delegation(fooMethod, List(sessChan), List(returnedSessChan))
-    env = env.send(returnedSessChan, "Bob", stringT)
+    env = env.send(returnedSessChan, "Bob", sig(stringT))
   }
 }

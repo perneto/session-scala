@@ -75,14 +75,14 @@ trait InferenceEnvironments {
       delegator.updated(newSte)
     }
 
-    override def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
-      val inter = createInteraction(null, new Role(role), typeSystem.scalaToScribble(msgType))
+    override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = {
+      val inter = createInteraction(null, new Role(role), msgSig.toScribble)
       //println("send, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
 
-    override def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = {
-      val inter = createInteraction(new Role(role), null, typeSystem.scalaToScribble(msgType))
+    override def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = {
+      val inter = createInteraction(new Role(role), null, msgSig.toScribble)
       //println("receive, delegator: " + delegator)
       inferInteraction(sessChan, inter, delegator)
     }
@@ -114,7 +114,7 @@ trait InferenceEnvironments {
       parent.updated(newSte.updated(method, inf))
     }
 
-    override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: Type) = {
+    override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: MsgSig) = {
       if (chan != null) {
         sessionBranches(parentSte, withChoice, toMerge, chan, labelToMerge)
       } else {
@@ -123,12 +123,12 @@ trait InferenceEnvironments {
       }
     }
 
-    def sessionBranches(parentSte: SessionTypedElements, branch1: SessionTypedElements, branch2: SessionTypedElements, chan: Name, labelToMerge: Type) = {
+    def sessionBranches(parentSte: SessionTypedElements, branch1: SessionTypedElements, branch2: SessionTypedElements, chan: Name, labelToMerge: MsgSig) = {
       // the first branch wraps its inferred list in a choice, and thereafter this function preserves this invariant
       assert(branch1.getInferredFor(method, chan).length == 1, branch1.getInferredFor(method, chan))
       val choice = branch1.getInferredFor(method, chan)(0).asInstanceOf[Choice]
       val block = branch2.getInferredFor(method, chan)
-      val w = createWhen(typeSystem.scalaToScribble(labelToMerge), block)
+      val w = createWhen(labelToMerge.toScribble, block)
       // we use the ifBranches method for checking the interleaved sessions.
       // for this to work we need to remove the branch channel to avoid confusion
       // with merged label sends (choice sends)
@@ -234,10 +234,10 @@ trait InferenceEnvironments {
                               lastBranchSte: Option[SessionTypedElements])
   extends AbstractDelegatingEnv(parent) {
 
-    override def enterChoiceReceiveBranch(label: Type) = {
+    override def enterChoiceReceiveBranch(msgSig: MsgSig) = {
       // create a fresh STE for the new branch
       // this will then be merged with lastBranchSte in InfChoiceReceiveBranchEnv.leaveChoiceReceiveBranch
-      new InfChoiceReceiveBranchEnv(ste.clearAllButLabels, this, method, choiceSrc, chanChoice, label, lastBranchSte)
+      new InfChoiceReceiveBranchEnv(ste.clearAllButLabels, this, method, choiceSrc, chanChoice, msgSig, lastBranchSte)
     }
 
     def updated(ste: SessionTypedElements): SessionTypingEnvironment =
@@ -260,7 +260,7 @@ trait InferenceEnvironments {
                                method: Symbol,
                                choiceSrc: String,
                                chanChoice: Name,
-                               branchLabel: Type,
+                               branchLabel: MsgSig,
                                lastBranchSte: Option[SessionTypedElements])
           extends AbstractDelegatingEnv(parent) {
 
@@ -269,7 +269,7 @@ trait InferenceEnvironments {
         branchComplete(parent.ste, chanChoice, lastBranchSte.get, ste, branchLabel)
       } else { // first branch
         val freshChoice = createChoice(new Role(choiceSrc),
-          typeSystem.scalaToScribble(branchLabel), ste.getInferredFor(method, chanChoice))
+          branchLabel.toScribble, ste.getInferredFor(method, chanChoice))
         ste.updated(method, chanChoice, List(freshChoice)) // overwrite what we just wrapped in a choice
       }
 

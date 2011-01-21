@@ -58,10 +58,13 @@ public class Session {
         return s + "}";
     }
 
-    public Session interaction(Role src, Role dst, TypeReference msgType) {
+    public Session interaction(Role src, Role dst, TypeReference tref) {
+        return interaction(src, dst, new MessageSignature(tref));
+    }
+
+    public Session interaction(Role src, Role dst, MessageSignature msgSig) {
         checkNotEmpty("interaction");
         Activity expected = remaining.get(0);
-        MessageSignature msgSig = new MessageSignature(msgType);
 
         if (expected instanceof Choice) {
             return branchSend(dst, (Choice) expected, msgSig);
@@ -103,7 +106,11 @@ public class Session {
     }
 
     private Session branchSend(Role dst, Choice c, MessageSignature msgSig) {
-        if (!c.getToRole().equals(dst))
+        Role toRole = c.getToRole();
+        if (toRole == null)
+            throw new SessionTypeCheckingException(
+                    "Protocol had choice receive, but implementation tried to send choice");
+        if (!toRole.equals(dst))
             throw new SessionTypeCheckingException(
                     "Expected branch selection send to "
                             + c.getToRole() + " but destination was: " + dst);
@@ -124,9 +131,12 @@ public class Session {
     public Session visitBranch(MessageSignature label, Role srcRole) {
         Choice choice = getChoice();
         Role specSrcRole = choice.getFromRole();
+        if (specSrcRole == null)
+            throw new SessionTypeCheckingException("Protocol had: " + choice +
+                    ", but implementation tried to receive choice from: " + srcRole);
         if (!specSrcRole.equals(srcRole))
             throw new SessionTypeCheckingException("Protocol had choice receive from " + specSrcRole
-                    + ", but got: " + srcRole);
+                    + ", but implementation tried to receive choice from: " + srcRole);
 
         List<When> whens = choice.getWhens();
         for (When w: whens) {

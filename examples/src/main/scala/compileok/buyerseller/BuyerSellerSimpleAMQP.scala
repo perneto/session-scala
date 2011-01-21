@@ -16,11 +16,11 @@ object BuyerSellerSimpleAMQP {
 
       actor {
         sharedChannel.accept('Seller) { s =>
-          val ('Title, item: String) = s('Buyer).??
+          val ('Title, item: String) = s('Buyer).?
           s('Buyer) ! ('Quote, 2000)
           s('Buyer).receive {
             case address: String =>
-              val ('Date, deliveryDate: String) = s('Buyer).??
+              val ('Date, deliveryDate: String) = s('Buyer).?
             case 'Quit => println("received 'Quit")
           }
           println("*****************Seller: finished")
@@ -29,7 +29,7 @@ object BuyerSellerSimpleAMQP {
 
       sharedChannel.accept('Buyer) { s =>
         s('Seller) ! ('Title, "Widget A")
-        val ('Quote, quote: Int) = s('Seller).??
+        val ('Quote, quote: Int) = s('Seller).?
         if (quote < 1000) {
           s('Seller) ! "123 Penny Lane"
           s('Seller) ! "4/6/2011 10:00 UTC-7"

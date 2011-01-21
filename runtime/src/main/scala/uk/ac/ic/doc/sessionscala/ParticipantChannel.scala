@@ -9,7 +9,20 @@ class ParticipantChannel(val chanFrom: Channel[Any], val chanTo: OutputChannel[A
 
   def !(msg: Any) = chanTo ! msg
 
-  def ?? = chanFrom.?
+  // Needs a return type different from AnyRef, otherwise this
+  // and the other ? method have the same return type after erasure,
+  // thus the class won't compile.
+  def ??(): Product = {
+    chanFrom.? match {
+      case p: Product => p
+      case s: Symbol =>
+        (s,null)
+        // This is meant to be pattern-matched like so:
+        // val ('mylabel, _) = s('Foo).??
+        // It's not a common case (most label-only messages should be used for branching)
+        // so I consider the less-than-pretty syntax ok.
+    }
+  }
 
   def ?[R] = chanFrom.receive {
       case x: R => x

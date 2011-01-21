@@ -16,7 +16,7 @@ object Buyer {
       sharedChannel.accept('Buyer) { s =>
         println("Buyer accepted")
         s('Seller) ! ('title, "Widget A")
-        val (_, quote: Int) = s('Seller).??
+        val quote = s('Seller).?[Int]
         if (quote < 1000) {
           s('Seller) ! "123 Penny Lane"
           s('Seller) ! "4/6/2011 10:00 UTC-7"

@@ -22,7 +22,7 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
                   + sessThen.remaining + " while another had: " + sessElse.remaining)    
   }
 
-  class JoinBlockTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
+  class JoinBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
     def this() = this(EmptySTE, null)
     def this(ste: SessionTypedElements) = this(ste, null)
     def this(infEnv: InferredTypeRegistry) = this(EmptySTE, infEnv)
@@ -43,23 +43,19 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
           
     def updated(ste: SessionTypedElements) = {
       assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_))
-      new JoinBlockTopLevelEnv(ste, infEnv)
+      new JoinBlocksPassTopLevelEnv(ste, infEnv)
     }
     
     override def leaveJoin: SessionTypingEnvironment = notLeavingYet("join")
 
-    override def send(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = notYet("send")
-    override def receive(sessChan: Name, role: String, msgType: Type, delegator: SessionTypingEnvironment) = notYet("receive")
+    override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("send")
+    override def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("receive")
 
     override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) = notYet("choice receive")
     override def leaveChoiceReceiveBlock = notLeavingYet("choice receive")
 
-    override def enterChoiceReceiveBranch(labelType: Type) = notYet("choice receive branch")
+    override def enterChoiceReceiveBranch(msgSig: MsgSig) = notYet("choice receive branch")
     override def leaveChoiceReceiveBranch = notLeavingYet("choice receive branch")
-
-    override def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = notYet("then branch")
-    override def enterElse: SessionTypingEnvironment = notYet("else branch")
-    override def leaveIf: SessionTypingEnvironment = notLeavingYet("if")
   }
 
   def unroll(recur: LabelledBlock): Seq[Activity] = {
@@ -92,14 +88,14 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
   class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment, frozenChannels: List[Name]) extends AbstractDelegatingEnv(parent) {
     def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels)
 
-    override def send(sessChan: Name, role: String, msgType: Type) = {
+    override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
       checkFrozen(sessChan)
-      parent.send(sessChan, role, msgType)
+      parent.send(sessChan, role, msgSig)
     }
 
-    override def receive(sessChan: Name, role: String, msgType: Type) = {
+    override def receive(sessChan: Name, role: String, msgSig: MsgSig) = {
       checkFrozen(sessChan)
-      parent.receive(sessChan, role, msgType)
+      parent.receive(sessChan, role, msgSig)
     }
 
     override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
@@ -150,12 +146,12 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
     def updated(ste: SessionTypedElements) =
       new InProcessEnv(ste, parent, joinAsRole, sessChanJoin, infEnv)
 
-    override def send(sessChan: Name, dstRoleName: String, msgType: Type, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+    override def send(sessChan: Name, dstRoleName: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
       val sess = delegator.ste.sessions(sessChan)
       val dstRole = new Role(dstRoleName)
 
       val newSess = sess.interaction(
-        joinAsRole, dstRole, typeSystem.scalaToScribble(msgType))
+        joinAsRole, dstRole, msgSig.toScribble)
       /*println(
         "send: on " + sessChan + " from " + joinAsRole + " to " +
         dstRole + ": " + msgType + ". Updated session: " + newSess
@@ -163,11 +159,11 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
       delegator.updated(sessChan, newSess)
     }
 
-    override def receive(sessChan: Name, srcRole: String, msgType: Type, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+    override def receive(sessChan: Name, srcRole: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
       val sess = delegator.ste.sessions(sessChan)
 
       val newSess = sess.interaction(
-        new Role(srcRole), joinAsRole, typeSystem.scalaToScribble(msgType))
+        new Role(srcRole), joinAsRole, msgSig.toScribble)
       /*println(
         "receive: on " + sessChan + " from " + srcRole + " to " +
         joinAsRole + ": " + msgType + ". Updated session: " + newSess)*/
@@ -249,15 +245,15 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
 
     // Similar to normal typechecking, this can be a choice selection as well as a normal interaction
     def sendOrReceive(sess: Session, i: Interaction) = {
-      val tRef = i.getMessageSignature.getTypeReferences.get(0)
+      val msig = i.getMessageSignature
       val src = i.getFromRole
       val dsts = i.getToRoles
       val dst = if (dsts.isEmpty) null else dsts.get(0)
-      println("sendOrReceive - " + i + ", tRef: " + tRef)
-      sess.interaction(src, dst, tRef)
+      println("sendOrReceive - " + i + ", msig: " + msig)
+      sess.interaction(src, dst, msig)
     }
 
-    override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: Type) = {
+    override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig) = {
       checkSessionsRemainingSame(branch1.sessions, branch2.sessions)
       branch1
     }
@@ -267,7 +263,7 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
                               parent: SessionTypingEnvironment,
                               chanChoice: Name,
                               choiceSrc: String,
-                              branches: List[Type],
+                              branches: List[MsgSig],
                               lastBranchSte: Option[SessionTypedElements])
   extends AbstractDelegatingEnv(parent) {
 
@@ -275,20 +271,20 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
 
     def parentSession = ste.sessions(chanChoice)
 
-    override def enterChoiceReceiveBranch(label: Type) = {
+    override def enterChoiceReceiveBranch(msgSig: MsgSig) = {
       // The choice activity at the beginning
       // of parentSession will only be removed when all branches
       // have been visited and correctly typechecked.
-      val labelSignature = new MessageSignature(typeSystem.scalaToScribble(label))
+      val labelSignature = msgSig.toScribble
       val sessBranch = parentSession.visitBranch(
         labelSignature,
         new Role(choiceSrc))
       val newSte = ste.updated(chanChoice, sessBranch)
 
       val updatedThis = new ChoiceReceiveBlockEnv(ste, parent, chanChoice,
-        choiceSrc, label :: branches, lastBranchSte)
+        choiceSrc, msgSig :: branches, lastBranchSte)
       new ChoiceReceiveBranchEnv(newSte, updatedThis, chanChoice, 
-          branches, label, lastBranchSte)
+          branches, msgSig, lastBranchSte)
     }
 
     def updated(ste: SessionTypedElements) =
@@ -303,7 +299,7 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
     override def leaveChoiceReceiveBlock = {
       //println("seen branches: " + branches)
       val missing = parentSession.missingBranches(
-        branches map (l => new MessageSignature(typeSystem.scalaToScribble(l)))
+        branches map (l => l.toScribble)
         asJava
       )
       if (!missing.isEmpty)
@@ -322,8 +318,8 @@ trait SessionTypingEnvironments extends InferenceEnvironments with CommonEnviron
   class ChoiceReceiveBranchEnv(val ste: SessionTypedElements,
                                parent: ChoiceReceiveBlockEnv,
                                chanChoice: Name,
-                               branches: List[Type],
-                               branchLabel: Type,
+                               branches: List[MsgSig],
+                               branchLabel: MsgSig,
                                lastBranchSte: Option[SessionTypedElements])
           extends AbstractDelegatingEnv(parent) {
 

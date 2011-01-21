@@ -11,9 +11,10 @@ object BuyerSellerLabelsTest {
     @inlineprotocol("""
       protocol BuyerSeller {
         role Buyer, Seller;
-        title(String) from Buyer to Seller;
+        String from Buyer to Seller;
         quote(Int) from Seller to Buyer;
-        choice from Seller to Buyer {
+        details() from Seller to Buyer;
+        choice from Buyer to Seller {
           String {
             date(String) from Buyer to Seller;
           }
@@ -25,8 +26,9 @@ object BuyerSellerLabelsTest {
 
     actor {
       sharedChannel.join('Seller) { s =>
-        val ('title, item: String) = s('Buyer).??
+        val item = s('Buyer).?[String]
         s('Buyer) ! ('quote, 900)
+        s('Buyer) ! 'details
         println("Seller about to receive")
         s('Buyer).receive {
           case address: String =>
@@ -37,11 +39,12 @@ object BuyerSellerLabelsTest {
     }
 
     sharedChannel.join('Buyer) { s =>
-      s('Seller) ! ('title, "Widget A")
+      s('Seller) ! "Widget Foo"
       println("Buyer sent title")
-      val ('quote, quote: Int) = s('Seller).??
+      val ('quote, quoteVal: Int) = s('Seller).??
       println("Buyer got quote")
-      if (quote < 1000) {
+      val ('details, _) = s('Seller).??
+      if (quoteVal < 1000) {
         s('Seller) ! "123 Penny Lane"
         println("Buyer sent String")
         s('Seller) ! ('date, "4/6/2011 10:00 UTC-7")

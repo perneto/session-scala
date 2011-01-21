@@ -3,7 +3,7 @@ package uk.ac.ic.doc.sessionscala.compiler
 import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
 import org.scribble.protocol.model.ProtocolModel
 import tools.nsc.plugins.PluginComponent
-import util.control.ControlThrowable
+import scala.util.control.ControlThrowable
 import java.io._
 import tools.nsc.Phase
 
@@ -24,7 +24,7 @@ abstract class JoinBlocksPass extends PluginComponent
   class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
-    def initEnvironment = new JoinBlockTopLevelEnv(inferred)
+    def initEnvironment = new JoinBlocksPassTopLevelEnv(inferred)
 
     def parseFile(filename: String, pos: Position) = {
       val is = new FileInputStream(new File(unitPath, filename))
@@ -73,6 +73,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol
+      pos = tree.pos
 
       tree match {
         case ValDef(_,name,_,rhs)
@@ -90,14 +91,15 @@ abstract class JoinBlocksPass extends PluginComponent
         if sym == joinMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
           try {
-            pos = tree.pos
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
             pos = tree.pos
+            println("leaveJoin")
             env = env.leaveJoin
           } catch {
             case e: SessionTypeCheckingException =>
               reporter.error(pos, e.getMessage)
+              //e.printStackTrace()
           }
 
         case _ =>

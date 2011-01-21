@@ -9,7 +9,7 @@ import tools.nsc.Global
  */
 
 trait SessionTypeCheckingTraversers { 
-  self: SessionDefinitions with SessionTypingEnvironments =>
+  self: SessionDefinitions with SessionTypingEnvironments with ScalaTypeSystemComponent =>
   val global: Global
   import global._
 
@@ -31,23 +31,52 @@ trait SessionTypeCheckingTraversers {
 
     def getSessionChannels(args: List[Tree]): List[Name] =
       args.map(getSessionChannelName).flatten
-    
+
+    def getType(arg: Tree): Option[Type] = {
+      //fixme: nasty hack necessary to get correct type both for class instances and objects (modules)
+      val t = definitions.getClass(arg.tpe.typeSymbol.fullName).tpe
+      println("t: " + t)
+      Some(t)
+    }
+
+    def stringValue(const: Constant) = Some(const.stringValue)
+
+    def getLabelAndArgType(arg: Tree): (Option[String], Option[Type]) = {
+      println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
+      val ret = arg match {
+        // The first pattern might be too broad, as it doesn't check that the inner Apply
+        // is for a Tuple constructor
+        case Apply(_, List(app@Apply(_,Literal(label)::Nil), arg)) if app.symbol == symbolApplyMethod =>
+          (stringValue(label), getType(arg))
+        case Apply(_,Literal(label)::Nil) if arg.symbol == symbolApplyMethod =>
+          (stringValue(label), None)
+        case arg =>
+          //println("###########  " + arg)
+          (None, getType(arg))
+      }
+      println("getLabelAndArgType, returning: " + ret)
+      assert(ret._1.isDefined || ret._2.get != definitions.getClass("scala.Symbol").tpe)
+      ret
+    }
+
     override def traverse(tree: Tree) {
       val sym = tree.symbol
 
       try {
+        pos = tree.pos
         tree match {
-          case Apply(Select(Apply(Select(Ident(session),_),Apply(_, Literal(role)::Nil)::Nil),_),arg::Nil)
+          // message send. Without label: s('Alice) ! 42
+          // with label: s('Alice) ! ('mylabel, 42)
+          // or: s('Alice) ! 'quit
+          case Apply(Select(Apply(Select(Ident(session),_),Apply(_, Literal(role)::Nil)::Nil),_), arg::Nil)
           if sym == bangMethod && env.isSessionChannel(session) =>
-            println("***** bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
+            println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
                     + ", session: " + session + ", role: " + role)
-            println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
-            pos = tree.pos
-            val t = definitions.getClass(arg.tpe.typeSymbol.fullName).tpe // fixme: nasty hack
-            println("t: " + t)
-            env = env.send(session, role.stringValue, t)
+            val (lbl,tpe) = getLabelAndArgType(arg)
+            env = env.send(session, role.stringValue, MsgSig(lbl, tpe))
             traverse(arg)
 
+          // message receive, no label: s('Alice).?[Int]
           case TypeApply(
                  qmark@Select(
                    Apply(
@@ -59,11 +88,49 @@ trait SessionTypeCheckingTraversers {
           if sym == qmarkMethod && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-            println("***** qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
+            println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
-            env = env.receive(session, role.stringValue, tree.tpe)
+            env = env.receive(session, role.stringValue, sig(tree.tpe)) // fixme: does this require the type hack as well?
             super.traverse(tree)
 
+          // message receive, with label: val ('quote, quoteVal: Int) = s('Seller).??
+          // at the time of plugin execution (after refchecks), transformed into:
+          // val quoteVal: Int = (s.apply(scala.Symbol.apply("Seller")).??: Any @unchecked) match {
+          //   case (scala.Symbol.unapply("quote"), (quoteVal @ (_: Int))) => quoteVal
+          // }
+          case ValDef(_, valName, tpt, Match(
+            Typed(
+              qqMark@Apply(
+                Select(
+                  Apply(
+                    Select(Ident(session), _),
+                    Apply(_, Literal(role)::Nil)::Nil
+                  ),
+                  _
+                ),
+                Nil
+              ),
+              _
+            ),
+            CaseDef(
+              app@Apply(
+                _,
+                UnApply(
+                  _,
+                  Literal(label)::Nil)::_
+                ),
+              _,
+              _)::Nil
+            )) if qqMark.symbol == qqMarkMethod && env.isSessionChannel(session) =>
+            println("?????????? message receive, session: " + session + ", role: "
+                    + role+", msg type: " + tpt.tpe + ", label: " + label)
+            pos = app.pos
+            val unitSymbol = definitions.getClass("scala.Unit")
+            val tpe = if (tpt.tpe == unitSymbol.tpe) None
+            else Some(tpt.tpe)
+            env = env.receive(session, role.stringValue, MsgSig(Some(label.stringValue), tpe))
+
+          // receive/react
           case Apply(
                  TypeApply(
                    Select(
@@ -87,13 +154,14 @@ trait SessionTypeCheckingTraversers {
                 } else {
                   c.pat match {
                     case Select(_,_) | Ident(_) | Bind(_,_) =>
-                      pos = c.pat.pos
                       val t = c.pat.tpe
-                      val msgTpe = definitions.getClass(t.typeSymbol.fullName).tpe // fixme: other nasty hack
-                      env = env.enterChoiceReceiveBranch(msgTpe)
-                      traverse(c.body)
-                      pos = c.body.pos
-                      env = env.leaveChoiceReceiveBranch
+
+                      // fixme: other nasty hack necessary to get correct type both for class instances and objects (modules)
+                      val msgTpe = definitions.getClass(t.typeSymbol.fullName).tpe
+
+                      visitBranch(c, sig(msgTpe))
+                    case UnApply(fun, Literal(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
+                      visitBranch(c, sig(label.stringValue))
                     case _ =>
                       reporter.error(c.pat.pos,
                         "Receive clauses on session channels (branching) do not support complex patterns yet")
@@ -124,15 +192,21 @@ trait SessionTypeCheckingTraversers {
 
           case If(cond,thenp,elsep) =>
             pos = thenp.pos
+            println("enterThen")
             env = env.enterThen
+            println("after enterThen, traversing body")
             traverse(thenp)
             pos = elsep.pos
+            println("enterElse")
             env = env.enterElse
+            println("after enterElse, traversing body")
             traverse(elsep)
+            println("leaveIf")
             env = env.leaveIf
+            println("after leaveIf")
 
           case DefDef(_,name,tparams,_,_,rhs) =>
-            println("method def: " + name + ", symbol: " + tree.symbol)
+            //println("method def: " + name + ", symbol: " + tree.symbol)
 
             val chanNames = sessionChannelNames(tree.symbol.tpe)
             if (!chanNames.isEmpty) {
@@ -151,7 +225,17 @@ trait SessionTypeCheckingTraversers {
       } catch {
         case e: SessionTypeCheckingException =>
           reporter.error(pos, e.getMessage)
+          //e.printStackTrace()
       }
+    }
+
+    def visitBranch(c: CaseDef, msgSig: MsgSig) {
+      pos = c.pat.pos
+      env = env.enterChoiceReceiveBranch(msgSig)
+      pos = c.body.pos
+      traverse(c.body)
+      pos = c.body.pos
+      env = env.leaveChoiceReceiveBranch
     }
 
     def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name])

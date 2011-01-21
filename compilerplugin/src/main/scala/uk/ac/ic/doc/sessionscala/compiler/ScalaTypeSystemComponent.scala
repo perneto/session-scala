@@ -1,10 +1,10 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import java.util.{List => JList}
-import org.scribble.protocol.model.{ImportList, TypeReference}
 import tools.nsc.util.BatchSourceFile
 import scalaj.collection.Imports._
 import tools.nsc.Global
+import org.scribble.protocol.model.{MessageSignature, ImportList, TypeReference}
 
 /**
  * Created by: omp08
@@ -49,7 +49,7 @@ trait ScalaTypeSystemComponent {
           else throw new SessionTypeCheckingException("Could not find pre-defined type: " + tref.getName + ". Imports list is: " + imports)
         }
       }
-      println("scribbleToScala: " + tref + " -> " + ret)
+      //println("scribbleToScala: " + tref + " -> " + ret)
       ret
     }
 
@@ -59,7 +59,24 @@ trait ScalaTypeSystemComponent {
 
   }
 
+  //def scalaToScribble(label: Option[String], tpe: Option[Type]): MessageSignature =
+  //  messageSignature(label, tpe map (typeSystem.scalaToScribble(_)))
+
   val typeSystem = ScalaTypeSystem
+
+  def sig(tpe: Type) = MsgSig(None, Some(tpe))
+  def sig(label: String, tpe: Type) = MsgSig(Some(label), Some(tpe))
+  def sig(label: String) = MsgSig(Some(label), None)
+  case class MsgSig(label: Option[String], msgType: Option[Type]) {
+    def toScribble = {
+      if (label.isEmpty && msgType.isEmpty)
+        throw new IllegalArgumentException("At least one of label and message type should be specified")
+      val msig =  new MessageSignature()
+      label foreach (l => msig.setOperation(l))
+      msgType foreach  (t => msig.getTypeReferences.add(typeSystem.scalaToScribble(t)))
+      msig
+    }
+  }
 
   case class ScalaTypeReference(t: Type) extends TypeReference {
     override def toString = "ScalaTypeRef[" + t + "]"

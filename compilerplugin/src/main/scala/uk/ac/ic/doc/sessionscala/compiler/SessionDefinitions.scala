@@ -14,9 +14,14 @@ trait SessionDefinitions {
   lazy val participantChannelClass = definitions.getClass("uk.ac.ic.doc.sessionscala.ParticipantChannel")
   lazy val joinMethod = definitions.getMember(sharedChannelTrait, "join")
   lazy val qmarkMethod = definitions.getMember(participantChannelClass, "$qmark")
+  lazy val qqMarkMethod = definitions.getMember(participantChannelClass, "$qmark$qmark")
   lazy val bangMethod = definitions.getMember(participantChannelClass, "$bang")
   lazy val receiveMethod = definitions.getMember(participantChannelClass, "receive")
   lazy val reactMethod = definitions.getMember(participantChannelClass, "receive")
+
+  lazy val symbolObject = definitions.getModule("scala.Symbol")
+  lazy val symbolApplyMethod = definitions.getMember(symbolObject, "apply")
+  lazy val symbolUnapplyMethod = definitions.getMember(symbolObject, "unapply")
 }
 
 

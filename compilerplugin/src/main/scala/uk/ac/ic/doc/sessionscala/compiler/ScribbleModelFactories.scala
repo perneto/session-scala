@@ -10,11 +10,11 @@ import scalaj.collection.Imports._
 trait ScribbleModelFactories {
   type LA = List[Activity]
 
-  def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
-      new Interaction(src, dst, new MessageSignature(msgType))
+  def createInteraction(src: Role, dst: Role, msgSig: MessageSignature) =
+      new Interaction(src, dst, msgSig)
 
-  def createWhen(label: TypeReference): When =
-    createWhen(label, Nil)
+  //def createWhen(label: TypeReference): When =
+  //  createWhen(label, Nil)
   def createWhen(label: TypeReference, block: LA): When =
     createWhen(new MessageSignature(label), block)
   def createWhen(label: MessageSignature, block: Block): When = {
@@ -39,10 +39,10 @@ trait ScribbleModelFactories {
     c.getWhens().addAll((branches map {case (tref, block) => createWhen(tref,block)} asJava))
     c
   }
-  def createChoice(src: Role, label: TypeReference, block: LA): Choice = {
+  def createChoice(src: Role, msig: MessageSignature, block: LA): Choice = {
     val c = new Choice
     c.setFromRole(src)
-    c.getWhens.add(createWhen(label, block))
+    c.getWhens.add(createWhen(msig, block))
     c
   }
   def createChoice(dst: Role, branches: List[(MessageSignature, LA)]): Choice = {
