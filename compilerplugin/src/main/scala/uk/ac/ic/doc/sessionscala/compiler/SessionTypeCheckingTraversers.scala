@@ -145,7 +145,6 @@ trait SessionTypeCheckingTraversers {
           if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
               //println("receiveMethod, session: " + session + ", role: " + role
               //        + ", cases: " + cases)
-              pos = tree.pos
               env = env.enterChoiceReceiveBlock(session, role.stringValue)
               cases foreach { c: CaseDef =>
                 if (! c.guard.isEmpty) {
@@ -153,6 +152,12 @@ trait SessionTypeCheckingTraversers {
                     "Receive clauses on session channels (branching) do not support guards yet")
                 } else {
                   c.pat match {
+                    // Bind is for case s: String
+                    // Ident and Select both needed to use objects:
+                    // case OK is Ident
+                    // case pkg.foo.OK is Select
+                    // fixme: make sure Select and Ident don't fit other kinds of patterns that will not always match,
+                    // breaking typesafety
                     case Select(_,_) | Ident(_) | Bind(_,_) =>
                       val t = c.pat.tpe
 
@@ -160,8 +165,13 @@ trait SessionTypeCheckingTraversers {
                       val msgTpe = definitions.getClass(t.typeSymbol.fullName).tpe
 
                       visitBranch(c, sig(msgTpe))
+
                     case UnApply(fun, Literal(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
                       visitBranch(c, sig(label.stringValue))
+
+                    case Apply(tpt, List(UnApply(fun, Literal(label)::Nil), bind@Bind(_,_))) if fun.symbol == symbolUnapplyMethod =>
+                      visitBranch(c, sig(label.stringValue, bind.symbol.tpe))
+
                     case _ =>
                       reporter.error(c.pat.pos,
                         "Receive clauses on session channels (branching) do not support complex patterns yet")

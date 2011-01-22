@@ -18,6 +18,7 @@ object BuyerSellerLabelsTest {
           String {
             date(String) from Buyer to Seller;
           }
+          mylabel(String) {}
           quit() {}
         }
       }
@@ -33,6 +34,7 @@ object BuyerSellerLabelsTest {
         s('Buyer).receive {
           case address: String =>
             val ('date, deliveryDate: String) = s('Buyer).??
+          case ('mylabel, s: String) =>
           case 'quit => println("received 'quit")
         }
       }
