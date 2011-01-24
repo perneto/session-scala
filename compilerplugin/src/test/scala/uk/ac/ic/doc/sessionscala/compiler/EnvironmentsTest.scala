@@ -9,9 +9,6 @@ import org.scalatest.matchers.ShouldMatchers
  */
 
 class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
-                                        with ScalaTypeSystemComponent
-                                        with ScribbleModelFactories
-                                        with SessionTypedElementsComponent
                                         with ScalaCompilerSetup
                                         with ScribbleParsing
                                         with ShouldMatchers {

@@ -9,7 +9,7 @@ import tools.nsc.Global
  */
 
 trait SessionTypeCheckingTraversers { 
-  self: SessionDefinitions with SessionTypingEnvironments with ScalaTypeSystemComponent =>
+  self: SessionDefinitions with SessionTypingEnvironments =>
   val global: Global
   import global._
 
