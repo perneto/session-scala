@@ -56,7 +56,7 @@ object util {
 
   def disabled(path: File): Boolean = {
     if (testcase != null) {
-      !path.getName.matches(testcase + ".*")
+      !path.getName.matches(".*" + testcase + ".*")
     } else withBufferedReader(path) { reader =>
       reader.readLine.matches("//DISABLED")
     }
