@@ -45,13 +45,20 @@ object util {
       if (path.isDirectory)
         scalaFilesInDir(path)
       else if (path.getName.endsWith("Test.scala")) {
-        withBufferedReader(path) { reader =>
-          if (!reader.readLine.matches("//DISABLED"))
-            List(path.getAbsolutePath)
-          else Nil
-        }
+        if (disabled(path)) Nil
+        else List(path.getAbsolutePath)
       }
       else Nil
+    }
+  }
+
+  def testcase = System.getProperty("testcase")
+
+  def disabled(path: File): Boolean = {
+    if (testcase != null) {
+      !path.getName.matches(testcase + ".*")
+    } else withBufferedReader(path) { reader =>
+      reader.readLine.matches("//DISABLED")
     }
   }
 
@@ -63,6 +70,15 @@ object util {
     } finally {
       if (reader != null) reader.close()
     }
+  }
+
+  def findFiles(dir: String, constructor: String => Suite): List[Suite] = {
+    val list = util.scalaFilesInDir(dir).map(constructor)
+    if (list.isEmpty && testcase != null)
+      println("WARNING: Could not find testcase: " + testcase)
+    else if (testcase != null)
+      println("Running single testcase: " + testcase + " (set with -Dtestcase)")
+    list
   }
 }
 
@@ -76,7 +92,7 @@ class RunCompileOk extends Suite {
   }
 
   override def nestedSuites = {
-    util.scalaFilesInDir("examples/src/main/scala/compileok/").map(new FileShouldCompile(_))
+    util.findFiles("examples/src/main/scala/compileok/", (new FileShouldCompile(_)))
   }
 }
 
@@ -90,6 +106,6 @@ class RunCompileError extends Suite {
   }
 
   override def nestedSuites = {
-    util.scalaFilesInDir("examples/src/main/scala/compileerror/").map(new FileShouldHaveErrors(_))
+    util.findFiles("examples/src/main/scala/compileerror/", (new FileShouldHaveErrors(_)))
   }
 }
