@@ -3,7 +3,6 @@ package uk.ac.ic.doc.sessionscala.compiler
 import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
-import tools.nsc.Global
 import scalaj.collection.Imports._
 
 
@@ -11,21 +10,12 @@ import scalaj.collection.Imports._
  * Created by: omp08
  */
 
-trait CheckingEnvironments {
+trait CheckingEnvironments extends TypeCheckingUtils {
   self: SessionTypedElementsComponent with ScribbleModelFactories
           with CommonEnvironments with ScalaTypeSystemComponent =>
 
 val scribbleJournal: Journal
   import global.{Block => _, _}
-
-  def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
-    case (chan, sessElse) =>
-      val sessThen = sessions2(chan)
-      if (sessElse.remaining != sessThen.remaining)
-        throw new SessionTypeCheckingException(branchesUneven + " On channel: "
-                  + chan + ", a branch had remaining session type: "
-                  + sessThen.remaining + " while another had: " + sessElse.remaining)
-  }
 
   class JoinBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
     def this() = this(EmptySTE, null)
@@ -62,33 +52,6 @@ val scribbleJournal: Journal
     override def enterChoiceReceiveBranch(msgSig: MsgSig) = notYet("choice receive branch")
     override def leaveChoiceReceiveBranch = notLeavingYet("choice receive branch")
   }
-
-  def unroll(recur: LabelledBlock): Seq[Activity] = {
-    def unrollRec(act: Activity): Activity = act match {
-      case r: LabelledBlock if r.getLabel == recur.getLabel => r // masking
-      case r: LabelledBlock => createLabelledBlock(r.getLabel, unrollRec(r.getBlock).asInstanceOf[Block])
-      case rec: Recursion if rec.getLabel == recur.getLabel => recur
-      case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, unrollRec(w.getBlock).asInstanceOf[Block]))))
-      case b: Block => createBlock(b.getContents.asScala.map(unrollRec(_)))
-      case other => other
-    }
-
-    recur.getBlock.getContents.asScala.map(unrollRec(_))
-  }
-
-  def alphaRename(acts: Seq[Activity], oldLabel: String, newLabel: String): Seq[Activity] = {
-    def alphaRenameRec(act: Activity): Activity = act match {
-      case r: LabelledBlock if r.getLabel == oldLabel => r // masking
-      case r: LabelledBlock => createLabelledBlock(r.getLabel, alphaRenameRec(r.getBlock).asInstanceOf[Block])
-      case rec: Recursion if rec.getLabel == oldLabel => createRecursion(newLabel)
-      case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, alphaRenameRec(w.getBlock).asInstanceOf[Block]))))
-      case b: Block => createBlock(b.getContents.asScala.map(alphaRenameRec(_)))
-      case other => other
-    }
-
-    acts.map(alphaRenameRec(_))
-  }
-
 
   class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment, frozenChannels: List[Name]) extends AbstractDelegatingEnv(parent) {
     def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels)
@@ -138,7 +101,8 @@ val scribbleJournal: Journal
 
       if (!session.isComplete)
         throw new SessionTypeCheckingException(
-          "Session not completed, remaining activities: " + session.remaining)
+          "Session not completed on channel " + sessChanJoin + " for role "
+                  + joinAsRole + ", remaining activities: " + session.remaining)
 
       parent.updated(ste)
     }
