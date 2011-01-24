@@ -32,6 +32,8 @@ trait SessionTypeCheckingTraversers {
     def getSessionChannels(args: List[Tree]): List[Name] =
       args.map(getSessionChannelName).flatten
 
+    def hasSessionChannels(args: List[Tree]) = !getSessionChannels(args).isEmpty
+
     def getType(arg: Tree): Option[Type] = {
       //fixme: nasty hack necessary to get correct type both for class instances and objects (modules)
       val t = definitions.getClass(arg.tpe.typeSymbol.fullName).tpe
@@ -182,9 +184,15 @@ trait SessionTypeCheckingTraversers {
               pos = f.pos
               env = env.leaveChoiceReceiveBlock
 
-          case Apply(fun,args) if !getSessionChannels(args).isEmpty =>
+          // delegation returning 1 session channel
+          case ValDef(_, valName, tpt, app@Apply(fun, args)) if hasSessionChannels(args) =>
+            println("delegation returning channel: " + valName + ", method call: " + app)
+            env = env.delegation(fun.symbol, getSessionChannels(args), List(valName))
+            super.traverse(app)
+
+          // delegation, no returned channels (order of cases is important, will match if moved before previous case)
+          case Apply(fun,args) if hasSessionChannels(args) =>
             println("delegation of session channel: " + tree)
-            pos = tree.pos
             env = env.delegation(fun.symbol, getSessionChannels(args), List())
             super.traverse(tree)
 

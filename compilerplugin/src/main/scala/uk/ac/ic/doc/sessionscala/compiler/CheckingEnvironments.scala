@@ -37,7 +37,8 @@ val scribbleJournal: Journal
     }
 
     def updated(ste: SessionTypedElements) = {
-      assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_))
+      assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_),
+        "Top-level env should only be updated with completed sessions. ste: " + ste)
       new JoinBlocksPassTopLevelEnv(ste, infEnv)
     }
 
@@ -108,8 +109,7 @@ val scribbleJournal: Journal
     }
 
     override def isSessionChannel(ident: Name) = {
-      if (ident == sessChanJoin) true
-      else parent.isSessionChannel(ident)
+      ste.hasSessionChannel(ident) || parent.isSessionChannel(ident)
     }
 
     def updated(ste: SessionTypedElements) =

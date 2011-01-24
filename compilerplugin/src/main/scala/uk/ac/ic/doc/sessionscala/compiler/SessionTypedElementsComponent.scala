@@ -71,5 +71,9 @@ trait SessionTypedElementsComponent {
       "X"+i
     }
     def clearAllButLabels = EmptySTE.copy(labels = labels)
+
+    def hasSessionChannel(name: Name): Boolean = {
+      sessions.isDefinedAt(name)
+    }
   }
 }
