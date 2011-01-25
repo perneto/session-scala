@@ -144,11 +144,15 @@ val scribbleJournal: Journal
 
     override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
 
-    def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]) = {
+    def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
+    Seq[(Name, Int, LabelledBlock, Option[Name])] =
+    {
       val retChansOptions = returnedChans map (Some(_))
-      // delegatedChans is always the same length or longer than returnedChans, so the null parameter is never used
-      (delegatedChans.zipAll(retChansOptions, null, None)) map { case (chan, retChanOption) =>
-        (chan, infEnv.inferredSessionType(method, chan), retChanOption)
+      // delegatedChans is always the same length or longer than returnedChans,
+      // so the null parameter to zipAll is never used
+      val zippedList = delegatedChans.zipAll(retChansOptions, null, None)
+      (zippedList.view.zipWithIndex) map { case ((chan, retChanOption), index) =>
+        (chan, index, infEnv.inferredSessionType(method, index), retChanOption)
       }
     }
 
@@ -156,9 +160,9 @@ val scribbleJournal: Journal
       val inferred = retrieveInferred(method, delegatedChans, returnedChans)
       println(inferred)
       val updated = (inferred foldLeft delegator) {
-        case (env, (chan, recur, retChanOpt)) =>
+        case (env, (chan, chanRank, recur, retChanOpt)) =>
           val sess = env.ste.sessions(chan)
-          val advancedSession = advanceOne(chan, sess, recur, Nil)
+          val advancedSession = advanceOne(chanRank, sess, recur, Nil)
           retChanOpt match {
             case Some(retChan) =>
               env.updated(retChan, advancedSession).updated(chan, new Session(sess, List[Activity]() asJava))
@@ -169,10 +173,10 @@ val scribbleJournal: Journal
       new FrozenChannelsEnv(updated.ste, updated, delegatedChans)
     }
 
-    def advanceList(chan: Name, sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
-      (acts foldLeft sess) (advanceOne(chan, _, _, replacedLabels))
+    def advanceList(chanRank: Int, sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
+      (acts foldLeft sess) (advanceOne(chanRank, _, _, replacedLabels))
 
-    def advanceOne(chan: Name, sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
+    def advanceOne(chanRank: Int, sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
       case i: Interaction => sendOrReceive(sess, i)
       case c: Choice =>
         /*
@@ -182,9 +186,10 @@ val scribbleJournal: Journal
 	      } */
         val src = c.getFromRole
         val dst = c.getToRole
-        c.getWhens foreach { infWhen => // we iterate on c's branches, so this supports sending less branches than specified for a choice send
+        // we iterate on c's branches, so this supports sending less branches than specified for a choice send
+        c.getWhens foreach { infWhen =>
           val sessBranch = sess.findMatchingWhen(src, dst, infWhen)
-          advanceList(chan, sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
+          advanceList(chanRank, sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
         }
         sess.dropFirst
       case r: LabelledBlock =>
@@ -192,21 +197,26 @@ val scribbleJournal: Journal
         if (expectedRecur != null) { // genuine expected recursion in spec
           // don't unroll, just jump into recur contents (otherwise infinite loop)
           val renamedSpec = alphaRename(contents(expectedRecur).asScala, expectedRecur.getLabel, r.getLabel)
-          advanceList(chan, new Session(sess, renamedSpec.asJava), contents(r).asScala, r.getLabel :: replacedLabels)
+          advanceList(chanRank, new Session(sess, renamedSpec.asJava),
+            contents(r).asScala, r.getLabel :: replacedLabels)
           sess.dropFirst
         } else { // this is an unnecessary inferred recursion, following the general inference scheme
-          advanceList(chan, sess, unroll(r), replacedLabels)
+          advanceList(chanRank, sess, unroll(r), replacedLabels)
         }
       case r: Recursion =>
         println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
         if (replacedLabels contains r.getLabel) sess.dropMatchingRecursionLabel(r)
         else {
+          // fixme: this doesn't work when there are variable numbers of channels as arguments, or
+          // when formal and effective parameter names are different. Need to generate a unique label for each
+          // channel the method takes as a parameter. With 1 param everywhere, this works, but only because
+          // chanRank is 0 all the time.
           val method = infEnv.methodFor(r.getLabel)
-          assert(notEmpty(infEnv.inferredSessionType(method, chan)), "Calling method: "
-                + method + ": No inferred session type for channel: " + chan + " in env: " + infEnv)
-          val recur = infEnv.inferredSessionType(method, chan)
-          println("inferred for " + method + ", chan: " + chan + ": " + recur)
-          advanceOne(chan, sess, recur, replacedLabels)
+          assert(notEmpty(infEnv.inferredSessionType(method, chanRank)), "Calling method: "
+                + method + ": No inferred session type for channel rank: " + chanRank + " in env: " + infEnv)
+          val recur = infEnv.inferredSessionType(method, chanRank)
+          println("inferred for " + method + ", chanRank: " + chanRank + ": " + recur)
+          advanceOne(chanRank, sess, recur, replacedLabels)
         }
     }
 

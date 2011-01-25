@@ -14,7 +14,7 @@ trait CommonEnvironments {
   import global._
 
   trait InferredTypeRegistry {
-    def inferredSessionType(method: Symbol, chan: Name): LabelledBlock
+    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock
     def methodFor(label: String): Symbol
   }
 

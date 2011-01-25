@@ -20,8 +20,8 @@ trait InferenceEnvironments {
 
   def allInferred(method: Symbol, ste1: SessionTypedElements, ste2: SessionTypedElements): Iterable[Name] = {
     val inf1 = ste1.getInferredFor(method)
-      val inf2 = ste2.getInferredFor(method)
-      inf1.keys ++ inf2.keys
+    val inf2 = ste2.getInferredFor(method)
+    inf1.channels ++ inf2.channels
   }
 
   class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv with InferredTypeRegistry {
@@ -37,18 +37,20 @@ trait InferenceEnvironments {
       throw new IllegalStateException("Should not be called")
 
     override def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
-      val newSte = (sessChans foldLeft ste) { case (ste, chan) =>
-        ste.createInferred(fun, chan)
+      val indexedChans = sessChans.view.zipWithIndex
+      val newSte = (indexedChans foldLeft ste) { case (ste, (chan, index)) =>
+        ste.createInferred(fun, chan, index)
       }
       println("enterSessionMethod, ste: " + ste + ", newSte: " + newSte)
       new InMethodInferenceEnv(this, newSte, fun, sessChans)
     }
 
-    def inferredSessionType(method: Symbol, chan: Name): LabelledBlock = {
+    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock = {
       //println("inferredSessionType: " + method + ", chan: " + chan + ", inferred: " + ste.getInferredFor(method, chan) + ", ste: " + ste)
-      ste.getInferred(method, chan) match {
+      ste.getInferred(method, rank) match {
         case Some(labelledBlock) => labelledBlock
-        case None => throw new IllegalArgumentException("No inferred session type known for: " + method + " and channel: " + chan)
+        case None => throw new IllegalArgumentException("No inferred session type known for: "
+                + method + " with channel position: " + rank)
       }
     }
 
@@ -108,8 +110,8 @@ trait InferenceEnvironments {
 
     override def leaveSessionMethod(returnedChans: List[Name]) = {
       val (newSte, label) = ste.registerMethod(method)
-      val inf = newSte.getInferredFor(method) map { case (chan, listInf) =>
-        (chan -> List(createLabelledBlock(label, listInf)))
+      val inf = newSte.getInferredFor(method) mapValues {
+        listInf => List(createLabelledBlock(label, listInf))
       }
       parent.updated(newSte.updated(method, inf))
     }
@@ -118,7 +120,7 @@ trait InferenceEnvironments {
       if (chan != null) {
         sessionBranches(parentSte, withChoice, toMerge, chan, labelToMerge)
       } else {
-        val merged = ifBranches(withChoice, toMerge)
+        val merged = ifBranches(withChoice, toMerge, None)
         appendInferred(method, parentSte, merged)
       }
     }
@@ -129,22 +131,28 @@ trait InferenceEnvironments {
       val choice = branch1.getInferredFor(method, chan)(0).asInstanceOf[Choice]
       val block = branch2.getInferredFor(method, chan)
       val w = createWhen(labelToMerge.toScribble, block)
-      // we use the ifBranches method for checking the interleaved sessions.
-      // for this to work we need to remove the branch channel to avoid confusion
+      // we use the ifBranches method for checking and merging other, interleaved sessions.
+      // for this to work we need to ignore the channel with branching to avoid confusion
       // with merged label sends (choice sends)
-      val checkedMerged = ifBranches(branch1.dropChan(method, chan),  branch2.dropChan(method, chan))
-      checkedMerged.append(method, chan, addToChoice(choice, w))
+      val checkedMerged = ifBranches(branch1,  branch2, Some(chan))
+      checkedMerged.updated(method, chan, List(addToChoice(choice, w)))
     }
 
-    def ifBranches(thenBranch: SessionTypedElements, elseBranch: SessionTypedElements): SessionTypedElements = {
+    def ifBranches(thenBranch: SessionTypedElements, elseBranch: SessionTypedElements, ignore: Option[Name]): SessionTypedElements = {
       //println("ifBranches, thenBranch: " + thenBranch + ", elseBranch: " + elseBranch)
+
+      // ignore is only for use with sessionBranches, in normal if branches will always be None
+
       // would start the fold with EmptySTE, but need to preserve the labels map
       // from the branches. then branch passes its labels down to else branch,
       // so we start with else branch here
       allInferred(method, thenBranch, elseBranch).foldLeft(elseBranch.clearAllButLabels) { (result, chan) =>
-        val inferredThen = thenBranch.getInferredFor(method, chan)
-        val inferredElse = elseBranch.getInferredFor(method, chan)
-        result.appendAll(method, chan, merge(chan, inferredThen, inferredElse))
+        if (ignore.isDefined && chan == ignore.get) result
+        else {
+          val inferredThen = thenBranch.getInferredFor(method, chan)
+          val inferredElse = elseBranch.getInferredFor(method, chan)
+          result.appendAll(method, chan, merge(chan, inferredThen, inferredElse))
+        }
       }
     }
 
