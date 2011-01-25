@@ -42,8 +42,6 @@ val scribbleJournal: Journal
       new JoinBlocksPassTopLevelEnv(ste, infEnv)
     }
 
-    override def leaveJoin: SessionTypingEnvironment = notLeavingYet("join")
-
     override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("send")
     override def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("receive")
 
@@ -88,6 +86,8 @@ val scribbleJournal: Journal
     }
   }
 
+  class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment) extends Exception(msg)
+
   class InProcessEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
                      joinAsRole: Role,
@@ -98,14 +98,15 @@ val scribbleJournal: Journal
 
     override def leaveJoin: SessionTypingEnvironment = {
       val session = ste.sessions(sessChanJoin)
-      //println("leave join: " + joinAsRole)
+      val newSte = ste.removeSession(sessChanJoin)
+      val newEnv = parent.updated(newSte)
+      println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
 
       if (!session.isComplete)
-        throw new SessionTypeCheckingException(
-          "Session not completed on channel " + sessChanJoin + " for role "
-                  + joinAsRole + ", remaining activities: " + session.remaining)
-
-      parent.updated(ste)
+        throw new RecoverableTypeCheckingException("Session not completed on channel "
+              + sessChanJoin + " for role " + joinAsRole + ", remaining activities: " + session.remaining,
+          newEnv)
+      newEnv
     }
 
     override def isSessionChannel(ident: Name) = {

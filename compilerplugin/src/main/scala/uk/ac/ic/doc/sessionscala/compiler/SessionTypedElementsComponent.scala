@@ -117,5 +117,7 @@ trait SessionTypedElementsComponent {
     def hasSessionChannel(name: Name): Boolean = {
       sessions.isDefinedAt(name)
     }
+
+    def removeSession(chan: Name) = copy(sessions = sessions - chan)
   }
 }

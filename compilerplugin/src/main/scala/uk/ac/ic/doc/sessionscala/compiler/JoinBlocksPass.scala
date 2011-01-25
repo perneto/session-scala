@@ -97,6 +97,9 @@ abstract class JoinBlocksPass extends PluginComponent
             case e: SessionTypeCheckingException =>
               reporter.error(pos, e.getMessage)
               //e.printStackTrace()
+            case rex: RecoverableTypeCheckingException =>
+              reporter.error(pos, rex.getMessage)
+              env = rex.recoveryEnv
           }
 
         case _ =>
