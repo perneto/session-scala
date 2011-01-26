@@ -213,7 +213,7 @@ trait SessionTypeCheckingTraversers {
 
           // 2. valdef of each returned channel
           case ValDef(_, valName, tpt, sel@Select(Ident(selName), tupleAccessor))
-          if syntheticValName != null && selName == syntheticValName => //&& isTupleMethod(sel) =>
+          if syntheticValName != null && selName == syntheticValName && isSessionChannelType(sym.tpe) =>
             println("$$$$$$$$$ found valdef for returned channel " + valName)
             collectedRetVals = valName :: collectedRetVals
             // test whether this is the last accessor - then we have seen all generated valdefs
