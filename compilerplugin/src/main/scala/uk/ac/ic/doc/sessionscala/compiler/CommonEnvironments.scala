@@ -20,7 +20,7 @@ trait CommonEnvironments {
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."
 
-// todo: split out checking specific and inference specific parts. separate getInferred into other trait
+// todo: split out checking specific and inference specific parts. separate inferred() into other trait
 // todo: crash by default when not in right environment
   trait SessionTypingEnvironment {
     val ste: SessionTypedElements

@@ -45,14 +45,9 @@ trait InferenceEnvironments {
       new InMethodInferenceEnv(this, newSte, fun, sessChans)
     }
 
-    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock = {
+    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock =
       //println("inferredSessionType: " + method + ", chan: " + chan + ", inferred: " + ste.getInferredFor(method, chan) + ", ste: " + ste)
-      ste.getInferred(method, rank) match {
-        case Some(labelledBlock) => labelledBlock
-        case None => throw new IllegalArgumentException("No inferred session type known for: "
-                + method + " with channel position: " + rank)
-      }
-    }
+      ste.getInferred(method, rank)
 
     def methodFor(label: String): Symbol = {
       println("methodFor: " + label + ", ste: " + ste)
