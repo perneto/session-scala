@@ -17,6 +17,7 @@ abstract class DefDefPass extends PluginComponent
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
+      println("visit session method, chans: " + chanNames)
       env = env.enterSessionMethod(method, chanNames)
       traverse(body)
       env = env.leaveSessionMethod(List())

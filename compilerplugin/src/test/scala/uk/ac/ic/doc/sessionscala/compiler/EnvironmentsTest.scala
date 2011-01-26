@@ -46,9 +46,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val empty = definitions.EmptyPackage
   val fooMethod = empty.newMethod(mkTermName("foo"))
 
-  def sessionMethod(method: Symbol, chan: Name): SessionTypingEnvironment = {
+  def sessionMethod(method: Symbol, chans: Name*): SessionTypingEnvironment = {
     var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(method, List(chan))
+    env.enterSessionMethod(method, List(chans: _*))
   }
 
   def inferred(env: SessionTypingEnvironment, method: Symbol, rank: Int): LabelledBlock =
@@ -60,12 +60,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     val expected = createLabelledBlock(label, block)
     assert(inf === expected)
   }
-
-  def sessionMethod(method: Symbol, chan1: Name, chan2: Name): SessionTypingEnvironment = {
-    val env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env.enterSessionMethod(method, List(chan1, chan2))
-  }    
-
 
   test("top-level enter join, unregistered channel: error") {
     intercept[SessionTypeCheckingException] {
