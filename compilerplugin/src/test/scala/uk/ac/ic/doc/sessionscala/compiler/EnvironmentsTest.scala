@@ -67,12 +67,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     }
   }
 
-  test("top-level leave (no session to be left): error") {
-    intercept[SessionTypeCheckingException] {
-      topEnv.leaveJoin
-    }
-  }
-
   val emptyProtoModel = parse(
   """protocol Foo { role Alice; }
   """)

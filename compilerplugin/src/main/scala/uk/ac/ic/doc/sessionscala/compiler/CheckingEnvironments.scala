@@ -86,7 +86,8 @@ val scribbleJournal: Journal
     }
   }
 
-  class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment) extends Exception(msg)
+  class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment)
+          extends SessionTypeCheckingException(msg)
 
   class InProcessEnv(val ste: SessionTypedElements,
                      parent: SessionTypingEnvironment,
