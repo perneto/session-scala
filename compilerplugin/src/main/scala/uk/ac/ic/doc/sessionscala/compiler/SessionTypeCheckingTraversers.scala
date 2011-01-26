@@ -61,6 +61,23 @@ trait SessionTypeCheckingTraversers {
       ret
     }
 
+    def tupleArity(tupleSym: Symbol): Int = {
+      // name is TupleXX, XX starts at index 5
+      val arityStr = tupleSym.name.toString.substring(5)
+      Integer.parseInt(arityStr)
+    }
+    def indexAccessor(tupleAccessor: Name): Int =
+      Integer.parseInt(tupleAccessor.toString.substring(1))
+
+    def isTupleMethod(sel: Tree) = definitions.isTupleType(sel.symbol.owner.tpe)
+    // Required for multiple-return session method calls, as the call desugars into
+    // several valdefs
+    var syntheticValName: Name = null
+    //var numRetVals = -1
+    var collectedRetVals: List[Name] = Nil
+    var sessionMethodSym: Symbol = null
+    var sessionMethodArgs: List[Tree] = Nil
+
     override def traverse(tree: Tree) {
       val sym = tree.symbol
 
@@ -184,6 +201,28 @@ trait SessionTypeCheckingTraversers {
               pos = f.pos
               env = env.leaveChoiceReceiveBlock
 
+          // delegation, more than 1 session channel. Desugars into match + assignments to each channel val
+          // 1. actual method call and match statement
+          case ValDef(mods, synValName, tpt, Match(Typed(app@Apply(_,args),_),
+            CaseDef(_, _, Apply(tupleConstructor, listArgs))::Nil))
+          if sym.isSynthetic && hasSessionChannels(args) =>
+            syntheticValName = synValName
+            sessionMethodSym = app.symbol
+            sessionMethodArgs = args
+            println("@@@@@@@@@ found synthetic valdef: " + synValName)
+
+          // 2. valdef of each returned channel
+          case ValDef(_, valName, tpt, sel@Select(Ident(selName), tupleAccessor))
+          if syntheticValName != null && selName == syntheticValName => //&& isTupleMethod(sel) =>
+            println("$$$$$$$$$ found valdef for returned channel " + valName)
+            collectedRetVals = valName :: collectedRetVals
+            // test whether this is the last accessor - then we have seen all generated valdefs
+            if (tupleArity(sel.symbol.owner) == indexAccessor(tupleAccessor)) {
+              env = env.delegation(sessionMethodSym, getSessionChannels(sessionMethodArgs), collectedRetVals.reverse)
+              syntheticValName = null
+              collectedRetVals = Nil
+            }
+
           // delegation returning 1 session channel
           case ValDef(_, valName, tpt, app@Apply(fun, args)) if hasSessionChannels(args) =>
             println("delegation returning channel: " + valName + ", method call: " + app)
@@ -191,7 +230,9 @@ trait SessionTypeCheckingTraversers {
             super.traverse(app)
 
           // delegation, no returned channels (order of cases is important, will match if moved before previous case)
-          case Apply(fun,args) if hasSessionChannels(args) =>
+          case Apply(fun,args) if hasSessionChannels(args)
+                  // tuples are used to return session channels from inside session methods
+                  && !definitions.isTupleType(sym.owner.tpe) =>
             println("delegation of session channel: " + tree)
             env = env.delegation(fun.symbol, getSessionChannels(args), List())
             super.traverse(tree)
@@ -230,7 +271,6 @@ trait SessionTypeCheckingTraversers {
             if (!chanNames.isEmpty) {
               if (!tparams.isEmpty) reporter.error(tree.pos,
                   "Type parameters not supported for session methods")
-              println("enter session method, chans: " + chanNames)
               visitSessionMethod(tree.symbol, rhs, chanNames)
             } else {
               super.traverse(tree)
