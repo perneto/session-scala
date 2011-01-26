@@ -73,12 +73,12 @@ object util {
   }
 
   def findFiles(dir: String, constructor: String => Suite): List[Suite] = {
-    val list = util.scalaFilesInDir(dir).map(constructor)
+    val list = util.scalaFilesInDir(dir)
     if (list.isEmpty && testcase != null)
       println("WARNING: Could not find testcase: " + testcase)
     else if (testcase != null)
-      println("Running single testcase: " + testcase + " (set with -Dtestcase)")
-    list
+      println("Running testcase(s): " + (list reduceLeft (_ + ", " + _)) + " (selected with -Dtestcase="+testcase+")")
+    list.map(constructor)
   }
 }
 
