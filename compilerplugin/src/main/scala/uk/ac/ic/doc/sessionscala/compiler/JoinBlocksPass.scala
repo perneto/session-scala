@@ -94,12 +94,12 @@ abstract class JoinBlocksPass extends PluginComponent
             println("leaveJoin")
             env = env.leaveJoin
           } catch {
-            case e: SessionTypeCheckingException =>
-              reporter.error(pos, e.getMessage)
-              //e.printStackTrace()
             case rex: RecoverableTypeCheckingException =>
               reporter.error(pos, rex.getMessage)
               env = rex.recoveryEnv
+            case e: SessionTypeCheckingException =>
+              reporter.error(pos, e.getMessage)
+              //e.printStackTrace()
           }
 
         case _ =>
