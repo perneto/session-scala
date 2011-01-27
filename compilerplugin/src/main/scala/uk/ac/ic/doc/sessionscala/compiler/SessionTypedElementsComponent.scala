@@ -67,7 +67,7 @@ trait SessionTypedElementsComponent {
     def recordChanReturnOrder(returnedChans: List[Name]): InferredMethod = {
       var zipped = returnedChans zipWithIndex
       val map = (zipped foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
-        result + (index -> chanToRank(retChan))
+        result + (chanToRank(retChan) -> index)
       }
       copy(rankToReturned = map)
     }
