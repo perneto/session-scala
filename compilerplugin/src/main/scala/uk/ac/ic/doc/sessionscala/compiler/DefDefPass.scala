@@ -20,6 +20,8 @@ abstract class DefDefPass extends PluginComponent
       println("visit session method, chans: " + chanNames)
       env = env.enterSessionMethod(method, chanNames)
       traverse(body)
+      // todo: go down all paths, record order of returned session channels
+      // check that order is consistent across all paths
       env = env.leaveSessionMethod(List())
     }
   }

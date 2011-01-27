@@ -663,12 +663,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     }
   }
 
-  test("inference: returned channels has remaining session type") {
-    var env = sessionMethod(fooMethod, sessChan)
-    env = env.leaveSessionMethod(List(sessChan))
-
-  }
-
   test("returning a channel from session method") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.leaveSessionMethod(List(sessChan))
@@ -682,7 +676,39 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
   }
 
-  ignore("inverted channel order when returning channels from session method") {}
+  test("inference: inferredtyperegistry has order of returned channels") {
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveSessionMethod(List(sessChan2, sessChan))
+
+    val reg = env.asInstanceOf[InferredTypeRegistry]
+    assert(reg.returnRank(fooMethod, 1) === 0)
+    assert(reg.returnRank(fooMethod, 0) === 1)
+  }
+
+  ignore("inverted channel order when returning channels from session method") {
+    val retChan = newTermName("returnedChan")
+    val retChan2 = newTermName("returnedChan2")
+
+    var env = sessionMethod(fooMethod, sessChan, sessChan2)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveSessionMethod(List(sessChan2, sessChan))
+
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, twoMsgProto)
+    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
+
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.enterJoin(sharedChan, "Alice", sessChan2)
+
+    env = env.delegation(fooMethod, List(sessChan, sessChan2), List(retChan2, retChan))
+
+    env = env.send(retChan2, "Bob", sig(stringT))
+    env = env.receive(retChan, "Bob", sig(intT))
+    env = env.receive(retChan2, "Bob", sig(intT))
+
+    env = env.leaveJoin
+  }
 
   test("different channel names for formal and effective parameters to session method") {
     var env = sessionMethod(fooMethod, sessChan)

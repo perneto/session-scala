@@ -54,6 +54,9 @@ trait InferenceEnvironments {
       ste.methodFor(label).get
     }
 
+    def returnRank(method: Symbol, rank: Int) =
+      ste.getInferredFor(method).returnRank(rank)
+
     override def toString = "MethodSessionTypeInferenceTopLevelEnv{ste: " + ste + "}"
     override def inferred = this
   }
@@ -88,7 +91,7 @@ trait InferenceEnvironments {
       println("delegation, calling method: " + function + ", delegatedChans: " + delegatedChans)
       val dSte = delegator.ste
       val newSte = delegatedChans.foldLeft(dSte) {(ste, chan) =>
-        val (steRegistered, label) = ste.registerMethod(function)
+        val (steRegistered, label) = ste.ensureMethodLabelExists(function)
         println("delegation, appending inferred recursion variable: " + label)
         steRegistered.append(method, chan, createRecursion(label))
       }
@@ -103,13 +106,8 @@ trait InferenceEnvironments {
     // this makes merging the inferred branches easier in branchComplete
     override def enterThen(delegator: SessionTypingEnvironment) = new InfThenBlockEnv(ste.clearAllButLabels, delegator)
 
-    override def leaveSessionMethod(returnedChans: List[Name]) = {
-      val (newSte, label) = ste.registerMethod(method)
-      val inf = newSte.getInferredFor(method) mapValues {
-        listInf => List(createLabelledBlock(label, listInf))
-      }
-      parent.updated(newSte.updated(method, inf))
-    }
+    override def leaveSessionMethod(returnedChans: List[Name]) =
+      parent.updated(ste.registerCompletedMethod(method, returnedChans))
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: MsgSig) = {
       if (chan != null) {

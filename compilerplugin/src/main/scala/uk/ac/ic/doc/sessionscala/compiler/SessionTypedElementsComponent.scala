@@ -32,9 +32,11 @@ trait SessionTypedElementsComponent {
 
 
   object InferredMethod {
-    def apply() = new InferredMethod(Map(), Map(), Map())
+    def apply() = new InferredMethod(Map(), Map(), Map(), Map())
   }
-  case class InferredMethod(rankToInferred: Map[Int, LA], chansToInferred: Map[Name, LA], chanToRank: Map[Name, Int]) {
+  case class InferredMethod(rankToInferred: Map[Int, LA], chansToInferred: Map[Name, LA],
+                            chanToRank: Map[Name, Int], rankToReturned: Map[Int, Int])
+  {
     assert(valuesEq(rankToInferred, chansToInferred)
             && chanToRank.keys == chansToInferred.keys
             && equal(chanToRank.values, rankToInferred.keys),
@@ -47,19 +49,27 @@ trait SessionTypedElementsComponent {
       // todo: ensure that this method gets called in the order of the parameters (it's the case now but easy to break)
       val i = if (rankToInferred.size == 0) 0
       else rankToInferred.keys.max + 1
-      InferredMethod(rankToInferred + (i -> Nil), chansToInferred + (chan -> Nil), chanToRank + (chan -> i))
+      InferredMethod(rankToInferred + (i -> Nil), chansToInferred + (chan -> Nil),
+                     chanToRank + (chan -> i), rankToReturned)
     }
     def updated(chan: Name, inf: LA): InferredMethod = {
       if (!chanToRank.isDefinedAt(chan)) add(chan).updated(chan, inf)
-      else InferredMethod(rankToInferred + (chanToRank(chan) -> inf),
-              chansToInferred + (chan -> inf),
-              chanToRank)
+      else copy(rankToInferred = rankToInferred + (chanToRank(chan) -> inf),
+              chansToInferred = chansToInferred + (chan -> inf))
     }
     def channels = chansToInferred.keys
     def mapValues(f: LA => LA) = {
       val newRTI = rankToInferred.map { case (rank, l) => (rank, f(l)) }
       val newCTI = chansToInferred.map { case (chan, l) => (chan, newRTI(chanToRank(chan))) }
-      InferredMethod(newRTI, newCTI, chanToRank)
+      copy(rankToInferred = newRTI, chansToInferred = newCTI)
+    }
+    def returnRank(paramRank: Int) = rankToReturned(paramRank)
+    def recordChanReturnOrder(returnedChans: List[Name]): InferredMethod = {
+      var zipped = returnedChans zipWithIndex
+      val map = (zipped foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
+        result + (index -> chanToRank(retChan))
+      }
+      copy(rankToReturned = map)
     }
   }
 
@@ -93,7 +103,7 @@ trait SessionTypedElementsComponent {
       }
     }
 
-    def createInferred(method: Symbol, chan: Name, index: Int): SessionTypedElements =
+    def createInferred(method: Symbol, chan: Name, index: Int) =
       updated(method, getInferredFor(method).add(chan))
 
     def append(method: Symbol, chan: Name, act: Activity) =
@@ -104,7 +114,19 @@ trait SessionTypedElementsComponent {
       updated(method, getInferredFor(method).updated(chan, inferred))
 
     def methodFor(label: String) = labels.get(label)
-    def registerMethod(method: Symbol): (SessionTypedElements, String) = {
+
+    def registerCompletedMethod(method: Symbol, returnedChans: List[Name]) = {
+      val (newSte, label) = ensureMethodLabelExists(method)
+      val newSte2 = newSte.wrapInLabelledBlock(method, label)
+      newSte2.recordChanReturnOrder(method, returnedChans)
+    }
+    def wrapInLabelledBlock(method: Symbol, label: String) = {
+      val inf = getInferredFor(method) mapValues {
+        listInf => List(createLabelledBlock(label, listInf))
+      }
+      updated(method, inf)
+    }
+    def ensureMethodLabelExists(method: Symbol): (SessionTypedElements, String) = {
       var found: String = null
       for ((label, m) <- labels if found == null)
         if (m == method) found = label
@@ -119,6 +141,11 @@ trait SessionTypedElementsComponent {
       println("newLabel: X" + i)
       "X"+i
     }
+    def recordChanReturnOrder(method: Symbol, returnedChans: List[Name]) = {
+      val inf = getInferredFor(method)
+      updated(method, inf.recordChanReturnOrder(returnedChans))
+    }
+
     def clearAllButLabels = EmptySTE.copy(labels = labels)
 
     def hasSessionChannel(name: Name): Boolean = {
