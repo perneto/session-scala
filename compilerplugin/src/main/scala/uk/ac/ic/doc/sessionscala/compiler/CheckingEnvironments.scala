@@ -149,15 +149,20 @@ val scribbleJournal: Journal
     def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
     Seq[(Name, Int, LabelledBlock, Option[Name])] =
     {
-      val retChansOptions = returnedChans map (Some(_))
-      // delegatedChans is always the same length or longer than returnedChans,
-      // so the null parameter to zipAll is never used
-      val zippedList = delegatedChans.zipAll(retChansOptions, null, None)
-      (zippedList.view.zipWithIndex) map { case ((chan, retChanOption), index) =>
+      val chansWithIndex = delegatedChans.view.zipWithIndex
+      val chansWithRetIndexOpt = chansWithIndex map { case (c,i) =>
+        (c, infEnv.returnRank(method, i))
+      }
+      val chansWithRetChanOpt = chansWithRetIndexOpt map { case (c, retIndexOpt) =>
+        (c, for (retIndex <- retIndexOpt) yield returnedChans(retIndex))
+      }
+      (chansWithRetChanOpt.view.zipWithIndex) map { case ((chan, retChanOption), index) =>
         (chan, index, infEnv.inferredSessionType(method, index), retChanOption)
       }
+      // result: List[(chan, chanRank, recur, retChanOpt)] with retChanOpt the correct name
+      // corresponding to chan. The remaining session type for chan will be transferred
+      // to retChanOpt (if defined).
     }
-
     override def delegation(delegator: SessionTypingEnvironment, method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]): SessionTypingEnvironment = {
       val inferred = retrieveInferred(method, delegatedChans, returnedChans)
       println(inferred)
@@ -167,13 +172,18 @@ val scribbleJournal: Journal
           val advancedSession = advanceOne(chanRank, sess, recur, Nil)
           retChanOpt match {
             case Some(retChan) =>
-              env.updated(retChan, advancedSession).updated(chan, new Session(sess, List[Activity]() asJava))
+              env.updated(retChan, advancedSession).updated(chan, finished(sess))
             case None =>
               env.updated(chan, advancedSession)
           }
       }
+      // FrozenChannelsEnv is necessary only for bad programs where the delegation
+      // did not complete the session, but the channel was not returned
+      // and bound to a new value to be completed after the method call
       new FrozenChannelsEnv(updated.ste, updated, delegatedChans)
     }
+
+    def finished(baseSess: Session) = new Session(baseSess, List[Activity]() asJava)
 
     def advanceList(chanRank: Int, sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
       (acts foldLeft sess) (advanceOne(chanRank, _, _, replacedLabels))
@@ -197,10 +207,11 @@ val scribbleJournal: Journal
       case r: LabelledBlock =>
         val expectedRecur = sess.getRecur
         if (expectedRecur != null) { // genuine expected recursion in spec
-          // don't unroll, just jump into recur contents (otherwise infinite loop)
+          // don't unroll, just jump into recur contents (otherwise infinite loop).
           val renamedSpec = alphaRename(contents(expectedRecur).asScala, expectedRecur.getLabel, r.getLabel)
           advanceList(chanRank, new Session(sess, renamedSpec.asJava),
             contents(r).asScala, r.getLabel :: replacedLabels)
+          // finally drop labelled block from session, as contents were checked without error
           sess.dropFirst
         } else { // this is an unnecessary inferred recursion, following the general inference scheme
           advanceList(chanRank, sess, unroll(r), replacedLabels)
@@ -216,6 +227,8 @@ val scribbleJournal: Journal
           val method = infEnv.methodFor(r.getLabel)
           assert(notEmpty(infEnv.inferredSessionType(method, chanRank)), "Calling method: "
                 + method + ": No inferred session type for channel rank: " + chanRank + " in env: " + infEnv)
+          // fixme: This is a bug when we have more than one channel: no reason chanRank should be the same with
+          // the called method
           val recur = infEnv.inferredSessionType(method, chanRank)
           println("inferred for " + method + ", chanRank: " + chanRank + ": " + recur)
           advanceOne(chanRank, sess, recur, replacedLabels)

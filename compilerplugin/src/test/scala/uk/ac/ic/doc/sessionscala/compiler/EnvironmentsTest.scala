@@ -677,18 +677,24 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   }
 
   test("inference: inferredtyperegistry has order of returned channels") {
-    val sessChan3 = newTermName("sess3")
-    var env = sessionMethod(fooMethod, sessChan, sessChan2, sessChan3)
-    env = env.send(sessChan, "Bob", sig(stringT))
-    env = env.leaveSessionMethod(List(sessChan2, sessChan3, sessChan))
+    val s0 = newTermName("s0")
+    val s1 = newTermName("s1")
+    val s2 = newTermName("s2")
+    val s3 = newTermName("s3")
+    val s4 = newTermName("s4")
+
+    var env = sessionMethod(fooMethod, s0, s1, s2, s3, s4)
+    env = env.leaveSessionMethod(List(s1, s2, s0, s4))
 
     val reg = env.asInstanceOf[InferredTypeRegistry]
-    assert(reg.returnRank(fooMethod, 1) === 0)
-    assert(reg.returnRank(fooMethod, 2) === 1)
-    assert(reg.returnRank(fooMethod, 0) === 2)
+    assert(reg.returnRank(fooMethod, 0) === Some(2))
+    assert(reg.returnRank(fooMethod, 1) === Some(0))
+    assert(reg.returnRank(fooMethod, 2) === Some(1))
+    assert(reg.returnRank(fooMethod, 3) === None)
+    assert(reg.returnRank(fooMethod, 4) === Some(3))
   }
 
-  ignore("inverted channel order when returning channels from session method") {
+  test("inverted channel order when returning channels from session method") {
     val retChan = newTermName("returnedChan")
     val retChan2 = newTermName("returnedChan2")
 

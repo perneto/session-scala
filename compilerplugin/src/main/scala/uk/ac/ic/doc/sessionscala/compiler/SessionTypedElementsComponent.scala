@@ -45,17 +45,14 @@ trait SessionTypedElementsComponent {
     def rankMax = rankToInferred.keys.max
     def get(chan: Name) = chansToInferred.get(chan)
     def getOrElse(chan: Name, default: LA): LA = chansToInferred.getOrElse(chan, default)
-    def add(chan: Name) = {
-      // todo: ensure that this method gets called in the order of the parameters (it's the case now but easy to break)
-      val i = if (rankToInferred.size == 0) 0
-      else rankToInferred.keys.max + 1
-      InferredMethod(rankToInferred + (i -> Nil), chansToInferred + (chan -> Nil),
-                     chanToRank + (chan -> i), rankToReturned)
+    def add(chan: Name, index: Int) = {
+      InferredMethod(rankToInferred + (index -> Nil), chansToInferred + (chan -> Nil),
+                     chanToRank + (chan -> index), rankToReturned)
     }
+    def addWithInferred(chan: Name, index: Int, inf: LA) = add(chan, index).updated(chan, inf)
     def updated(chan: Name, inf: LA): InferredMethod = {
-      if (!chanToRank.isDefinedAt(chan)) add(chan).updated(chan, inf)
-      else copy(rankToInferred = rankToInferred + (chanToRank(chan) -> inf),
-              chansToInferred = chansToInferred + (chan -> inf))
+      copy(rankToInferred = rankToInferred + (chanToRank(chan) -> inf),
+           chansToInferred = chansToInferred + (chan -> inf))
     }
     def channels = chansToInferred.keys
     def mapValues(f: LA => LA) = {
@@ -63,13 +60,18 @@ trait SessionTypedElementsComponent {
       val newCTI = chansToInferred.map { case (chan, l) => (chan, newRTI(chanToRank(chan))) }
       copy(rankToInferred = newRTI, chansToInferred = newCTI)
     }
-    def returnRank(paramRank: Int) = rankToReturned(paramRank)
+    def returnRank(paramRank: Int) = rankToReturned.get(paramRank)
     def recordChanReturnOrder(returnedChans: List[Name]): InferredMethod = {
-      var zipped = returnedChans zipWithIndex
-      val map = (zipped foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
+      var retWithIndex = returnedChans zipWithIndex
+      val map = (retWithIndex foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
         result + (chanToRank(retChan) -> index)
       }
       copy(rankToReturned = map)
+    }
+    def setAllToEmptyList = {
+      def empty(x: LA): LA = Nil
+      copy(rankToInferred = rankToInferred mapValues empty,
+           chansToInferred = chansToInferred mapValues empty)
     }
   }
 
@@ -104,7 +106,7 @@ trait SessionTypedElementsComponent {
     }
 
     def createInferred(method: Symbol, chan: Name, index: Int) =
-      updated(method, getInferredFor(method).add(chan))
+      updated(method, getInferredFor(method).add(chan, index))
 
     def append(method: Symbol, chan: Name, act: Activity) =
       appendAll(method, chan, List(act))
@@ -146,7 +148,7 @@ trait SessionTypedElementsComponent {
       updated(method, inf.recordChanReturnOrder(returnedChans))
     }
 
-    def clearAllButLabels = EmptySTE.copy(labels = labels)
+    def clearAllButLabelsAndChanRanks = EmptySTE.copy(labels = labels, inferred = setAllToEmptyList(inferred))
 
     def hasSessionChannel(name: Name): Boolean = {
       sessions.isDefinedAt(name)
@@ -154,4 +156,7 @@ trait SessionTypedElementsComponent {
 
     def removeSession(chan: Name) = copy(sessions = sessions - chan)
   }
+
+  def setAllToEmptyList(inferred: Inferred): Inferred =
+    inferred mapValues (infMethod => infMethod.setAllToEmptyList)
 }

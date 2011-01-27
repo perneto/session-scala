@@ -104,7 +104,7 @@ trait InferenceEnvironments {
 
     // here we create a new ste so that each branch only gives out contents of the branch at the end
     // this makes merging the inferred branches easier in branchComplete
-    override def enterThen(delegator: SessionTypingEnvironment) = new InfThenBlockEnv(ste.clearAllButLabels, delegator)
+    override def enterThen(delegator: SessionTypingEnvironment) = new InfThenBlockEnv(ste.clearAllButLabelsAndChanRanks, delegator)
 
     override def leaveSessionMethod(returnedChans: List[Name]) =
       parent.updated(ste.registerCompletedMethod(method, returnedChans))
@@ -139,7 +139,7 @@ trait InferenceEnvironments {
       // would start the fold with EmptySTE, but need to preserve the labels map
       // from the branches. then branch passes its labels down to else branch,
       // so we start with else branch here
-      allInferred(method, thenBranch, elseBranch).foldLeft(elseBranch.clearAllButLabels) { (result, chan) =>
+      allInferred(method, thenBranch, elseBranch).foldLeft(elseBranch.clearAllButLabelsAndChanRanks) { (result, chan) =>
         if (ignore.isDefined && chan == ignore.get) result
         else {
           val inferredThen = thenBranch.getInferredFor(method, chan)
@@ -238,7 +238,7 @@ trait InferenceEnvironments {
     override def enterChoiceReceiveBranch(msgSig: MsgSig) = {
       // create a fresh STE for the new branch
       // this will then be merged with lastBranchSte in InfChoiceReceiveBranchEnv.leaveChoiceReceiveBranch
-      new InfChoiceReceiveBranchEnv(ste.clearAllButLabels, this, method, choiceSrc, chanChoice, msgSig, lastBranchSte)
+      new InfChoiceReceiveBranchEnv(ste.clearAllButLabelsAndChanRanks, this, method, choiceSrc, chanChoice, msgSig, lastBranchSte)
     }
 
     def updated(ste: SessionTypedElements): SessionTypingEnvironment =
@@ -289,8 +289,8 @@ trait InferenceEnvironments {
       new InfThenBlockEnv(newSte, parent)
 
     override def enterElse = {
-      // only difference with ThenBlockEnv: ste.clearAllButLabels here
-      new ElseBlockEnv(ste.clearAllButLabels, parent, ste)
+      // only difference with ThenBlockEnv: ste.clearAllButLabelsAndChanRanks here
+      new ElseBlockEnv(ste.clearAllButLabelsAndChanRanks, parent, ste)
     }
   }
 }

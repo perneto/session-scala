@@ -15,7 +15,7 @@ trait CommonEnvironments {
 
   trait InferredTypeRegistry {
     def inferredSessionType(method: Symbol, rank: Int): LabelledBlock
-    def returnRank(method: Symbol, rank: Int): Int
+    def returnRank(method: Symbol, rank: Int): Option[Int]
     def methodFor(label: String): Symbol
   }
 
