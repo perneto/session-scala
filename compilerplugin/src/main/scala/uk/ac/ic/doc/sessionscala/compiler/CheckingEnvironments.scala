@@ -149,14 +149,16 @@ val scribbleJournal: Journal
     def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
     Seq[(Name, Int, LabelledBlock, Option[Name])] =
     {
-      val chansWithIndex = delegatedChans.view.zipWithIndex
+      def eval[P,R](f: PartialFunction[P,R], x: P): Option[R] =
+        if (f.isDefinedAt(x)) Some(f(x)) else None
+      val chansWithIndex = delegatedChans.zipWithIndex
       val chansWithRetIndexOpt = chansWithIndex map { case (c,i) =>
         (c, infEnv.returnRank(method, i))
       }
       val chansWithRetChanOpt = chansWithRetIndexOpt map { case (c, retIndexOpt) =>
-        (c, for (retIndex <- retIndexOpt) yield returnedChans(retIndex))
+        (c, for (retIndex <- retIndexOpt; retChan <- eval(returnedChans, retIndex)) yield retChan)
       }
-      (chansWithRetChanOpt.view.zipWithIndex) map { case ((chan, retChanOption), index) =>
+      (chansWithRetChanOpt.zipWithIndex) map { case ((chan, retChanOption), index) =>
         (chan, index, infEnv.inferredSessionType(method, index), retChanOption)
       }
       // result: List[(chan, chanRank, recur, retChanOpt)] with retChanOpt the correct name
@@ -165,7 +167,7 @@ val scribbleJournal: Journal
     }
     override def delegation(delegator: SessionTypingEnvironment, method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]): SessionTypingEnvironment = {
       val inferred = retrieveInferred(method, delegatedChans, returnedChans)
-      println(inferred)
+      println("INFERRED:   " + inferred)
       val updated = (inferred foldLeft delegator) {
         case (env, (chan, chanRank, recur, retChanOpt)) =>
           val sess = env.ste.sessions(chan)
