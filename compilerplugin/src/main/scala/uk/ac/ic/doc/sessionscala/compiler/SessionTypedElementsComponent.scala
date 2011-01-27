@@ -154,7 +154,7 @@ trait SessionTypedElementsComponent {
       sessions.isDefinedAt(name)
     }
 
-    def removeSession(chan: Name) = copy(sessions = sessions - chan)
+    def removeSessions(chans: Set[Name]) = copy(sessions = sessions -- chans)
   }
 
   def setAllToEmptyList(inferred: Inferred): Inferred =

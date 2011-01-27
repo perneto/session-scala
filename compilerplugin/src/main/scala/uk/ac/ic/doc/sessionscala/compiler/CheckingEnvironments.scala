@@ -98,15 +98,21 @@ val scribbleJournal: Journal
     //println("Created InProcessEnv: " + ste)
 
     override def leaveJoin: SessionTypingEnvironment = {
-      val session = ste.sessions(sessChanJoin)
-      val newSte = ste.removeSession(sessChanJoin)
-      val newEnv = parent.updated(newSte)
-      println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
+      // .toSet to make it an immutable.Set, silly API fixed in scala svn:
+      // http://lampsvn.epfl.ch/trac/scala/ticket/4001, can be removed after scala 2.8.2 is released
+      val scopedChans = ste.sessions.keySet.toSet -- parent.ste.sessions.keySet
+      val scopedSessions = scopedChans map (c => (c, ste.sessions(c)))
 
-      if (!session.isComplete)
-        throw new RecoverableTypeCheckingException("Session not completed on channel "
-              + sessChanJoin + " for role " + joinAsRole + ", remaining activities: " + session.remaining,
-          newEnv)
+      val newSte = ste.removeSessions(scopedChans)
+      println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
+      val newEnv = parent.updated(newSte)
+
+      scopedSessions foreach { case (chan, session) =>
+        if (!session.isComplete)
+          throw new RecoverableTypeCheckingException("Session not completed on channel "
+                + chan + " for role " + joinAsRole + ", remaining activities: " + session.remaining,
+            newEnv)
+      }
       newEnv
     }
 

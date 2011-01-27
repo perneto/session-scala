@@ -729,4 +729,19 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(fooMethod, List(sessChan2), Nil)
     env = env.leaveJoin
   }
+
+  test("incomplete session on channel bound by session method return value") {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveSessionMethod(List(sessChan))
+
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, twoMsgProto)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.delegation(fooMethod, List(sessChan), List(sessChan2))
+    intercept[SessionTypeCheckingException] {
+      // sessChan2 still has Int from Bob to Alice
+      env = env.leaveJoin
+    }
+  }
 }
