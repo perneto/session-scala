@@ -73,16 +73,15 @@ trait SessionTypeCheckingTraversers {
     // Required for multiple-return session method calls, as the call desugars into
     // several valdefs
     var syntheticValName: Name = null
-    //var numRetVals = -1
     var collectedRetVals: List[Name] = Nil
     var sessionMethodSym: Symbol = null
     var sessionMethodArgs: List[Tree] = Nil
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol
+      pos = tree.pos
 
       try {
-        pos = tree.pos
         tree match {
           // message send. Without label: s('Alice) ! 42
           // with label: s('Alice) ! ('mylabel, 42)
