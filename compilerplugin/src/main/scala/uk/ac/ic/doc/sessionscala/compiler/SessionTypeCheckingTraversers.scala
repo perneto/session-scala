@@ -22,15 +22,18 @@ trait SessionTypeCheckingTraversers {
       reporter.error(rhs.pos, "Cannot assign " + rhs
         + " to " + lhs + ": aliasing of session channels is forbidden")
     }
-    def isSessionChannel(tree: Tree): Boolean = getSessionChannelName(tree).isDefined
 
-    def getSessionChannelName(tree: Tree): Option[Name] = tree match {
-      case Ident(name) if env.isSessionChannel(name) => Some(name)
-      case _ => None
+    def isSessionChannel(tree: Tree): Boolean = SessionChannel.unapply(tree).isDefined
+
+    object SessionChannel {
+      def unapply(tree: Tree): Option[Name] = tree match {
+        case Ident(name) if env.isSessionChannel(name) => Some(name)
+        case _ => None
+      }
     }
 
     def getSessionChannels(args: List[Tree]): List[Name] =
-      args.map(getSessionChannelName).flatten
+      args.map(SessionChannel.unapply).flatten
 
     def hasSessionChannels(args: List[Tree]) = !getSessionChannels(args).isEmpty
 
@@ -274,6 +277,11 @@ trait SessionTypeCheckingTraversers {
             } else {
               super.traverse(tree)
             }
+
+          // fixme: Forbid session operations in loops
+
+          // todo: forbid returns of session channels? maybe ok, as long as not inside loop
+          //case Return(expr) if expr
 
           case _ =>
             super.traverse(tree)
