@@ -42,7 +42,6 @@ trait SessionTypedElementsComponent {
             && equal(chanToRank.values, rankToInferred.keys),
       "Inconsistent InferredMethod: " + rankToInferred + ", " + chansToInferred + ", " + chanToRank)
     def get(rank: Int) = rankToInferred.get(rank)
-    def rankMax = rankToInferred.keys.max
     def get(chan: Name) = chansToInferred.get(chan)
     def getOrElse(chan: Name, default: LA): LA = chansToInferred.getOrElse(chan, default)
     def add(chan: Name, index: Int) = {
@@ -101,7 +100,7 @@ trait SessionTypedElementsComponent {
       infMethod.get(rank) match {
         case Some(l) => l(0).asInstanceOf[LabelledBlock]
         case None => throw new IllegalArgumentException("No inferred session type known for: "
-                + method + " with channel position: " + rank + " (maximum position: " +infMethod.rankMax+ ")")
+                + method + " with channel position: " + rank)
       }
     }
 
