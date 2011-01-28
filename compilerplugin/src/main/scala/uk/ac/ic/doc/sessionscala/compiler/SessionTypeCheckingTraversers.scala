@@ -288,6 +288,9 @@ trait SessionTypeCheckingTraversers {
         }
 
       } catch {
+        case rex: RecoverableTypeCheckingException =>
+          env = rex.recoveryEnv
+          reporter.error(pos, rex.getMessage)
         case e: SessionTypeCheckingException =>
           reporter.error(pos, e.getMessage)
           //e.printStackTrace()

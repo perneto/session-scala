@@ -18,21 +18,23 @@ abstract class DefDefPass extends PluginComponent
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       println("visit session method, chans: " + chanNames)
+      val savedEnv = env
       env = env.enterSessionMethod(method, chanNames)
-      val retChanNames = checkReturnedChannels(body)
+      // needs to be here because it requires env to know about the channels in chanNames
+      val retChanNames = checkReturnedChannels(body, savedEnv)
       println("&&&&& retChanNames: " + retChanNames)
       traverse(body)
       env = env.leaveSessionMethod(retChanNames) // chanNames here is hack to get current tests to pass again
     }
 
-    def checkReturnedChannels(body: Tree): List[Name] = {
+    def checkReturnedChannels(body: Tree, savedEnv: SessionTypingEnvironment): List[Name] = {
       var last: List[Name] = null
       getFinalExprs(body) foreach { expr =>
         val chans = getSessionChannels(expr)
         if (last == null) last = chans
         else if (chans == last) last = chans
-        else throw new SessionTypeCheckingException(
-          "Inconsistent return of session channels: " + last + " and " + chans)
+        else throw new RecoverableTypeCheckingException(
+          "Inconsistent return of session channels: " + last + " and " + chans, savedEnv)
       }
       assert(last != null) // there should always be an expression
       last
@@ -78,7 +80,7 @@ abstract class DefDefPass extends PluginComponent
     def apply(unit: global.CompilationUnit): Unit = {
       println("DefDefPass starting")
 
-      global.treeBrowsers.create().browse(unit.body)
+      //global.treeBrowsers.create().browse(unit.body)
       val inferenceTraverser = new SessionMethodDefTraverser
       inferenceTraverser(unit.body)
       println(inferenceTraverser.env)
