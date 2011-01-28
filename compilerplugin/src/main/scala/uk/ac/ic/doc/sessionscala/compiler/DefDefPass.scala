@@ -60,8 +60,7 @@ abstract class DefDefPass extends PluginComponent
       case Match(selector, cases) =>
         getFinalExprs(cases)
       case Return(expr) =>
-        // fixme: not sure what to do here. As it is (Nil), unsafe. Maybe forbid returns of session chans altogether
-        Nil
+        getFinalExprs(expr)
       case Try(block, catches, finalizer) =>
         List(getFinalExprs(block), getFinalExprs(catches), getFinalExprs(finalizer)).flatten
       case Typed(expr, tpt) =>
