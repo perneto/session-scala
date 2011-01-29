@@ -74,6 +74,10 @@ trait CommonEnvironments {
     def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, "cannot be used in a loop")
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
 
+    def enterClosure(params: List[Name]): SessionTypingEnvironment = new FrozenChannelsEnv(
+      ste, this, (ste.sessions.keySet -- params).iterator, "cannot be used in a closure")
+    def leaveClosure: SessionTypingEnvironment = parent.updated(ste)
+
     def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels, returnedChannels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this

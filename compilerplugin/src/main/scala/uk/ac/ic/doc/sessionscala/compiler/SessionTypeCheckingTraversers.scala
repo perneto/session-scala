@@ -293,7 +293,10 @@ trait SessionTypeCheckingTraversers {
             env = env.leaveLoop
 
           // fixme: closure capture of session channels, problem with foreach/map/etc
-
+          case Function(valdefs, body) =>
+            env = env.enterClosure(getDefNames(valdefs))
+            traverse(body)
+            env = env.leaveClosure
 
           // todo: forbid returns of session channels? maybe ok, as long as not inside loop
           //case Return(expr) if hasSessionChannels(expr)
@@ -312,6 +315,10 @@ trait SessionTypeCheckingTraversers {
           reporter.error(pos, e.getMessage)
           //e.printStackTrace()
       }
+    }
+
+    def getDefNames(valdefs: List[ValDef]): List[Name] = valdefs map {
+      case ValDef(_, name, _, _) => name
     }
 
     def visitBranch(c: CaseDef, msgSig: MsgSig) {

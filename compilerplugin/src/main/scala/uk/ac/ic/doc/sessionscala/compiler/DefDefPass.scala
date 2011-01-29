@@ -43,6 +43,7 @@ abstract class DefDefPass extends PluginComponent
     def getFinalExprs(trees: List[Tree]): List[Tree] = trees.map(getFinalExprs(_)).flatten
     def getFinalExprs(tree: Tree): List[Tree] = tree match {
       case Block(stats, expr) =>
+        // fixme: handle returns in the middle of block
         getFinalExprs(expr)
       case CaseDef(pat, guard, body) =>
         getFinalExprs(body)
