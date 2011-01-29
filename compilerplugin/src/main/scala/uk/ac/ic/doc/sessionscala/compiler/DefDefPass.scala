@@ -40,15 +40,6 @@ abstract class DefDefPass extends PluginComponent
       last
     }
 
-    def isTupleTpt(tpt: Tree) = definitions.isTupleType(tpt.symbol.tpe)
-
-    def getSessionChannels(tuple: Tree): List[Name] = tuple match {
-      case Apply(Select(New(tpt),nme.CONSTRUCTOR),args) if isTupleTpt(tpt) =>
-        getSessionChannels(args)
-      case SessionChannel(name) => List(name)
-      case _ => Nil
-    }
-
     def getFinalExprs(trees: List[Tree]): List[Tree] = trees.map(getFinalExprs(_)).flatten
     def getFinalExprs(tree: Tree): List[Tree] = tree match {
       case Block(stats, expr) =>

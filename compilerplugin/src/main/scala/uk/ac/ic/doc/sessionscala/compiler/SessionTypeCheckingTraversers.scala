@@ -32,10 +32,21 @@ trait SessionTypeCheckingTraversers {
       }
     }
 
+    def isTupleTpt(tpt: Tree) = definitions.isTupleType(tpt.symbol.tpe)
+
+    // todo: figure out better names for all these variants
+    def getSessionChannels(tuple: Tree): List[Name] = tuple match {
+      case Apply(Select(New(tpt),nme.CONSTRUCTOR),args) if isTupleTpt(tpt) =>
+        getSessionChannels(args)
+      case SessionChannel(name) => List(name)
+      case _ => Nil
+    }
+
     def getSessionChannels(args: List[Tree]): List[Name] =
       args.map(SessionChannel.unapply).flatten
 
     def hasSessionChannels(args: List[Tree]) = !getSessionChannels(args).isEmpty
+    def hasSessionChannels(tree: Tree) = !getSessionChannels(tree).isEmpty
 
     def getType(arg: Tree): Option[Type] = {
       //fixme: nasty hack necessary to get correct type both for class instances and objects (modules)
@@ -239,16 +250,13 @@ trait SessionTypeCheckingTraversers {
             env = env.delegation(fun.symbol, getSessionChannels(args), List())
             super.traverse(tree)
 
-          // todo: allow returning session channel from methods after they have advanced the session
-          // need to be assigned to new val, new val identifier needs to be added to environment
-          //case ValDef(_,name,_,a @ Apply(fun,_)) if a.symbol.tpe == sessionChannelType =>
-
           // todo: support pattern matching on standard receives, checking that all
           // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
 
           // todo: deal with method nesting and name shadowing
 
           case Assign(lhs,rhs) if isSessionChannel(rhs) => linearityError(lhs,rhs)
+          // ValDef actually covers both val and var definitions
           case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
 
           case If(cond,thenp,elsep) =>
@@ -279,9 +287,18 @@ trait SessionTypeCheckingTraversers {
             }
 
           // fixme: Forbid session operations in loops
+          case LabelDef(_,_,block) =>
+            env = env.enterLoop
+            traverse(block)
+            env = env.leaveLoop
+
+          // fixme: closure capture of session channels, problem with foreach/map/etc
+
 
           // todo: forbid returns of session channels? maybe ok, as long as not inside loop
-          //case Return(expr) if expr
+          //case Return(expr) if hasSessionChannels(expr)
+          // shallow search for session channel idents, but ok since any method call
+          // with session chans as params will be caught by the Apply patterns
 
           case _ =>
             super.traverse(tree)
