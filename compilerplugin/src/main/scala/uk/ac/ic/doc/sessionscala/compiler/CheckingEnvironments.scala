@@ -52,40 +52,6 @@ val scribbleJournal: Journal
     override def leaveChoiceReceiveBranch = notLeavingYet("choice receive branch")
   }
 
-  class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment, frozenChannels: List[Name]) extends AbstractDelegatingEnv(parent) {
-    def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels)
-
-    override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
-      checkFrozen(sessChan)
-      parent.send(sessChan, role, msgSig)
-    }
-
-    override def receive(sessChan: Name, role: String, msgSig: MsgSig) = {
-      checkFrozen(sessChan)
-      parent.receive(sessChan, role, msgSig)
-    }
-
-    override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
-      checkFrozen(channels)
-      parent.delegation(function, channels, returnedChannels)
-    }
-
-    override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
-      checkFrozen(sessChan)
-      parent.enterChoiceReceiveBlock(sessChan, srcRole)
-    }
-
-    def checkFrozen(chan: Name) {
-      if (frozenChannels.contains(chan))
-        throw new SessionTypeCheckingException("Channel " + chan
-                + " cannot be used anymore in this scope after it has been passed as a method parameter")
-    }
-
-    def checkFrozen(channels: List[Name]) {
-      channels foreach (c => checkFrozen(c))
-    }
-  }
-
   class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment)
           extends SessionTypeCheckingException(msg)
 
@@ -188,7 +154,8 @@ val scribbleJournal: Journal
       // FrozenChannelsEnv is necessary only for bad programs where the delegation
       // did not complete the session, but the channel was not returned
       // and bound to a new value to be completed after the method call
-      new FrozenChannelsEnv(updated.ste, updated, delegatedChans)
+      new FrozenChannelsEnv(updated.ste, updated, delegatedChans.iterator,
+        "cannot be used anymore in this scope after it has been passed as a method parameter")
     }
 
     def finished(baseSess: Session) = new Session(baseSess, List[Activity]() asJava)

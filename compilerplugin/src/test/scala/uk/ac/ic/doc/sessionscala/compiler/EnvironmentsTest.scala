@@ -744,4 +744,22 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
       env = env.leaveJoin
     }
   }
+
+  test("forbid session operations on channel defined outside of loop") {
+    var env = join(sendStringModel, "Alice")
+    env = env.enterLoop
+    intercept[SessionTypeCheckingException] {
+      env = env.send(sessChan, "Bob", sig(stringT))
+    }
+  }
+
+
+  test("session operations on channel defined inside loop are allowed") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterLoop
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveJoin
+    env.leaveLoop
+  }
 }

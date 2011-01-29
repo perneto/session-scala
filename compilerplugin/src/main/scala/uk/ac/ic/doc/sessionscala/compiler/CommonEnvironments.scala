@@ -71,6 +71,9 @@ trait CommonEnvironments {
     def enterElse: SessionTypingEnvironment = this
     def leaveIf: SessionTypingEnvironment = this
 
+    def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, "cannot be used in a loop")
+    def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
+
     def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels, returnedChannels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this
@@ -148,6 +151,40 @@ trait CommonEnvironments {
     def updated(newSte: SessionTypedElements) =
       new ElseBlockEnv(newSte, parent, steThenBranch)
   }
+
+  class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment,
+                          frozenChannels: Iterator[Name], reason: String) extends AbstractDelegatingEnv(parent) {
+      def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels, reason)
+
+      override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
+        checkFrozen(sessChan)
+        parent.send(sessChan, role, msgSig)
+      }
+
+      override def receive(sessChan: Name, role: String, msgSig: MsgSig) = {
+        checkFrozen(sessChan)
+        parent.receive(sessChan, role, msgSig)
+      }
+
+      override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
+        checkFrozen(channels)
+        parent.delegation(function, channels, returnedChannels)
+      }
+
+      override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
+        checkFrozen(sessChan)
+        parent.enterChoiceReceiveBlock(sessChan, srcRole)
+      }
+
+      def checkFrozen(chan: Name) {
+        if (frozenChannels.contains(chan))
+          throw new SessionTypeCheckingException("Channel " + chan + " " + reason)
+      }
+
+      def checkFrozen(channels: List[Name]) {
+        channels foreach (c => checkFrozen(c))
+      }
+    }
 
 
 }
