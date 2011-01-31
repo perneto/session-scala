@@ -67,22 +67,31 @@ trait CommonEnvironments {
     def leaveChoiceReceiveBlock: SessionTypingEnvironment = this
 
     def enterThen: SessionTypingEnvironment = enterThen(this)
-    def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = this
-    def enterElse: SessionTypingEnvironment = this
-    def leaveIf: SessionTypingEnvironment = this
+    def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("enterThen:" + this + ", delegator: " + delegator); delegator}
+    def enterElse: SessionTypingEnvironment = enterElse(this)
+    def enterElse(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("enterElse:" + this+ ", delegator: " + delegator); delegator}
+    def leaveIf: SessionTypingEnvironment = leaveIf(this)
+    def leaveIf(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("leaveIf:" + this + ", delegator: " + delegator); delegator}
 
     def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, "cannot be used in a loop")
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
 
-    def enterClosure(params: List[Name]): SessionTypingEnvironment = new FrozenChannelsEnv(
+    def enterClosure(params: List[Name]): SessionTypingEnvironment = {
+      println("enter closure: " + this + ", params: " + params + ", frozen: " + (ste.sessions.keySet -- params))
+      new FrozenChannelsEnv(
       ste, this, (ste.sessions.keySet -- params).iterator, "cannot be used in a closure")
-    def leaveClosure: SessionTypingEnvironment = parent.updated(ste)
+    }
+    def leaveClosure: SessionTypingEnvironment = {
+      println("leave closure: " + this + ", parent: " + parent + ", ste: " + ste)
+      parent.updated(ste)
+    }
 
     def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels, returnedChannels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this
 
-    def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
+    def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = enterSessionMethod(this, fun, sessChans)
+    def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
     def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = this
 
     def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig): SessionTypedElements = throw new IllegalStateException
@@ -115,11 +124,13 @@ trait CommonEnvironments {
     override def leaveChoiceReceiveBlock = parent.leaveChoiceReceiveBlock
 
     override def enterThen(delegator: SessionTypingEnvironment) = parent.enterThen(delegator)
-    override def enterElse = parent.enterElse
-    override def leaveIf = parent.leaveIf
+    override def enterElse(delegator: SessionTypingEnvironment) = parent.enterElse(delegator)
+    override def leaveIf(delegator: SessionTypingEnvironment) = parent.leaveIf(delegator)
 
     override def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]) =
       parent.delegation(delegator, function, channels, returnedChannels)
+
+    override def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]) = parent.enterSessionMethod(delegator, fun, sessChans)
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig) =
       parent.branchComplete(parentSte, chan, branch1, branch2, label)

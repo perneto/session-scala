@@ -36,13 +36,13 @@ trait InferenceEnvironments {
     override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
 
-    override def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
+    override def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {
       val indexedChans = sessChans.view.zipWithIndex
-      val newSte = (indexedChans foldLeft ste) { case (ste, (chan, index)) =>
+      val newSte = (indexedChans foldLeft delegator.ste) { case (ste, (chan, index)) =>
         ste.createInferred(fun, chan, index)
       }
-      println("enterSessionMethod, ste: " + ste + ", newSte: " + newSte)
-      new InMethodInferenceEnv(this, newSte, fun, sessChans)
+      println("enterSessionMethod, delegator.ste: " + delegator.ste + ", newSte: " + newSte)
+      new InMethodInferenceEnv(delegator, newSte, fun, sessChans)
     }
 
     def inferredSessionType(method: Symbol, rank: Int): LabelledBlock =

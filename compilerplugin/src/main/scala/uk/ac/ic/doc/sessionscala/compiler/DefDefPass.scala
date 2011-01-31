@@ -17,14 +17,15 @@ abstract class DefDefPass extends PluginComponent
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
-      println("visit session method, chans: " + chanNames)
+      println("visit session method "+method+", chans: " + chanNames)
       val savedEnv = env
       env = env.enterSessionMethod(method, chanNames)
       // needs to be here because it requires env to know about the channels in chanNames
       val retChanNames = checkReturnedChannels(body, savedEnv)
       println("&&&&& retChanNames: " + retChanNames)
       traverse(body)
-      env = env.leaveSessionMethod(retChanNames) // chanNames here is hack to get current tests to pass again
+      env = env.leaveSessionMethod(retChanNames)
+      println("left session method "+method + ", env: " + env)
     }
 
     def checkReturnedChannels(body: Tree, savedEnv: SessionTypingEnvironment): List[Name] = {

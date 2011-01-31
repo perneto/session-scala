@@ -753,7 +753,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     }
   }
 
-
   test("session operations on channel defined inside loop are allowed") {
     var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterLoop
@@ -761,5 +760,22 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveJoin
     env.leaveLoop
+  }
+
+  test("reproducing bug in BuyerSellerLabelsTest") {
+    var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
+    env = env.enterClosure(List())
+    env = env.enterClosure(List())
+    env = env.enterSessionMethod(fooMethod, List(sessChan))
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveSessionMethod(List())
+    env = env.leaveClosure
+    env = env.leaveClosure
+
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.delegation(fooMethod, List(sessChan), List())
+    env = env.leaveJoin
   }
 }
