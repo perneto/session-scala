@@ -16,8 +16,12 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
     val scalaj_collection = "org.scalaj" % "scalaj-collection_2.8.0" % "1.0"
   }
 
-  class Examples(info: ProjectInfo) extends DefaultProject(info) {
+  class ForkingProject(info: ProjectInfo) extends DefaultProject(info) {
     override def fork = forkRun
+  }
+
+  class FunctionalTests(info: ProjectInfo) extends ForkingProject(info) {
+
   }
 
   class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) {
@@ -36,5 +40,7 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
   lazy val runtime = project("runtime", "runtime", new Runtime(_))
   lazy val compilerplugin = project("compilerplugin", "compilerplugin", new CompilerPlugin(_), runtime)
-  lazy val examples = project("examples", "examples", new Examples(_), runtime) //, compiler-plugin when ready
+  lazy val examples = project("examples", "examples", new ForkingProject(_), runtime)
+  lazy val functionaltests = project("functionaltests", "functionaltests", new ForkingProject(_), runtime)
+
 }

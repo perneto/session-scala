@@ -35,9 +35,9 @@ class DelegationReturningChannelsAndValuesTest {
     actor {
       sharedChannel.join('Alice) { s =>
         sharedChannel2.join('Foo) { s2 =>
-        val (s_, i, s2_) = myMethod(s, s2)
-        s_('Bob).?[Int]
-        s2_('Bar).?[Boolean]
+          val (s_, i, s2_) = myMethod(s, s2)
+          s_('Bob).?[Int]
+          s2_('Bar).?[Boolean]
         }
       }
     }

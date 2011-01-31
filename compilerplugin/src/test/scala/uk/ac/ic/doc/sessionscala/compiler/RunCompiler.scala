@@ -39,6 +39,7 @@ class RunCompiler(file: String) {
 object util {
   def scalaFilesInDir(dir: String): List[String] = scalaFilesInDir(new File(dir))
   def scalaFilesInDir(dir: File): List[String] = {
+    if (!dir.isDirectory) throw new IllegalArgumentException(dir + " does not exist or is not a directory")
     val arr: Array[String] = dir.list()
     List(arr: _*) flatMap { name =>
       val path = new File(dir,name)
@@ -92,7 +93,7 @@ class RunCompileOk extends Suite {
   }
 
   override def nestedSuites = {
-    util.findFiles("examples/src/main/scala/compileok/", (new FileShouldCompile(_)))
+    util.findFiles("functionaltests/src/main/scala/compileok/", (new FileShouldCompile(_)))
   }
 }
 
@@ -106,6 +107,6 @@ class RunCompileError extends Suite {
   }
 
   override def nestedSuites = {
-    util.findFiles("examples/src/main/scala/compileerror/", (new FileShouldHaveErrors(_)))
+    util.findFiles("functionaltests/src/main/scala/compileerror/", (new FileShouldHaveErrors(_)))
   }
 }
