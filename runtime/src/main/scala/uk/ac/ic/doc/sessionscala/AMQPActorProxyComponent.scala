@@ -62,7 +62,7 @@ trait AMQPActorProxyComponent {
       case DeserializedMsgReceive(role, label, msg) if srcRoleChans.isDefinedAt(role) =>
         // in case the mapping is not defined yet, the message will wait in the mailbox until it eventually is
         println("sending (" + label + ", "+ msg + ")"+" to channel " + srcRoleChans(role))
-        srcRoleChans(role) ! buildTuple(label,msg)
+        srcRoleChans(role) ! buildTuple(if (label == Symbol("")) None else Some(label), msg)
       case Quit =>
         println("#############################Proxy for role "+role+" exiting")
         connectionManagerActor ! (('stop, self))
@@ -77,33 +77,37 @@ trait AMQPActorProxyComponent {
 
     override def toString = "AMQPActorProxy(sessExchangeName=" + sessExchangeName + ", role=" + role + ")"
 
-    def buildTuple(label: Symbol, opt: Option[Any]): Any = opt match {
-      case Some(msg) => msg match {
-        case Tuple1(msg) => (label, msg)
-        case (a,b) => (label, a,b)
-        case (a,b,c) => (label, a,b,c)
-        case (a,b,c,d) => (label, a,b,c,d)
-        case (a,b,c,d,e) => (label, a,b,c,d,e)
-        case (a,b,c,d,e,f) => (label, a,b,c,d,e,f)
-        case (a,b,c,d,e,f,g) => (label, a,b,c,d,e,f,g)
-        case (a,b,c,d,e,f,g,h) => (label, a,b,c,d,e,f,g,h)
-        case (a,b,c,d,e,f,g,h,i) => (label, a,b,c,d,e,f,g,h,i)
-        case (a,b,c,d,e,f,g,h,i,j) => (label, a,b,c,d,e,f,g,h,i,j)
-        case (a,b,c,d,e,f,g,h,i,j,k) => (label, a,b,c,d,e,f,g,h,i,j,k)
-        case (a,b,c,d,e,f,g,h,i,j,k,l) => (label, a,b,c,d,e,f,g,h,i,j,k,l)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)
-        case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)
-        // Scala tuples are defined up to Tuple22, so we covered everything.
-        case x => (label, x)
+    def buildTuple(labelOpt: Option[Symbol], msgOpt: Option[Any]): Any = {
+      labelOpt map { label =>
+        msgOpt match {
+          case Some(msg) => msg match {
+            case Tuple1(msg) => (label, msg)
+            case (a,b) => (label, a,b)
+            case (a,b,c) => (label, a,b,c)
+            case (a,b,c,d) => (label, a,b,c,d)
+            case (a,b,c,d,e) => (label, a,b,c,d,e)
+            case (a,b,c,d,e,f) => (label, a,b,c,d,e,f)
+            case (a,b,c,d,e,f,g) => (label, a,b,c,d,e,f,g)
+            case (a,b,c,d,e,f,g,h) => (label, a,b,c,d,e,f,g,h)
+            case (a,b,c,d,e,f,g,h,i) => (label, a,b,c,d,e,f,g,h,i)
+            case (a,b,c,d,e,f,g,h,i,j) => (label, a,b,c,d,e,f,g,h,i,j)
+            case (a,b,c,d,e,f,g,h,i,j,k) => (label, a,b,c,d,e,f,g,h,i,j,k)
+            case (a,b,c,d,e,f,g,h,i,j,k,l) => (label, a,b,c,d,e,f,g,h,i,j,k,l)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)
+            case (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) => (label, a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)
+            // Scala tuples are defined up to Tuple22, so we covered everything.
+            case x => (label, x)
+          }
+          case None => label
         }
-      case None => label
+      } getOrElse(msgOpt.get)
     }
 
     def extractLabel(msg: Any): (Symbol, Option[Any]) = msg match {
