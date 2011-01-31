@@ -226,6 +226,8 @@ val scribbleJournal: Journal
       checkSessionsRemainingSame(branch1.sessions, branch2.sessions)
       branch1
     }
+
+    override def returnStatement(delegator: SessionTypingEnvironment) = illegalReturn()
   }
 
   class ChoiceReceiveBlockEnv(val ste: SessionTypedElements,

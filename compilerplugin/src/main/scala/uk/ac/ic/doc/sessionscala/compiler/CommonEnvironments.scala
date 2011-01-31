@@ -86,6 +86,9 @@ trait CommonEnvironments {
       parent.updated(ste)
     }
 
+    def returnStatement: SessionTypingEnvironment = returnStatement(this)
+    def returnStatement(delegator: SessionTypingEnvironment): SessionTypingEnvironment = delegator
+
     def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels, returnedChannels)
     def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this
@@ -134,6 +137,8 @@ trait CommonEnvironments {
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig) =
       parent.branchComplete(parentSte, chan, branch1, branch2, label)
+
+    override def returnStatement(delegator: SessionTypingEnvironment) = parent.returnStatement(delegator)
   }
 
   abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
@@ -201,5 +206,6 @@ trait CommonEnvironments {
       }
     }
 
-
+  def illegalReturn() = throw new SessionTypeCheckingException(
+    "Return statements are not allowed inside session methods or accept/join blocks")
 }

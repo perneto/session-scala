@@ -106,6 +106,8 @@ trait InferenceEnvironments {
     // this makes merging the inferred branches easier in branchComplete
     override def enterThen(delegator: SessionTypingEnvironment) = new InfThenBlockEnv(ste.clearAllButLabelsAndChanRanks, delegator)
 
+    override def returnStatement(delegator: SessionTypingEnvironment) = illegalReturn()
+
     override def leaveSessionMethod(returnedChans: List[Name]) =
       parent.updated(ste.registerCompletedMethod(method, returnedChans))
 

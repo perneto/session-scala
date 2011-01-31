@@ -298,10 +298,10 @@ trait SessionTypeCheckingTraversers {
             traverse(body)
             env = env.leaveClosure
 
-          // todo: forbid returns of session channels? maybe ok, as long as not inside loop
-          //case Return(expr) if hasSessionChannels(expr)
-          // shallow search for session channel idents, but ok since any method call
-          // with session chans as params will be caught by the Apply patterns
+          // return statements are forbidden inside join blocks / session methods
+          // this could be relaxed in some cases, but added complexity doesn't seem to be worth it for now
+          case Return(_) =>
+            env = env.returnStatement
 
           case _ =>
             super.traverse(tree)

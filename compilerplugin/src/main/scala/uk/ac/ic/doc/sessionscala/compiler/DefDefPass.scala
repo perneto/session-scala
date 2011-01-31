@@ -53,7 +53,9 @@ abstract class DefDefPass extends PluginComponent
       case Match(selector, cases) =>
         getFinalExprs(cases)
       case Return(expr) =>
-        getFinalExprs(expr)
+        Nil
+      //  return statements are forbidden in session methods (for now)
+      // otherwise, getFinalExprs(expr), but needs change to Block as return can be in the list of statements
       case Try(block, catches, finalizer) =>
         List(getFinalExprs(block), getFinalExprs(catches), getFinalExprs(finalizer)).flatten
       case Typed(expr, tpt) =>
