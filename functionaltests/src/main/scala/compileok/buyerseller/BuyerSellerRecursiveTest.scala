@@ -19,7 +19,6 @@ object BuyerSellerRecursiveTest {
             case OK =>
               s('Buyer) ! Invoice(quote)
               val payment = s('Buyer).?[Payment]
-            //case s: String => todo: allow choice receive to have more branches than spec by subtyping
             case NotOK =>
               val reason = s('Buyer).?[String]
               quoteRecursionSeller(s, quote - 100)

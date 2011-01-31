@@ -238,7 +238,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
     
     // all inferred methods are inferred as potentially recursive,
-    // and use their name as recursion variable. (todo: later need to allow for overloading)
+    // and use a generated name as recursion variable.
     checkInferred(env, fooMethod, 0, "X1", List(
         createInteraction(null, bobRole, stringTRef),
         createInteraction(bobRole, null, stringTRef)

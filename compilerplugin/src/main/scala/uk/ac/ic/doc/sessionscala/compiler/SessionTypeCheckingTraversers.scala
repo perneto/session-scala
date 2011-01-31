@@ -286,13 +286,11 @@ trait SessionTypeCheckingTraversers {
               super.traverse(tree)
             }
 
-          // fixme: Forbid session operations in loops
           case LabelDef(_,_,block) =>
             env = env.enterLoop
             traverse(block)
             env = env.leaveLoop
 
-          // fixme: closure capture of session channels, problem with foreach/map/etc
           case Function(valdefs, body) =>
             env = env.enterClosure(getDefNames(valdefs))
             traverse(body)
