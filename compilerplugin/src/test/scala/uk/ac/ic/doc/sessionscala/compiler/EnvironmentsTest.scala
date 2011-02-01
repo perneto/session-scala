@@ -841,7 +841,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
       }
   }
 
-  test("inferred branch receive with more branches than specified at point of use", Tag("wip")) {
+  test("inferred branch receive with more branches than specified at point of use") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
     env = env.enterChoiceReceiveBranch(sig(stringT))

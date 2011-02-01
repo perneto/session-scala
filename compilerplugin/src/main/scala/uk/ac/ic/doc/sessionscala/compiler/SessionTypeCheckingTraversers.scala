@@ -48,12 +48,9 @@ trait SessionTypeCheckingTraversers {
     def hasSessionChannels(args: List[Tree]) = !getSessionChannels(args).isEmpty
     def hasSessionChannels(tree: Tree) = !getSessionChannels(tree).isEmpty
 
-    def getType(arg: Tree): Option[Type] = {
-      //fixme: nasty hack necessary to get correct type both for class instances and objects (modules)
-      val t = definitions.getClass(arg.tpe.typeSymbol.fullName).tpe
-      println("t: " + t)
-      Some(t)
-    }
+    // nasty hack necessary to get correct type both for class instances and objects (aka modules)
+    def realType(t: Type): Type = definitions.getClass(t.typeSymbol.fullName).tpe
+    def getType(arg: Tree): Option[Type] = Some(realType(arg.tpe))
 
     def stringValue(const: Constant) = Some(const.stringValue)
 
@@ -102,8 +99,7 @@ trait SessionTypeCheckingTraversers {
           // or: s('Alice) ! 'quit
           case Apply(Select(Apply(Select(Ident(session),_),Apply(_, Literal(role)::Nil)::Nil),_), arg::Nil)
           if sym == bangMethod && env.isSessionChannel(session) =>
-            println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe
-                    + ", session: " + session + ", role: " + role)
+            //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
             env = env.send(session, role.stringValue, MsgSig(lbl, tpe))
             traverse(arg)
@@ -122,7 +118,7 @@ trait SessionTypeCheckingTraversers {
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
             println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
-            env = env.receive(session, role.stringValue, sig(tree.tpe)) // fixme: does this require the type hack as well?
+            env = env.receive(session, role.stringValue, sig(tree.tpe))
             super.traverse(tree)
 
           // message receive, with label: val ('quote, quoteVal: Int) = s('Seller).??
@@ -193,9 +189,7 @@ trait SessionTypeCheckingTraversers {
                     case Select(_,_) | Ident(_) | Bind(_,_) =>
                       val t = c.pat.tpe
 
-                      // fixme: other nasty hack necessary to get correct type both for class instances and objects (modules)
-                      val msgTpe = definitions.getClass(t.typeSymbol.fullName).tpe
-
+                      val msgTpe = realType(t)
                       visitBranch(c, sig(msgTpe))
 
                     case UnApply(fun, Literal(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
