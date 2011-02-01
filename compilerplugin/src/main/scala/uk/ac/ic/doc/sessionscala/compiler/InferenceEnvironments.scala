@@ -49,9 +49,9 @@ trait InferenceEnvironments {
       //println("inferredSessionType: " + method + ", chan: " + chan + ", inferred: " + ste.getInferredFor(method, chan) + ", ste: " + ste)
       ste.getInferred(method, rank)
 
-    def methodFor(label: String): Symbol = {
-      println("methodFor: " + label + ", ste: " + ste)
-      ste.methodFor(label).get
+    def inferredSessionType(label: String): LabelledBlock = {
+      println("inferredSessionType: " + label + ", ste: " + ste)
+      ste.inferredFor(label)
     }
 
     def returnRank(method: Symbol, rank: Int) =
@@ -90,8 +90,8 @@ trait InferenceEnvironments {
     override def delegation(delegator: SessionTypingEnvironment, function: Symbol, delegatedChans: List[Name], returnedChannels: List[Name]) = {
       println("delegation, calling method: " + function + ", delegatedChans: " + delegatedChans)
       val dSte = delegator.ste
-      val newSte = delegatedChans.foldLeft(dSte) {(ste, chan) =>
-        val (steRegistered, label) = ste.ensureMethodLabelExists(function)
+      val newSte = (delegatedChans.zipWithIndex foldLeft dSte) { case (ste, (chan, rank)) =>
+        val (steRegistered, label) = ste.ensureMethodParamLabelExists(function, rank)
         println("delegation, appending inferred recursion variable: " + label)
         steRegistered.append(method, chan, createRecursion(label))
       }
@@ -109,7 +109,7 @@ trait InferenceEnvironments {
     override def returnStatement(delegator: SessionTypingEnvironment) = illegalReturn()
 
     override def leaveSessionMethod(returnedChans: List[Name]) =
-      parent.updated(ste.registerCompletedMethod(method, returnedChans))
+      parent.updated(ste.registerCompletedMethod(method, chans, returnedChans))
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: MsgSig) = {
       if (chan != null) {

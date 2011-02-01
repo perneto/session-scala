@@ -143,7 +143,7 @@ val scribbleJournal: Journal
       val updated = (inferred foldLeft delegator) {
         case (env, (chan, chanRank, recur, retChanOpt)) =>
           val sess = env.ste.sessions(chan)
-          val advancedSession = advanceOne(chanRank, sess, recur, Nil)
+          val advancedSession = advanceOne(sess, recur, Nil)
           retChanOpt match {
             case Some(retChan) =>
               env.updated(retChan, advancedSession).updated(chan, finished(sess))
@@ -160,10 +160,10 @@ val scribbleJournal: Journal
 
     def finished(baseSess: Session) = new Session(baseSess, List[Activity]() asJava)
 
-    def advanceList(chanRank: Int, sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
-      (acts foldLeft sess) (advanceOne(chanRank, _, _, replacedLabels))
+    def advanceList(sess: Session, acts: Seq[Activity], replacedLabels: List[String]): Session =
+      (acts foldLeft sess) (advanceOne(_, _, replacedLabels))
 
-    def advanceOne(chanRank: Int, sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
+    def advanceOne(sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
       case i: Interaction => sendOrReceive(sess, i)
       case c: Choice =>
         /*
@@ -176,7 +176,7 @@ val scribbleJournal: Journal
         // we iterate on c's branches, so this supports sending less branches than specified for a choice send
         c.getWhens foreach { infWhen =>
           val sessBranch = sess.findMatchingWhen(src, dst, infWhen)
-          advanceList(chanRank, sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
+          advanceList(sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
         }
         sess.dropFirst
       case r: LabelledBlock =>
@@ -184,12 +184,12 @@ val scribbleJournal: Journal
         if (expectedRecur != null) { // genuine expected recursion in spec
           // don't unroll, just jump into recur contents (otherwise infinite loop).
           val renamedSpec = alphaRename(contents(expectedRecur).asScala, expectedRecur.getLabel, r.getLabel)
-          advanceList(chanRank, new Session(sess, renamedSpec.asJava),
+          advanceList(new Session(sess, renamedSpec.asJava),
             contents(r).asScala, r.getLabel :: replacedLabels)
           // finally drop labelled block from session, as contents were checked without error
           sess.dropFirst
         } else { // this is an unnecessary inferred recursion, following the general inference scheme
-          advanceList(chanRank, sess, unroll(r), replacedLabels)
+          advanceList(sess, unroll(r), replacedLabels)
         }
       case r: Recursion =>
         println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
@@ -199,14 +199,14 @@ val scribbleJournal: Journal
           // when formal and effective parameter names are different. Need to generate a unique label for each
           // channel the method takes as a parameter. With 1 param everywhere, this works, but only because
           // chanRank is 0 all the time.
-          val method = infEnv.methodFor(r.getLabel)
-          assert(notEmpty(infEnv.inferredSessionType(method, chanRank)), "Calling method: "
-                + method + ": No inferred session type for channel rank: " + chanRank + " in env: " + infEnv)
+          val recur = infEnv.inferredSessionType(r.getLabel)
+          //assert(notEmpty(infEnv.inferredSessionType(method, chanRank)), "Calling method: "
+          //      + method + ": No inferred session type for channel rank: " + chanRank + " in env: " + infEnv)
           // fixme: This is a bug when we have more than one channel: no reason chanRank should be the same with
           // the called method
-          val recur = infEnv.inferredSessionType(method, chanRank)
-          println("inferred for " + method + ", chanRank: " + chanRank + ": " + recur)
-          advanceOne(chanRank, sess, recur, replacedLabels)
+          //val recur = infEnv.inferredSessionType(method, chanRank)
+          println("inferred for " + r.getLabel + ": " + recur)
+          advanceOne(sess, recur, replacedLabels)
         }
     }
 

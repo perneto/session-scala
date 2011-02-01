@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Tag}
 import org.scribble.protocol.model._
 import org.scalatest.matchers.ShouldMatchers
 
@@ -239,7 +239,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     
     // all inferred methods are inferred as potentially recursive,
     // and use a generated name as recursion variable.
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, bobRole, stringTRef),
         createInteraction(bobRole, null, stringTRef)
     ))
@@ -256,7 +256,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, bobRole, stringTRef),
         createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
@@ -273,7 +273,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createChoice(bobRole, null, List(
             (stringTRef, List(
               createInteraction(null, aliceRole, intTRef)
@@ -296,7 +296,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
     
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, aliceRole, objectTRef),
         createChoice(null, aliceRole, List(
             (stringTRef, List(createInteraction(aliceRole, null, floatTRef))),
@@ -318,7 +318,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         // todo: right now whens are in a list so Choice.equals is order-sensitive. need to change it to a set
         createChoice(null, aliceRole, emptyBody(List(intTRef, floatTRef, stringTRef)))
     ))
@@ -356,7 +356,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, aliceRole, intTRef)
     ))
   }
@@ -373,7 +373,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, aliceRole, charSequenceTRef), // send: infer supertype
         createInteraction(aliceRole, null, stringTRef) // receive: infer subtype
     ))
@@ -386,9 +386,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveSessionMethod(Nil)
     
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
         createInteraction(null, aliceRole, stringTRef),
-        createRecursion("X1")
+        createRecursion("X1c0")
     ))
   }
 
@@ -399,10 +399,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List (
+    checkInferred(env, fooMethod, 0, "X1c0", List (
       createInteraction(null, aliceRole, stringTRef)
     ))
-    checkInferred(env, fooMethod, 1, "X1", List (
+    checkInferred(env, fooMethod, 1, "X1c1", List (
       createInteraction(bobRole, null, intTRef)
     ))
   }
@@ -421,10 +421,10 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List (
+    checkInferred(env, fooMethod, 0, "X1c0", List (
       createChoice(null, aliceRole, emptyBody(List(intTRef, stringTRef)))
     ))
-    checkInferred(env, fooMethod, 1, "X1", List (
+    checkInferred(env, fooMethod, 1, "X1c1", List (
       createInteraction(bobRole, null, intTRef)
     ))
   }
@@ -448,11 +448,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    checkInferred(env, fooMethod, 0, "X1", List(
+    checkInferred(env, fooMethod, 0, "X1c0", List(
       createInteraction(null, bobRole, stringTRef),
       createChoice(bobRole, null, emptyBody(List(stringTRef, intTRef)))
     ))
-    checkInferred(env, fooMethod, 1, "X1", List (
+    checkInferred(env, fooMethod, 1, "X1c1", List (
       createInteraction(aliceRole, null, intTRef),
       createInteraction(bobRole, null, intTRef)
     ))
@@ -603,7 +603,6 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   """protocol Foo {
        role Alice, Bob;
        X: {
-         //Int from Alice to Bob;
          Y: {
            choice from Alice to Bob {
              Int { #X; }
@@ -762,20 +761,38 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env.leaveLoop
   }
 
-  test("reproducing bug in BuyerSellerLabelsTest") {
+  test("closure env don't lose inferred method types") {
     var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env = env.enterClosure(List())
     env = env.enterClosure(List())
     env = env.enterSessionMethod(fooMethod, List(sessChan))
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(List())
     env = env.leaveClosure
-    env = env.leaveClosure
 
     env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.delegation(fooMethod, List(sessChan), List())
+    env = env.delegation(fooMethod, List(sessChan), Nil)
+    env = env.leaveJoin
+  }
+
+  test("nested delegation, different parameter order") {
+    var env = sessionMethod(xmethod, sessChan, sessChan2)
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.send(sessChan2, "Bob", sig(stringT))
+    env = env.delegation(ymethod, List(sessChan2, sessChan), Nil)
+    env = env.leaveSessionMethod(Nil)
+
+    env = env.enterSessionMethod(ymethod, List(sessChan2, sessChan))
+    env = env.receive(sessChan, "Bob", sig(intT))
+    env = env.leaveSessionMethod(Nil)
+
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, twoMsgProto)
+    env = env.registerSharedChannel(sharedChan2, sendStringModel)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
+    env = env.delegation(xmethod, List(sessChan, sessChan2), Nil)
     env = env.leaveJoin
   }
 }

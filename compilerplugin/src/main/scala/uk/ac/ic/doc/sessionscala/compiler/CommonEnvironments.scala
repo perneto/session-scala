@@ -16,7 +16,7 @@ trait CommonEnvironments {
   trait InferredTypeRegistry {
     def inferredSessionType(method: Symbol, rank: Int): LabelledBlock
     def returnRank(method: Symbol, rank: Int): Option[Int]
-    def methodFor(label: String): Symbol
+    def inferredSessionType(label: String): LabelledBlock
   }
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."

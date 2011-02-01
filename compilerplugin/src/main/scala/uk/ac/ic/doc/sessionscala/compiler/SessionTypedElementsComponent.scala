@@ -76,7 +76,11 @@ trait SessionTypedElementsComponent {
 
   // todo: refactor inferred into one subclass and sessions into the other. STE should be a trait
   val EmptySTE = new SessionTypedElements
-  case class SessionTypedElements(sharedChannels: SharedChannels, sessions: Sessions, inferred: Inferred, labels: Map[String, Symbol]) {
+  case class SessionTypedElements(sharedChannels: SharedChannels,
+                                  sessions: Sessions,
+                                  inferred: Inferred,
+                                  labels: Map[String, (Symbol, Int)])
+  {
     def this() = this(Map(), Map(), Map(), Map())
     def updated(sessChan: Name, newSess: Session): SessionTypedElements =
       copy(sessions = sessions.updated(sessChan, newSess))
@@ -114,33 +118,39 @@ trait SessionTypedElementsComponent {
     def updated(method: Symbol, chan: Name, inferred: LA): SessionTypedElements =
       updated(method, getInferredFor(method).updated(chan, inferred))
 
-    def methodFor(label: String) = labels.get(label)
+    def inferredFor(label: String) = {
+      val (method, rank) = labels(label)
+      getInferred(method, rank)
+    }
 
-    def registerCompletedMethod(method: Symbol, returnedChans: List[Name]) = {
-      val (newSte, label) = ensureMethodLabelExists(method)
-      val newSte2 = newSte.wrapInLabelledBlock(method, label)
-      newSte2.recordChanReturnOrder(method, returnedChans)
-    }
-    def wrapInLabelledBlock(method: Symbol, label: String) = {
-      val inf = getInferredFor(method) mapValues {
-        listInf => List(createLabelledBlock(label, listInf))
+    def registerCompletedMethod(method: Symbol, chans: List[Name], returnedChans: List[Name]) = {
+      val newSte = (chans foldLeft this) { case (ste, chan) =>
+        val rank = getInferredFor(method).chanToRank(chan)
+        val (newSte, label) = ste.ensureMethodParamLabelExists(method, rank)
+        newSte.wrapInLabelledBlock(method, chan, label)
       }
-      updated(method, inf)
+      newSte.recordChanReturnOrder(method, returnedChans)
     }
-    def ensureMethodLabelExists(method: Symbol): (SessionTypedElements, String) = {
+    def wrapInLabelledBlock(method: Symbol, chan: Name, label: String) = {
+      val listInf = getInferredFor(method, chan)
+      updated(method, chan, List(createLabelledBlock(label, listInf)))
+    }
+    def ensureMethodParamLabelExists(method: Symbol, rank: Int): (SessionTypedElements, String) = {
+      val infMeth = getInferredFor(method)
       var found: String = null
-      for ((label, m) <- labels if found == null)
-        if (m == method) found = label
+      for ((label, (m,r)) <- labels if found == null)
+        if (m == method && r == rank) found = label
       if (found == null) {
-        val l = newLabel()
-        (copy(labels = labels + (l -> method)), l)
+        val l = newLabel(rank)
+        (copy(labels = labels + (l -> (method,rank))), l)
       } else (this, found)
     }
-    def newLabel() = {
+    def newLabel(rank: Int) = {
       var i = 1
-      while (labels.get("X"+i).isDefined) i += 1
-      println("newLabel: X" + i)
-      "X"+i
+      def value = "X"+i+"c"+rank
+      while (labels.get(value).isDefined) i += 1
+      println("newLabel: "+ value)
+      value
     }
     def recordChanReturnOrder(method: Symbol, returnedChans: List[Name]) = {
       val inf = getInferredFor(method)
