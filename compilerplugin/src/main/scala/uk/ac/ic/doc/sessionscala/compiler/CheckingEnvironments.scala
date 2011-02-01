@@ -195,16 +195,7 @@ val scribbleJournal: Journal
         println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
         if (replacedLabels contains r.getLabel) sess.dropMatchingRecursionLabel(r)
         else {
-          // fixme: this doesn't work when there are variable numbers of channels as arguments, or
-          // when formal and effective parameter names are different. Need to generate a unique label for each
-          // channel the method takes as a parameter. With 1 param everywhere, this works, but only because
-          // chanRank is 0 all the time.
           val recur = infEnv.inferredSessionType(r.getLabel)
-          //assert(notEmpty(infEnv.inferredSessionType(method, chanRank)), "Calling method: "
-          //      + method + ": No inferred session type for channel rank: " + chanRank + " in env: " + infEnv)
-          // fixme: This is a bug when we have more than one channel: no reason chanRank should be the same with
-          // the called method
-          //val recur = infEnv.inferredSessionType(method, chanRank)
           println("inferred for " + r.getLabel + ": " + recur)
           advanceOne(sess, recur, replacedLabels)
         }

@@ -253,8 +253,6 @@ trait SessionTypeCheckingTraversers {
           // todo: support pattern matching on standard receives, checking that all
           // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
 
-          // todo: deal with method nesting and name shadowing
-
           case Assign(lhs,rhs) if isSessionChannel(rhs) => linearityError(lhs,rhs)
           // ValDef actually covers both val and var definitions
           case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
