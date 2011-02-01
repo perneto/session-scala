@@ -100,9 +100,9 @@ class SessionTest extends FunSuite with ScalaTypeSystemComponent
     """)
   
   
-  test("visitBranch") {
+  test("branchReceive") {
     var s = new Session(typeSystem, choiceDual)
-    s = s.visitBranch(new MessageSignature(new TypeReference("String")), alice)
+    s = s.branchReceive(new MessageSignature(new TypeReference("String")), alice)
     s.remaining.size should be (1)
   }
 

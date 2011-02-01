@@ -95,7 +95,7 @@ trait CommonEnvironments {
 
     def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = enterSessionMethod(this, fun, sessChans)
     def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
-    def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = this
+    def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = { println("base leaveSessionMethod, this: " + this); this}
 
     def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig): SessionTypedElements = throw new IllegalStateException
 

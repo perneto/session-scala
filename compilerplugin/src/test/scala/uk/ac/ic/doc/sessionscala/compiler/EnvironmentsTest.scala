@@ -789,4 +789,74 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(xmethod, List(sessChan, sessChan2), Nil)
     env = env.leaveJoin
   }
+
+  test("branch receive with more branches than specified, valid through subtyping") {
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(sig("quit"))
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+    env = env.leaveJoin
+  }
+
+  test("branch receive with more branches than specified, but extra branch has overlapping msigs") {
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+      env = env.enterChoiceReceiveBranch(sig(stringT))
+      env = env.leaveChoiceReceiveBranch
+      env = env.enterChoiceReceiveBranch(sig(intT))
+      env = env.leaveChoiceReceiveBranch
+      env = env.enterChoiceReceiveBranch(sig("quit"))
+
+        env = env.enterChoiceReceiveBlock(sessChan, "Foo")
+          env = env.enterChoiceReceiveBranch(sig(anyT))
+          env = env.leaveChoiceReceiveBranch
+          env = env.enterChoiceReceiveBranch(sig(stringT))
+          env = env.leaveChoiceReceiveBranch
+      intercept[SessionTypeCheckingException] {
+        env = env.leaveChoiceReceiveBlock
+      }
+  }
+
+  test("branch receive with more branches than specified, but extra branch has overlapping msigs with labels") {
+    var env = join(choiceProtoModel, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+      env = env.enterChoiceReceiveBranch(sig(stringT))
+      env = env.leaveChoiceReceiveBranch
+      env = env.enterChoiceReceiveBranch(sig(intT))
+      env = env.leaveChoiceReceiveBranch
+      env = env.enterChoiceReceiveBranch(sig("extra"))
+
+        env = env.enterChoiceReceiveBlock(sessChan, "Foo")
+          env = env.enterChoiceReceiveBranch(sig("label", anyT))
+          env = env.leaveChoiceReceiveBranch
+          env = env.enterChoiceReceiveBranch(sig("label", stringT))
+          env = env.leaveChoiceReceiveBranch
+      intercept[SessionTypeCheckingException] {
+        env = env.leaveChoiceReceiveBlock
+      }
+  }
+
+  test("inferred branch receive with more branches than specified at point of use", Tag("wip")) {
+    var env = sessionMethod(fooMethod, sessChan)
+    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
+    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.leaveChoiceReceiveBranch
+    env = env.enterChoiceReceiveBranch(sig("extra"))
+    env = env.leaveChoiceReceiveBranch
+    env = env.leaveChoiceReceiveBlock
+    env = env.leaveSessionMethod(Nil)
+
+    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
+    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.delegation(fooMethod, List(sessChan), Nil)
+    env = env.leaveJoin
+  }
 }

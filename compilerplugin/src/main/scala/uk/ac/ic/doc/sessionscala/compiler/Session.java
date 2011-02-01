@@ -2,10 +2,7 @@ package uk.ac.ic.doc.sessionscala.compiler;
 
 import org.scribble.protocol.model.*;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Session {
     private final HostTypeSystem hostTypeSystem;
@@ -105,7 +102,7 @@ public class Session {
         return newList;
     }
 
-    private Session branchSend(Role dst, Choice c, MessageSignature msgSig) {
+    protected Session branchSend(Role dst, Choice c, MessageSignature msgSig) {
         Role toRole = c.getToRole();
         if (toRole == null)
             throw new SessionTypeCheckingException(
@@ -128,7 +125,7 @@ public class Session {
                 + whensToString(whens) + ", but got: " + msgSig);
     }
 
-    public Session visitBranch(MessageSignature label, Role srcRole) {
+    public Session branchReceive(MessageSignature label, Role srcRole) {
         Choice choice = getChoice();
         Role specSrcRole = choice.getFromRole();
         if (specSrcRole == null)
@@ -142,23 +139,23 @@ public class Session {
         for (When w: whens) {
             // The labels in user code can be supertypes of the protocol labels,
             // but there should be no ambiguity - a label can only cover one branch.
-            // This is dealt with in missingBranches()
+            // This is dealt with in checkBranchesSeen()
             if (isMessageSignatureSubtype(w.getMessageSignature(), label))
                 return new Session(hostTypeSystem, imports, getRemaining(w));
         }
-        throw new SessionTypeCheckingException("Accepting branch label " + label
-                + ", but had no matching label. Available labels: " + whensToString(whens));
-        // fixme: it's legal to have more branch receives than specified
+        // it's legal to have more branch receives than specified in the protocol.
+        // In that case, all activities in that branch are unchecked
+        return new UncheckedSession(this);
     }
 
-    public Choice getChoice() {
+    protected Choice getChoice() {
         assert remaining.size() > 0;
         Activity a = remaining.get(0);
         if (!(a instanceof Choice)) throw new SessionTypeCheckingException("Tried to make a Choice, but protocol had: " + a);
         return (Choice) a;
     }
 
-    public List<MessageSignature> missingBranches(List<MessageSignature> seen) {
+    public void checkBranchesSeen(List<MessageSignature> seen) {
         Choice c = getChoice();
         List<MessageSignature> missing = new LinkedList<MessageSignature>();
         List<MessageSignature> seenCopy = new LinkedList<MessageSignature>(seen);
@@ -175,7 +172,9 @@ public class Session {
             }
             if (!found) missing.add(whenSig);
         }
-        return missing;
+
+        if (!missing.isEmpty())
+            throw new SessionTypeCheckingException("Missing choice receive branch(es): " + missing);
     }
 
     public Session dropFirst() {
@@ -256,7 +255,7 @@ public class Session {
         return res;
     }
 
-    private boolean isMessageSignatureSubtype(MessageSignature subSig, MessageSignature superSig) {
+    protected boolean isMessageSignatureSubtype(MessageSignature subSig, MessageSignature superSig) {
         return isMessageSignatureSubtype(hostTypeSystem, imports, subSig, superSig);
     }
 
@@ -271,7 +270,7 @@ public class Session {
 
     public Session findMatchingWhen(Role src, Role dst, When w) {
         if (src != null)        
-            return visitBranch(w.getMessageSignature(), src);
+            return branchReceive(w.getMessageSignature(), src);
         else
             return branchSend(dst, getChoice(), w.getMessageSignature());
     }

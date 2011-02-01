@@ -45,9 +45,10 @@ trait InferenceEnvironments {
       new InMethodInferenceEnv(delegator, newSte, fun, sessChans)
     }
 
-    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock =
-      //println("inferredSessionType: " + method + ", chan: " + chan + ", inferred: " + ste.getInferredFor(method, chan) + ", ste: " + ste)
+    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock = {
+      println("inferredSessionType: " + method + ", rank: " + rank + ", ste: " + ste)
       ste.getInferred(method, rank)
+    }
 
     def inferredSessionType(label: String): LabelledBlock = {
       println("inferredSessionType: " + label + ", ste: " + ste)
@@ -108,8 +109,11 @@ trait InferenceEnvironments {
 
     override def returnStatement(delegator: SessionTypingEnvironment) = illegalReturn()
 
-    override def leaveSessionMethod(returnedChans: List[Name]) =
-      parent.updated(ste.registerCompletedMethod(method, chans, returnedChans))
+    override def leaveSessionMethod(returnedChans: List[Name]) = {
+      val updatedParent = parent.updated(ste.registerCompletedMethod(method, chans, returnedChans))
+      println("leaveSessionMethod, updated parent: " + updatedParent)
+      updatedParent
+    }
 
     override def branchComplete(parentSte: SessionTypedElements, chan: Name, withChoice: SessionTypedElements, toMerge: SessionTypedElements, labelToMerge: MsgSig) = {
       if (chan != null) {

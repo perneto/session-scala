@@ -166,11 +166,6 @@ val scribbleJournal: Journal
     def advanceOne(sess: Session, act: Activity, replacedLabels: List[String]): Session = act match {
       case i: Interaction => sendOrReceive(sess, i)
       case c: Choice =>
-        /*
-        if (isChoiceReceive(c)) {
-          // todo: it's legal to have more branches than specified in a choice receive
-        } else {
-	      } */
         val src = c.getFromRole
         val dst = c.getToRole
         // we iterate on c's branches, so this supports sending less branches than specified for a choice send
@@ -238,7 +233,7 @@ val scribbleJournal: Journal
       // of parentSession will only be removed when all branches
       // have been visited and correctly typechecked.
       val labelSignature = msgSig.toScribble
-      val sessBranch = parentSession.visitBranch(
+      val sessBranch = parentSession.branchReceive(
         labelSignature,
         new Role(choiceSrc))
       val newSte = ste.updated(chanChoice, sessBranch)
@@ -260,12 +255,10 @@ val scribbleJournal: Journal
 
     override def leaveChoiceReceiveBlock = {
       //println("seen branches: " + branches)
-      val missing = parentSession.missingBranches(
+      parentSession.checkBranchesSeen(
         branches map (l => l.toScribble)
         asJava
       )
-      if (!missing.isEmpty)
-        throw new SessionTypeCheckingException("Missing choice receive branch(es): " + missing)
 
       // to keep advance of interleaved sessions on other channels than chanChoice
       val newSte = lastBranchSte.get
