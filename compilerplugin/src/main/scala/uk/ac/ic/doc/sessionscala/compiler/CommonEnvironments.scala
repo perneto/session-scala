@@ -1,7 +1,7 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import tools.nsc.Global
-import org.scribble.protocol.model.{LabelledBlock, ProtocolModel}
+import org.scribble.protocol.model.{RecBlock, ProtocolModel}
 
 /**
  * Created by: omp08
@@ -14,9 +14,9 @@ trait CommonEnvironments {
   import global._
 
   trait InferredTypeRegistry {
-    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock
+    def inferredSessionType(method: Symbol, rank: Int): RecBlock
     def returnRank(method: Symbol, rank: Int): Option[Int]
-    def inferredSessionType(label: String): LabelledBlock
+    def inferredSessionType(label: String): RecBlock
   }
 
   val branchesUneven = "All branches of a branching statement should advance the session evenly."

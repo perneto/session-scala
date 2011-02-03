@@ -51,13 +51,13 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env.enterSessionMethod(method, List(chans: _*))
   }
 
-  def inferred(env: SessionTypingEnvironment, method: Symbol, rank: Int): LabelledBlock =
+  def inferred(env: SessionTypingEnvironment, method: Symbol, rank: Int): RecBlock =
     env.asInstanceOf[MethodSessionTypeInferenceTopLevelEnv]
                                     .inferredSessionType(method, rank)
 
   def checkInferred(env: SessionTypingEnvironment, meth: Symbol, chanRank: Int, label: String, block: List[Activity]) {
     val inf = inferred(env, meth, chanRank)
-    val expected = createLabelledBlock(label, block)
+    val expected = createRecBlock(label, block)
     assert(inf === expected)
   }
 
@@ -121,8 +121,8 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     """protocol Foo {
          role Alice, Bob;
          choice from Alice to Bob {
-           String {}
-           Int {}
+           String:
+           Int:
          }
        }
     """)
@@ -579,9 +579,9 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val recurModel = parse(
   """protocol Foo {
        role Alice, Bob;
-       X: {
+       rec X {
          String from Alice to Bob;
-         #X;
+         X;
        }
      }
   """)
@@ -602,11 +602,11 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
   val multiRecurModel = parse(
   """protocol Foo {
        role Alice, Bob;
-       X: {
-         Y: {
+       rec X {
+         rec Y {
            choice from Alice to Bob {
-             Int { #X; }
-             String { #Y; }
+             Int: X;
+             String: Y;
            }
          }
        }

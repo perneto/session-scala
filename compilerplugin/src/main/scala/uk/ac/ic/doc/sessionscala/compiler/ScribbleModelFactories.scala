@@ -67,10 +67,10 @@ trait ScribbleModelFactories {
     newC
   }
 
-  def createLabelledBlock(label: String, block: LA): LabelledBlock =
-    createLabelledBlock(label, createBlock(block))
-  def createLabelledBlock(label: String, block: Block): LabelledBlock = {
-    val r = new LabelledBlock
+  def createRecBlock(label: String, block: LA): RecBlock =
+    createRecBlock(label, createBlock(block))
+  def createRecBlock(label: String, block: Block): RecBlock = {
+    val r = new RecBlock
     r.setLabel(label)
     r.setBlock(block)
     r
@@ -88,7 +88,7 @@ trait ScribbleModelFactories {
     r
   }
 
-  def notEmpty(recur: LabelledBlock) = !recur.getBlock.getContents.isEmpty
+  def notEmpty(recur: RecBlock) = !recur.getBlock.getContents.isEmpty
 
   def isChoiceReceive(c: Choice) = !Session.isSendChoice(c)
 

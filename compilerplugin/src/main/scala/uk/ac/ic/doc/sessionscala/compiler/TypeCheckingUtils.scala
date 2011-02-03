@@ -18,10 +18,10 @@ trait TypeCheckingUtils {
                   + sessThen.remaining + " while another had: " + sessElse.remaining)
   }
 
-  def unroll(recur: LabelledBlock): Seq[Activity] = {
+  def unroll(recur: RecBlock): Seq[Activity] = {
     def unrollRec(act: Activity): Activity = act match {
-      case r: LabelledBlock if r.getLabel == recur.getLabel => r // masking
-      case r: LabelledBlock => createLabelledBlock(r.getLabel, unrollRec(r.getBlock).asInstanceOf[Block])
+      case r: RecBlock if r.getLabel == recur.getLabel => r // masking
+      case r: RecBlock => createRecBlock(r.getLabel, unrollRec(r.getBlock).asInstanceOf[Block])
       case rec: Recursion if rec.getLabel == recur.getLabel => recur
       case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, unrollRec(w.getBlock).asInstanceOf[Block]))))
       case b: Block => createBlock(b.getContents.asScala.map(unrollRec(_)))
@@ -33,8 +33,8 @@ trait TypeCheckingUtils {
 
   def alphaRename(acts: Seq[Activity], oldLabel: String, newLabel: String): Seq[Activity] = {
     def alphaRenameRec(act: Activity): Activity = act match {
-      case r: LabelledBlock if r.getLabel == oldLabel => r // masking
-      case r: LabelledBlock => createLabelledBlock(r.getLabel, alphaRenameRec(r.getBlock).asInstanceOf[Block])
+      case r: RecBlock if r.getLabel == oldLabel => r // masking
+      case r: RecBlock => createRecBlock(r.getLabel, alphaRenameRec(r.getBlock).asInstanceOf[Block])
       case rec: Recursion if rec.getLabel == oldLabel => createRecursion(newLabel)
       case c: Choice => createChoice(c, (c.getWhens.asScala map (w => createWhen(w.getMessageSignature, alphaRenameRec(w.getBlock).asInstanceOf[Block]))))
       case b: Block => createBlock(b.getContents.asScala.map(alphaRenameRec(_)))

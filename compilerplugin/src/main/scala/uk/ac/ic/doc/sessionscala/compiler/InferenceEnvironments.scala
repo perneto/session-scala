@@ -45,12 +45,12 @@ trait InferenceEnvironments {
       new InMethodInferenceEnv(delegator, newSte, fun, sessChans)
     }
 
-    def inferredSessionType(method: Symbol, rank: Int): LabelledBlock = {
+    def inferredSessionType(method: Symbol, rank: Int): RecBlock = {
       println("inferredSessionType: " + method + ", rank: " + rank + ", ste: " + ste)
       ste.getInferred(method, rank)
     }
 
-    def inferredSessionType(label: String): LabelledBlock = {
+    def inferredSessionType(label: String): RecBlock = {
       println("inferredSessionType: " + label + ", ste: " + ste)
       ste.inferredFor(label)
     }

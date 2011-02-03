@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
-import org.scribble.protocol.model.{Activity, LabelledBlock, ProtocolModel}
+import org.scribble.protocol.model.{Activity, RecBlock, ProtocolModel}
 import tools.nsc.Global
 
 /**
@@ -99,10 +99,10 @@ trait SessionTypedElementsComponent {
       getInferredFor(method).getOrElse(chan, Nil)
     def getInferredFor(method: Symbol): InferredMethod =
       inferred.getOrElse(method, InferredMethod())
-    def getInferred(method: Symbol, rank: Int): LabelledBlock = {
+    def getInferred(method: Symbol, rank: Int): RecBlock = {
       val infMethod = getInferredFor(method)
       infMethod.get(rank) match {
-        case Some(l) => l(0).asInstanceOf[LabelledBlock]
+        case Some(l) => l(0).asInstanceOf[RecBlock]
         case None => throw new IllegalArgumentException("No inferred session type known for: "
                 + method + " with channel position: " + rank)
       }
@@ -127,13 +127,13 @@ trait SessionTypedElementsComponent {
       val newSte = (chans foldLeft this) { case (ste, chan) =>
         val rank = getInferredFor(method).chanToRank(chan)
         val (newSte, label) = ste.ensureMethodParamLabelExists(method, rank)
-        newSte.wrapInLabelledBlock(method, chan, label)
+        newSte.wrapInRecBlock(method, chan, label)
       }
       newSte.recordChanReturnOrder(method, returnedChans)
     }
-    def wrapInLabelledBlock(method: Symbol, chan: Name, label: String) = {
+    def wrapInRecBlock(method: Symbol, chan: Name, label: String) = {
       val listInf = getInferredFor(method, chan)
-      updated(method, chan, List(createLabelledBlock(label, listInf)))
+      updated(method, chan, List(createRecBlock(label, listInf)))
     }
     def ensureMethodParamLabelExists(method: Symbol, rank: Int): (SessionTypedElements, String) = {
       val infMeth = getInferredFor(method)

@@ -65,7 +65,7 @@ public class UncheckedSession extends Session {
     }
 
     @Override
-    public LabelledBlock getRecur() {
+    public RecBlock getRecur() {
         return null;
     }
 }

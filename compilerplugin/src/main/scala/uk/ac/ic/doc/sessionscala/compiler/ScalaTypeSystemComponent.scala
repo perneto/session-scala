@@ -4,7 +4,7 @@ import java.util.{List => JList}
 import tools.nsc.util.BatchSourceFile
 import scalaj.collection.Imports._
 import tools.nsc.Global
-import org.scribble.protocol.model.{MessageSignature, ImportList, TypeReference}
+import org.scribble.protocol.model.{TypeImportList, MessageSignature, ImportList, TypeReference}
 
 /**
  * Created by: omp08
@@ -26,14 +26,15 @@ trait ScalaTypeSystemComponent {
         // with scala 2.8.1, using pattern matching here fails (at least with t = Int)
         // (skips the ScalaTypeReference branch and goes to case _)
       } else {
-        val found: Seq[Type] = imports.map({i: ImportList =>
+        val found: Seq[Type] = imports.map({il: ImportList =>
+          val i = il.asInstanceOf[TypeImportList]
           val javaPackage = i.getLocation
           assert(javaPackage != null)
 
           val typeImport = i.getTypeImport(tref.getName)
           if (typeImport != null) {
             val dataType = typeImport.getDataType
-            assert(dataType.getFormat == "java")
+            //assert(dataType.getFormat == "java")
             val javaClassName = dataType.getDetails
             val fullname = javaPackage + "." + javaClassName
             Some(definitions.getClass(fullname).tpe)

@@ -198,8 +198,9 @@ public class Session {
         class SubtypeVisitor extends AbstractModelObjectVisitor {
             boolean res = false;
 
-            public void process(ModelObject obj) {
+            public boolean process(ModelObject obj) {
                 // abstract, needs to be implemented, but no use here
+                return true;
             }
 
             @Override
@@ -287,10 +288,10 @@ public class Session {
         return c.getFromRole() == null && c.getToRole() != null;
     }
     
-    public LabelledBlock getRecur() {
+    public RecBlock getRecur() {
         if (remaining.isEmpty()) return null;
         Activity act = remaining.get(0);
-        if (act instanceof LabelledBlock) return (LabelledBlock) act;
+        if (act instanceof RecBlock) return (RecBlock) act;
         return null; 
     }
 }

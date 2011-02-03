@@ -35,7 +35,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
     def parseStream(is: InputStream, pos: Position, location: String) = {
       var globalModel: ProtocolModel = null;
-      globalModel = scribbleParser.parse(is, scribbleJournal)
+      globalModel = scribbleParser.parse(is, scribbleJournal, null)
       //println("global model: " + globalModel)
       //todo: validate model
       if (globalModel == null) {

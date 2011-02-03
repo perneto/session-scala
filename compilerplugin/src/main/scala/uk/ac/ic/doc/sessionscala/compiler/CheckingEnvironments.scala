@@ -30,7 +30,7 @@ val scribbleJournal: Journal
       val role = new Role(roleName)
       val globalModel = delegator.getGlobalTypeForChannel(sharedChannel)
       val projector = new ProtocolProjectorImpl
-      val projectedModel = projector.project(globalModel, role, scribbleJournal)
+      val projectedModel = projector.project(globalModel, role, scribbleJournal, null)
       new InProcessEnv(
         delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)),
         delegator, role, sessChan, infEnv)
@@ -119,7 +119,7 @@ val scribbleJournal: Journal
     override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
 
     def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
-    Seq[(Name, Int, LabelledBlock, Option[Name])] =
+    Seq[(Name, Int, RecBlock, Option[Name])] =
     {
       def eval[P,R](f: PartialFunction[P,R], x: P): Option[R] =
         if (f.isDefinedAt(x)) Some(f(x)) else None
@@ -174,7 +174,7 @@ val scribbleJournal: Journal
           advanceList(sessBranch, infWhen.getBlock.getContents.asScala, replacedLabels)
         }
         sess.dropFirst
-      case r: LabelledBlock =>
+      case r: RecBlock =>
         val expectedRecur = sess.getRecur
         if (expectedRecur != null) { // genuine expected recursion in spec
           // don't unroll, just jump into recur contents (otherwise infinite loop).
@@ -196,7 +196,7 @@ val scribbleJournal: Journal
         }
     }
 
-    def contents(r: LabelledBlock) = r.getBlock.getContents
+    def contents(r: RecBlock) = r.getBlock.getContents
 
     // Similar to normal typechecking, this can be a choice selection as well as a normal interaction
     def sendOrReceive(sess: Session, i: Interaction) = {

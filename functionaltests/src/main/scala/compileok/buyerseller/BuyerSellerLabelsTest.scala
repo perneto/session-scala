@@ -15,11 +15,10 @@ object BuyerSellerLabelsTest {
         quote(Int) from Seller to Buyer;
         details() from Seller to Buyer;
         choice from Buyer to Seller {
-          String {
+          String:
             date(String) from Buyer to Seller;
-          }
-          mylabel(String) {}
-          quit() {}
+          mylabel(String):
+          quit():
         }
       }
     """)
