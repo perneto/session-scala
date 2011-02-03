@@ -26,14 +26,15 @@ trait ScalaTypeSystemComponent {
         // with scala 2.8.1, using pattern matching here fails (at least with t = Int)
         // (skips the ScalaTypeReference branch and goes to case _)
       } else {
-        val found: Seq[Type] = imports.filter(_.isInstanceOf[TypeImportList]).map({i: TypeImportList =>
+        val filteredImports = imports.filter(_.isInstanceOf[TypeImportList]).map(_.asInstanceOf[TypeImportList])
+        val found: Seq[Type] = filteredImports.map({i: TypeImportList =>
           val javaPackage = i.getLocation
           assert(javaPackage != null)
 
           val typeImport = i.getTypeImport(tref.getName)
           if (typeImport != null) {
             val dataType = typeImport.getDataType
-            //assert(dataType.getFormat == "java")
+            assert(i.getFormat == "java")
             val javaClassName = dataType.getDetails
             val fullname = javaPackage + "." + javaClassName
             Some(definitions.getClass(fullname).tpe)
