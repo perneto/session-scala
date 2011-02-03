@@ -26,8 +26,7 @@ trait ScalaTypeSystemComponent {
         // with scala 2.8.1, using pattern matching here fails (at least with t = Int)
         // (skips the ScalaTypeReference branch and goes to case _)
       } else {
-        val found: Seq[Type] = imports.map({il: ImportList =>
-          val i = il.asInstanceOf[TypeImportList]
+        val found: Seq[Type] = imports.filter(_.isInstanceOf[TypeImportList]).map({i: TypeImportList =>
           val javaPackage = i.getLocation
           assert(javaPackage != null)
 
