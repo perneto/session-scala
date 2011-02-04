@@ -11,6 +11,8 @@ trait SessionDefinitions {
   lazy val sharedChannelTrait = definitions.getClass("uk.ac.ic.doc.sessionscala.SharedChannel")
   lazy val participantChannelClass = definitions.getClass("uk.ac.ic.doc.sessionscala.ParticipantChannel")
   lazy val joinMethod = definitions.getMember(sharedChannelTrait, "join")
+  lazy val acceptMethod = definitions.getMember(sharedChannelTrait, "accept")
+  lazy val inviteMethod = definitions.getMember(sharedChannelTrait, "invite")
   lazy val qmarkMethod = definitions.getMember(participantChannelClass, "$qmark")
   lazy val qqMarkMethod = definitions.getMember(participantChannelClass, "$qmark$qmark")
   lazy val bangMethod = definitions.getMember(participantChannelClass, "$bang")

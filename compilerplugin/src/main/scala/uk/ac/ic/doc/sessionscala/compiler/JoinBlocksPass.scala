@@ -101,7 +101,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
-        if sym == joinMethod =>
+        if sym == joinMethod || sym == acceptMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
           try {
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
