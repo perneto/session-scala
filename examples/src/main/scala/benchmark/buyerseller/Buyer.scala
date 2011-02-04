@@ -11,7 +11,7 @@ import SharedChannel._
 object Buyer {
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    withAMQPChannel("../../compileok/buyerseller/buyerseller.scribble", brokerHost) { sharedChannel =>
+    withAMQPChannel("../../compileok/buyerseller/buyerseller.spr", brokerHost) { sharedChannel =>
       println("Buyer: before accept")
       sharedChannel.accept('Buyer) { s =>
         println("Buyer accepted")

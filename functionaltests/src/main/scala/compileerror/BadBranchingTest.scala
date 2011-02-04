@@ -10,7 +10,7 @@ import actors.Actor.actor
 
 object BadBranchingTest {
   def m {
-    SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.scribble") {
+    SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.spr") {
       sharedChan =>
       actor {
         sharedChan.join('Buyer) { s =>

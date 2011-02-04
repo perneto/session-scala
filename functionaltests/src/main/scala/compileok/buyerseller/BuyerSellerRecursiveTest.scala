@@ -6,7 +6,7 @@ import uk.ac.ic.doc.sessionscala._
 
 object BuyerSellerRecursiveTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel("buyersellerrec.scribble") { sharedChannel =>
+    SharedChannel.withLocalChannel("buyersellerrec.spr") { sharedChannel =>
 
       actor {
         sharedChannel.join('Seller) { s =>

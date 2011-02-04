@@ -6,7 +6,7 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel}
 
 object BuyerSellerTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel("buyerseller.scribble") { sharedChannel =>
+    SharedChannel.withLocalChannel("buyerseller.spr") { sharedChannel =>
 
       println("running...")
 

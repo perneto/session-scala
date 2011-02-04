@@ -10,7 +10,7 @@ import uk.ac.ic.doc.sessionscala.{ParticipantChannel, SharedChannel}
 object BadAssignmentTest {
   def m {
 
-    SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.scribble") {
+    SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.spr") {
       sharedChan =>
 
       actor {
