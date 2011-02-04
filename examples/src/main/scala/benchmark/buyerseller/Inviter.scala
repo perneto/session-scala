@@ -11,7 +11,7 @@ import SharedChannel._
 object Inviter {
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    withAMQPChannel("../../compileok/buyerseller/buyerseller.spr", brokerHost) { sharedChannel =>
+    withAMQPChannel("../../buyerseller/buyerseller.spr", brokerHost) { sharedChannel =>
 
       sharedChannel.invite("", 'Buyer -> "shadeXX", 'Seller -> "shade04")
     }

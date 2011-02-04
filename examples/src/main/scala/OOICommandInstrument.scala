@@ -1,9 +1,3 @@
-package compileok
-
-/**
- * Created by: omp08
- */
-
 import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.SharedChannel
 import SharedChannel._

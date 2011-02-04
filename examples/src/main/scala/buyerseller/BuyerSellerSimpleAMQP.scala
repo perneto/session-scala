@@ -1,4 +1,4 @@
-package compileok.buyerseller
+package buyerseller
 
 import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.SharedChannel

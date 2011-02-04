@@ -1,4 +1,4 @@
-package compileok.buyerseller
+package buyerseller
 
 case object OK
 case object NotOK
