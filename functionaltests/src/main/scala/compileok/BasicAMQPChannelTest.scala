@@ -6,7 +6,7 @@ import actors.Actor.actor
 object BasicAMQPChannelTest {
   def main(args: Array[String]) {
     withAMQPChannel("protocol Test { role Alice, Bob; String from Alice to Bob; }") { sharedChan =>
-      sharedChan.invite("", 'Alice -> localhost, 'Bob -> localhost)
+      sharedChan.invite('Alice -> localhost, 'Bob -> localhost)
 
       actor {
         sharedChan.accept('Alice) { s =>

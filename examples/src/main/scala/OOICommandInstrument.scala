@@ -43,7 +43,7 @@ object OOICommandInstrument {
       }
     """) { sharedChannel =>
 
-      sharedChannel.invite("", 'User -> localhost, 'CI_Authority -> localhost, 'Instrument -> localhost, 'Instrument_Registry -> localhost, 'Instrument_Agent -> localhost)
+      sharedChannel.invite('User -> localhost, 'CI_Authority -> localhost, 'Instrument -> localhost, 'Instrument_Registry -> localhost, 'Instrument_Agent -> localhost)
 
       actor {
         sharedChannel.accept('User) { s =>

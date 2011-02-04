@@ -4,7 +4,7 @@ import messageformats.AMQPMessageFormats
 import scala.actors.{Channel => _, _}
 import java.io.File
 
-class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port: Int, val user: String, val password: String)
+class AMQPSharedChannel(awaiting: Set[Symbol], protocol: String, val brokerHost: String, val port: Int, val user: String, val password: String)
         extends SharedChannel(awaiting)
         with AMQPConnectionComponent
         with AMQPMessageFormats
@@ -16,16 +16,21 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
 
   val INIT_EXCHANGE = "amq.direct"
 
-  def loadProtocolFile(protocolFile: String): String = {
+  def loadProtocolFile(protocol: String): String = {
     val source =
-      if (new File(protocolFile).isFile) io.Source.fromFile(protocolFile)
-      else if (protocolFile == "") null
-      else io.Source.fromURL(protocolFile)
+      if (new File(protocol).canRead) io.Source.fromFile(protocol)
+      else if (protocol == "") null
+      else try {
+        io.Source.fromURL(protocol)
+      } catch {
+        case _ => null
+      }
     if (source != null) source.foldLeft("")(_ + _)
-    else "<no protocol given>"
+    else if (protocol == "") "<no protocol given>"
+    else protocol
   }
 
-  def invite(protocolFile: String, mapping: (Symbol,String)*): Unit = {
+  def invite(mapping: (Symbol,String)*): Unit = {
     def checkMapping() {
       val declaredRoles = Set() ++ mapping map (_._1)
       if (declaredRoles != awaiting)
@@ -64,7 +69,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], val brokerHost: String, val port:
     checkMapping()
 
     val sessName = randomInitSessionExchange()
-    val scribbleType = loadProtocolFile(protocolFile)
+    val scribbleType = loadProtocolFile(protocol)
     inviteImpl(sessName, scribbleType, mapping: _*)
   }
 
