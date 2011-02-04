@@ -8,7 +8,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite, BeforeAndAfterAll}
 class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers with BeforeAndAfterEach {
 
   test("invite not exhaustive: error") {
-    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+    withAMQPChannel("protocol Test { role Alice, Bob; }") { shared =>
       intercept[IllegalArgumentException] {
         shared.invite("", 'Alice -> localhost) // missing Bob
       }
@@ -17,7 +17,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   }
 
   test("invite of unexpected role: error") {
-    withAMQPChannel(Set('Alice)) { shared =>
+    withAMQPChannel("protocol Test { role Alice, Bob; }") { shared =>
       intercept[IllegalArgumentException] {
         shared.invite("", 'Alice -> localhost, 'Foo -> localhost)
       }
@@ -26,7 +26,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   }
 
   test("accept of unexpected role: error") {
-    withAMQPChannel(Set('Alice)) { shared =>
+    withAMQPChannel("protocol Test { role Alice, Bob; }") { shared =>
       withTimeout(1000) {
         intercept[IllegalArgumentException] {
           shared.accept('Foo) { s => }
@@ -54,7 +54,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
 
   ignore("accept when invited for another role: blocks") {
     var didRun = false
-    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+    withAMQPChannel("protocol Test { role Alice, Bob; }") { shared =>
       expectTimeout(1000) {
         shared.invite("", 'Alice -> localhost, 'Bob -> "foohost")
         shared.accept('Bob) { s =>
@@ -66,7 +66,7 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
   }
 
   def withShared(block: SharedChannel => Unit) {
-    withAMQPChannel(Set('Alice, 'Bob)) { shared =>
+    withAMQPChannel("protocol Test { role Alice, Bob; }") { shared =>
       shared.invite("", 'Alice -> localhost, 'Bob -> localhost)
       block(shared)
     }

@@ -14,6 +14,11 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.2.0"
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
     val scalaj_collection = "org.scalaj" % "scalaj-collection_2.8.0" % "1.0"
+
+    val scribble_common = "org.scribble.bundles" % "org.scribble.common" % "2.0.0-SNAPSHOT"
+    val scribble_protocol = "org.scribble.bundles" % "org.scribble.protocol" % "2.0.0-SNAPSHOT"
+    val scribble_parser = "org.scribble.bundles" % "org.scribble.protocol.parser" % "2.0.0-SNAPSHOT"
+    val scribble_projection = "org.scribble.bundles" % "org.scribble.protocol.projection" % "2.0.0-SNAPSHOT"
   }
 
   class ForkingProject(info: ProjectInfo) extends DefaultProject(info) {

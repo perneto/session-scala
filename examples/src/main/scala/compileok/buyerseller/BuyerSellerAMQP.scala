@@ -1,15 +1,12 @@
 package compileok.buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.{protocol, SharedChannel}
+import uk.ac.ic.doc.sessionscala.{SharedChannel}
 import SharedChannel._
 
 object BuyerSellerAMQP {
   def main(args: Array[String]) {
-    //@protocol("buyerseller.scribble")
-    // Scribble file also contains roles, could
-    // generate set of roles automatically
-    withAMQPChannel(Set('Buyer, 'Seller)) { sharedChannel =>
+    withAMQPChannel("protocol Test { role Buyer, Seller; } ") { sharedChannel =>
 
       sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
 

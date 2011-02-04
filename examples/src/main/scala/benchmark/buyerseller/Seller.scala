@@ -12,7 +12,7 @@ object Seller {
 
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    withAMQPChannel(Set('Buyer, 'Seller), brokerHost) { sharedChannel =>
+    withAMQPChannel("../../compileok/buyerseller/buyerseller.scribble", brokerHost) { sharedChannel =>
       println("Seller: before accept")
       sharedChannel.accept('Seller) { s =>
         println("Seller accepted")

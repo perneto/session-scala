@@ -1,6 +1,6 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.{inlineprotocol, SessionChannel, SharedChannel}
+import uk.ac.ic.doc.sessionscala.{SessionChannel, SharedChannel}
 
 /**
  * Created by: omp08
@@ -13,16 +13,17 @@ class DelegationReturningChannelsWithReturnStatementTest {
       else s1
     }
 
-    @inlineprotocol("""
+    SharedChannel.withLocalChannel("""
     protocol Foo {
       role Alice, Bob;
       String from Alice to Bob;
-    } """)
-    val shared = SharedChannel.createLocalChannel(Set('Alice, 'Bob))
-    shared.join('Alice) { s =>
-      val s1 = myMethod(s)
-      return
-      s1('Bob) ! "foo"
+    } """) { shared =>
+
+      shared.join('Alice) { s =>
+        val s1 = myMethod(s)
+        return
+        s1('Bob) ! "foo"
+      }
     }
   }
 }

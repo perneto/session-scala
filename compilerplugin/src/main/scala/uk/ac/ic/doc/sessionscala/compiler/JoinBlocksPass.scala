@@ -23,8 +23,9 @@ abstract class JoinBlocksPass extends PluginComponent
     val scribbleParser = new ANTLRProtocolParser
     def initEnvironment = new JoinBlocksPassTopLevelEnv(inferred)
 
+    def file(filename: String) = new File(unitPath, filename)
     def parseFile(filename: String, pos: Position) = {
-      val is = new FileInputStream(new File(unitPath, filename))
+      val is = new FileInputStream(file(filename))
       parseStream(is, pos, " in file " + filename)
     }
 
@@ -45,27 +46,45 @@ abstract class JoinBlocksPass extends PluginComponent
       globalModel
     }
 
+    lazy val stringType = definitions.StringClass.tpe
+    lazy val function1 = definitions.FunctionClass(1)
+    def isSharedChannelFunction(tpe: Type): Boolean = tpe match {
+      case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< sharedChannelTrait.tpe =>
+        true
+      case x => false
+    }
+    def takesSharedChannel(tpe: Type): Boolean = tpe match {
+      case PolyType(
+        _typeParam,
+        MethodType(
+          stringType::_,
+          MethodType(
+            functionParamSymbol::Nil,
+            _)))
+      if isSharedChannelFunction(functionParamSymbol.tpe) =>
+        println("FOUND SHARED CHANNEL: " + tpe + ", functionParamSymbol: " + functionParamSymbol)
+        true
+      case x =>
+        println("not shared channel function: " + tpe)
+        false
+    }
+
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       // do nothing, and skip visiting the method body as it's checked by DefDefPass
     }
-
-    def hasProtocolAnnotation(sym: Symbol) =
-      sym.hasAnnotation(protocolAnnotation) || sym.hasAnnotation(inlineProtocolAnnotation)
-
 
     def getStringLiteralArg(sym: Symbol, annotation: Symbol) = {
       val (literal: Literal)::_ = sym.getAnnotation(annotation).get.args
       literal.value.stringValue
     }
 
-    def parseProtocol(sym: Symbol, pos: Position) = {
-      if (sym.hasAnnotation(protocolAnnotation)) {
-        val filename = getStringLiteralArg(sym, protocolAnnotation)
-        parseFile(filename, pos)
-      } else {
-        val protocol = getStringLiteralArg(sym, inlineProtocolAnnotation)
-        parseString(protocol, pos)
-      }
+    def parseProtocol(args: List[Tree], pos: Position) = args match {
+      case Literal(protocol)::_ =>
+        val proto = protocol.stringValue
+        if (file(proto).canRead())
+          parseFile(proto, pos)
+        else
+          parseString(proto, pos)
     }
 
     override def traverse(tree: Tree) {
@@ -73,15 +92,12 @@ abstract class JoinBlocksPass extends PluginComponent
       pos = tree.pos
 
       tree match {
-        case ValDef(_,name,_,rhs)
-        if hasProtocolAnnotation(sym) && sym.tpe <:< sharedChannelTrait.tpe =>
-          val globalModel = parseProtocol(sym, tree.pos)
+        case Apply(Apply(_,args), Function(ValDef(_,name,_,_)::Nil, body)::Nil)
+        if takesSharedChannel(sym.tpe) =>
+          println("shared channel creation: " + sym + ", channel name: " + name)
+          val globalModel = parseProtocol(args, tree.pos)
           env = env.registerSharedChannel(name, globalModel)
-          traverse(rhs)
-
-        case ValDef(_,_,_,_) if hasProtocolAnnotation(sym) =>
-          reporter.warning(tree.pos, "The @protocol and @inlineprotocol annotations only have an effect on SharedChannel instances")
-          super.traverse(tree)
+          traverse(body)
 
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)

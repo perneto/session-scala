@@ -43,7 +43,11 @@ class ListCommands
 
 object OOICommandInstrument {
   def main(args: Array[String]) {
-    withAMQPChannel(Set('User, 'CI_Authority, 'Instrument, 'Instrument_Registry, 'Instrument_Agent)) { sharedChannel =>
+    withAMQPChannel("""
+      protocol Test {
+        role User, CI_Authority, Instrument, Instrument_Registry, Instrument_Agent;
+      }
+    """) { sharedChannel =>
 
       sharedChannel.invite("", 'User -> localhost, 'CI_Authority -> localhost, 'Instrument -> localhost, 'Instrument_Registry -> localhost, 'Instrument_Agent -> localhost)
 

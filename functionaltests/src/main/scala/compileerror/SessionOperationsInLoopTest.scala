@@ -1,7 +1,7 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{inlineprotocol, SharedChannel, SessionChannel}
+import uk.ac.ic.doc.sessionscala.{SharedChannel}
 
 /**
  * Created by: omp08
@@ -9,16 +9,14 @@ import uk.ac.ic.doc.sessionscala.{inlineprotocol, SharedChannel, SessionChannel}
 
 class SessionOperationsInLoopTest {
   def main(args: Array[String]) {
-    @inlineprotocol("""
+
+    SharedChannel.withLocalChannel("""
     protocol Delegation {
       role Alice, Bob;
       String from Alice to Bob;
       Int from Bob to Alice;
     }
-    """)
-    val sharedChannel = SharedChannel.createLocalChannel(Set('Alice, 'Bob))
-
-    actor {
+    """) { sharedChannel =>
       sharedChannel.join('Alice) { s =>
         var x = 42
         while (true) {

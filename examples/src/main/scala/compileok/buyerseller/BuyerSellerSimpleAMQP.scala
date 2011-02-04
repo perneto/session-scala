@@ -9,7 +9,7 @@ object BuyerSellerSimpleAMQP {
   case object Quit
 
   def main(args: Array[String]) {
-    withAMQPChannel(Set('Buyer, 'Seller), port = 5672) { sharedChannel =>
+    withAMQPChannel("protocol Test { role Buyer, Seller; } ", port = 5672) { sharedChannel =>
 
       sharedChannel.invite("/Users/omp08/code/SessML/ex/BuyerSeller/BuyerSeller.session",
         'Buyer -> localhost, 'Seller -> localhost)

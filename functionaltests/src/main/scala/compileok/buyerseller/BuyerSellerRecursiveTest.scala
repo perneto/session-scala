@@ -6,30 +6,29 @@ import uk.ac.ic.doc.sessionscala._
 
 object BuyerSellerRecursiveTest {
   def main(args: Array[String]) {
-    @protocol("buyersellerrec.scribble")
-    val sharedChannel = SharedChannel.createLocalChannel(Set('Buyer, 'Seller))
+    SharedChannel.withLocalChannel("buyersellerrec.scribble") { sharedChannel =>
 
-    actor {
-      sharedChannel.join('Seller) { s =>
-        println("Seller: started")
-        val o = s('Buyer).?[Order]
-        def quoteRecursionSeller(s: SessionChannel, quote: Int) {
-          s('Buyer) ! quote
-          s('Buyer).receive {
-            case OK =>
-              s('Buyer) ! Invoice(quote)
-              val payment = s('Buyer).?[Payment]
-            case NotOK =>
-              val reason = s('Buyer).?[String]
-              quoteRecursionSeller(s, quote - 100)
+      actor {
+        sharedChannel.join('Seller) { s =>
+          println("Seller: started")
+          val o = s('Buyer).?[Order]
+          def quoteRecursionSeller(s: SessionChannel, quote: Int) {
+            s('Buyer) ! quote
+            s('Buyer).receive {
+              case OK =>
+                s('Buyer) ! Invoice(quote)
+                val payment = s('Buyer).?[Payment]
+              case NotOK =>
+                val reason = s('Buyer).?[String]
+                quoteRecursionSeller(s, quote - 100)
+            }
           }
+          quoteRecursionSeller(s, 2000)
+          println("Seller: finished")
         }
-        quoteRecursionSeller(s, 2000)
-        println("Seller: finished")
       }
-    }
 
-    actor {
+
       sharedChannel.join('Buyer) { s =>
         println("Buyer: started")
         s('Seller) ! Order(100)

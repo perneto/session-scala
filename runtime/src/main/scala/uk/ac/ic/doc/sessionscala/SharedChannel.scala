@@ -1,11 +1,15 @@
 package uk.ac.ic.doc.sessionscala
 
+import java.io.ByteArrayInputStream
+import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
+import scalaj.collection.Imports._
+
 object SharedChannel {
   def createLocalChannel(awaiting: Set[Symbol]): SharedChannel = {
     if (awaiting.isEmpty) throw new IllegalArgumentException("At least one role is required")
     new SharedChannelSameVM(awaiting)
   }
-  def createAMQPChannel(awaiting: Set[Symbol], brokerHost: String = "localhost",
+  private def createAMQPChannel(awaiting: Set[Symbol], brokerHost: String = "localhost",
                         port: Int = 5672, user: String = "guest", password: String = "guest"): SharedChannel =
     new AMQPSharedChannel(awaiting, brokerHost, port, user, password)
 
@@ -14,15 +18,27 @@ object SharedChannel {
     println("localhost: " + name)
     name
   }
-  def withLocalChannel[T](awaiting: Set[Symbol])(block: SharedChannel => T): T = {
+  def withLocalChannel[T](protocol: String)(block: SharedChannel => T): T = {
+    val awaiting = retrieveRolesSet(protocol)
     val shared = createLocalChannel(awaiting)
     try { block(shared) } finally { shared.close() }
   }
-  def withAMQPChannel[T](awaiting: Set[Symbol], brokerHost: String = "localhost",
+  def withAMQPChannel[T](protocol: String, brokerHost: String = "localhost",
                          port: Int = 5672, user: String = "guest", 
                          password: String = "guest")(block: SharedChannel => T): T = {
+    val awaiting = retrieveRolesSet(protocol)
     val shared = createAMQPChannel(awaiting, brokerHost, port, user, password)
     try { block(shared) } finally { shared.close() }
+  }
+
+  private def retrieveRolesSet(protocol: String): Set[Symbol] = {
+    val scribbleParser = new ANTLRProtocolParser
+    val errorsJournal = new ExceptionsJournal
+    val model = scribbleParser.parse( // todo: find out what charset Scribble uses
+      new ByteArrayInputStream(protocol.getBytes), errorsJournal, null)
+    if (errorsJournal.hasError) throw new IllegalArgumentException(
+      "Could not parse Scribble protocol: " + protocol)
+    Set(model.getRoles.asScala.map(r => Symbol(r.getName)): _*)
   }
 }
 
