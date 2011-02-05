@@ -54,10 +54,9 @@ class SessionTest extends FunSuite with ScalaTypeSystemComponent
   """protocol Foo@Alice {
        role Bob;
        choice to Bob {
-        String {
+        String:
           Int to Bob;
-        }
-        Int {}
+        Int:
        }
        Object to Bob;
      }  
@@ -90,10 +89,9 @@ class SessionTest extends FunSuite with ScalaTypeSystemComponent
     """protocol Foo@Bob {
          role Alice;
          choice from Alice {
-          String {
+          String:
             Int from Alice;
-          }
-          Int {}
+          Int:
          }
          Object from Alice;
        }  
