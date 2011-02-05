@@ -20,6 +20,9 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
   class FunctionalTests(info: ProjectInfo) extends ForkingProject(info) with ScribbleBase with Testing {
     override def testAction = super.testAction dependsOn(`package`)
+    override def testOnlyAction = task { args =>
+      super.testOnlyAction(args).dependsOn(`package`)
+    }
   }
 
   trait Testing { val scalatest = "org.scalatest" % "scalatest" % "1.2" }
