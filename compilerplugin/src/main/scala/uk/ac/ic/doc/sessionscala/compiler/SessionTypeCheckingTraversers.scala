@@ -32,6 +32,21 @@ trait SessionTypeCheckingTraversers {
       }
     }
 
+    object SymbolMatcher {
+      def unapply(tree: Tree): Option[String] = tree match {
+        case Apply(_, StringLit(role)::Nil) if tree.symbol == symbolApplyMethod =>
+          Some(role)
+        case _ => None
+      }
+    }
+
+    object StringLit {
+      def unapply(tree: Tree): Option[String] = tree match {
+        case Literal(role) => Some(role.stringValue)
+        case _ => None
+      }
+    }
+
     def isTupleTpt(tpt: Tree) = definitions.isTupleType(tpt.symbol.tpe)
 
     // todo: figure out better names for all these variants
@@ -52,17 +67,16 @@ trait SessionTypeCheckingTraversers {
     def realType(t: Type): Type = definitions.getClass(t.typeSymbol.fullName).tpe
     def getType(arg: Tree): Option[Type] = Some(realType(arg.tpe))
 
-    def stringValue(const: Constant) = Some(const.stringValue)
-
     def getLabelAndArgType(arg: Tree): (Option[String], Option[Type]) = {
       println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
       val ret = arg match {
-        // The first pattern might be too broad, as it doesn't check that the inner Apply
+        // The first pattern might be too broad, as it doesn't check that the outer Apply
         // is for a Tuple constructor
-        case Apply(_, List(app@Apply(_,Literal(label)::Nil), arg)) if app.symbol == symbolApplyMethod =>
-          (stringValue(label), getType(arg))
-        case Apply(_,Literal(label)::Nil) if arg.symbol == symbolApplyMethod =>
-          (stringValue(label), None)
+        case Apply(_, List(SymbolMatcher(label), arg)) =>
+          (Some(label), getType(arg))
+        case Apply(_,StringLit(label)::Nil) if arg.symbol == symbolApplyMethod =>
+          // todo: using SymbolMatcher here didn't work, figure out why
+          (Some(label), None)
         case arg =>
           //println("###########  " + arg)
           (None, getType(arg))
@@ -97,11 +111,11 @@ trait SessionTypeCheckingTraversers {
           // message send. Without label: s('Alice) ! 42
           // with label: s('Alice) ! ('mylabel, 42)
           // or: s('Alice) ! 'quit
-          case Apply(Select(Apply(Select(Ident(session),_),Apply(_, Literal(role)::Nil)::Nil),_), arg::Nil)
+          case Apply(Select(Apply(Select(Ident(session),_),SymbolMatcher(role)::Nil),_), arg::Nil)
           if sym == bangMethod && env.isSessionChannel(session) =>
             //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
-            env = env.send(session, role.stringValue, MsgSig(lbl, tpe))
+            env = env.send(session, role, MsgSig(lbl, tpe))
             traverse(arg)
 
           // message receive, no label: s('Alice).?[Int]
@@ -109,7 +123,7 @@ trait SessionTypeCheckingTraversers {
                  qmark@Select(
                    Apply(
                      Select(Ident(session), _),
-                     Apply(_, Literal(role)::Nil)::Nil
+                     SymbolMatcher(role)::Nil
                    ),
                  _),
                _)
@@ -118,7 +132,7 @@ trait SessionTypeCheckingTraversers {
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
             println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
-            env = env.receive(session, role.stringValue, sig(tree.tpe))
+            env = env.receive(session, role, sig(tree.tpe))
             super.traverse(tree)
 
           // message receive, with label: val ('quote, quoteVal: Int) = s('Seller).??
@@ -132,7 +146,7 @@ trait SessionTypeCheckingTraversers {
                 Select(
                   Apply(
                     Select(Ident(session), _),
-                    Apply(_, Literal(role)::Nil)::Nil
+                    SymbolMatcher(role)::Nil
                   ),
                   _
                 ),
@@ -145,7 +159,7 @@ trait SessionTypeCheckingTraversers {
                 _,
                 UnApply(
                   _,
-                  Literal(label)::Nil)::_
+                  StringLit(label)::Nil)::_
                 ),
               _,
               _)::Nil
@@ -156,7 +170,7 @@ trait SessionTypeCheckingTraversers {
             val unitSymbol = definitions.getClass("scala.Unit")
             val tpe = if (tpt.tpe == unitSymbol.tpe) None
             else Some(tpt.tpe)
-            env = env.receive(session, role.stringValue, MsgSig(Some(label.stringValue), tpe))
+            env = env.receive(session, role, MsgSig(Some(label), tpe))
 
           // receive/react
           case Apply(
@@ -164,7 +178,7 @@ trait SessionTypeCheckingTraversers {
                    Select(
                      Apply(
                        Select(Ident(session),_),
-                       Apply(_, Literal(role)::Nil)::Nil
+                       SymbolMatcher(role)::Nil
                      ), _
                    ), _
                  ),
@@ -173,7 +187,7 @@ trait SessionTypeCheckingTraversers {
           if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
               //println("receiveMethod, session: " + session + ", role: " + role
               //        + ", cases: " + cases)
-              env = env.enterChoiceReceiveBlock(session, role.stringValue)
+              env = env.enterChoiceReceiveBlock(session, role)
               cases foreach { c: CaseDef =>
                 if (! c.guard.isEmpty) {
                   reporter.error(c.guard.pos,
@@ -192,11 +206,11 @@ trait SessionTypeCheckingTraversers {
                       val msgTpe = realType(t)
                       visitBranch(c, sig(msgTpe))
 
-                    case UnApply(fun, Literal(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
-                      visitBranch(c, sig(label.stringValue))
+                    case UnApply(fun, StringLit(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
+                      visitBranch(c, sig(label))
 
-                    case Apply(tpt, List(UnApply(fun, Literal(label)::Nil), bind@Bind(_,_))) if fun.symbol == symbolUnapplyMethod =>
-                      visitBranch(c, sig(label.stringValue, bind.symbol.tpe))
+                    case Apply(tpt, List(UnApply(fun, StringLit(label)::Nil), bind@Bind(_,_))) if fun.symbol == symbolUnapplyMethod =>
+                      visitBranch(c, sig(label, bind.symbol.tpe))
 
                     case _ =>
                       reporter.error(c.pat.pos,

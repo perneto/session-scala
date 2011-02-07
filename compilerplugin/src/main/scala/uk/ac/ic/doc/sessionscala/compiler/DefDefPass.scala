@@ -80,7 +80,7 @@ abstract class DefDefPass extends PluginComponent
         println(inferenceTraverser.env)
         nextPass.inferred = inferenceTraverser.env.inferred.asInstanceOf[nextPass.InferredTypeRegistry]
       } catch {
-        case _ =>
+        case _: SessionTypeCheckingException =>
       }
     }
   }

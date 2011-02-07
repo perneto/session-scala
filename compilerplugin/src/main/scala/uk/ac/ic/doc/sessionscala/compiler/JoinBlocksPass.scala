@@ -87,6 +87,20 @@ abstract class JoinBlocksPass extends PluginComponent
           parseString(proto, pos)
     }
 
+    def getRoles(args: List[Tree]): List[String] = {
+      val result = args map {
+        case Apply(
+          TypeApply(
+            Select(
+              Apply(_,SymbolMatcher(role)::Nil),
+              _minusgt)
+            ,_)
+          ,_) => role
+      }
+      println("getRoles: " + result)
+      result
+    }
+
     override def traverse(tree: Tree) {
       val sym = tree.symbol
       pos = tree.pos
@@ -118,6 +132,9 @@ abstract class JoinBlocksPass extends PluginComponent
               //e.printStackTrace()
           }
 
+        case Apply(Select(Ident(sharedChan),_), args) if sym == inviteMethod =>
+          env = env.invite(sharedChan, getRoles(args))
+
         case _ =>
           super.traverse(tree)
       }
@@ -132,7 +149,7 @@ abstract class JoinBlocksPass extends PluginComponent
       try {
         typeChecker(unit.body)
       } catch {
-        case _ =>
+        case _: SessionTypeCheckingException | _: AbortException =>
       }
     }
   }
