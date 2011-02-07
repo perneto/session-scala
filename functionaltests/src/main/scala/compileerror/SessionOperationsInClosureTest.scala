@@ -7,7 +7,7 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel}
  * Created by: omp08
  */
 
-class SessionOperationsInClosureTest {
+object SessionOperationsInClosureTest {
   def main(args: Array[String]) {
     SharedChannel.withLocalChannel(
     """

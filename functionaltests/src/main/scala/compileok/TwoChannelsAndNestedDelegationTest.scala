@@ -6,7 +6,7 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
  * Created by: omp08
  */
 
-class TwoChannelsAndNestedDelegationTest {
+object TwoChannelsAndNestedDelegationTest {
   def main(args: Array[String]) {
     SharedChannel.withLocalChannel("""
     protocol Delegation1 {

@@ -6,7 +6,7 @@ import uk.ac.ic.doc.sessionscala.{SessionChannel, SharedChannel}
  * Created by: omp08
  */
 
-class DelegationReturningChannelsWithReturnStatementTest {
+object DelegationReturningChannelsWithReturnStatementTest {
   def main(args: Array[String]) {
     def myMethod(s1: SessionChannel): SessionChannel = {
       if (42.hashCode == 42) return s1

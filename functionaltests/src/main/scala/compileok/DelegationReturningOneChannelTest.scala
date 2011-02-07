@@ -7,7 +7,7 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
  * Created by: omp08
  */
 
-class DelegationReturningOneChannelTest {
+object DelegationReturningOneChannelTest {
   def main(args: Array[String]) {
 
     SharedChannel.withLocalChannel("""
