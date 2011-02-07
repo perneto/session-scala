@@ -23,8 +23,6 @@ trait SessionTypeCheckingTraversers {
         + " to " + lhs + ": aliasing of session channels is forbidden")
     }
 
-    def isSessionChannel(tree: Tree): Boolean = SessionChannel.unapply(tree).isDefined
-
     object SessionChannel {
       def unapply(tree: Tree): Option[Name] = tree match {
         case Ident(name) if env.isSessionChannel(name) => Some(name)
@@ -51,6 +49,14 @@ trait SessionTypeCheckingTraversers {
     object StringLit {
       def unapply(tree: Tree): Option[String] = tree match {
         case Literal(role) => Some(role.stringValue)
+        case _ => None
+      }
+    }
+
+    object SessionRole {
+      def unapply(tree: Tree): Option[(Name, String)] = tree match {
+        case Apply(Select(Ident(session), _),
+                   SymbolMatcher(role)::Nil) => Some((session, role))
         case _ => None
       }
     }
@@ -119,7 +125,7 @@ trait SessionTypeCheckingTraversers {
           // message send. Without label: s('Alice) ! 42
           // with label: s('Alice) ! ('mylabel, 42)
           // or: s('Alice) ! 'quit
-          case Apply(Select(Apply(Select(Ident(session),_),SymbolMatcher(role)::Nil),_), arg::Nil)
+          case Apply(Select(SessionRole(session, role),_), arg::Nil)
           if sym == bangMethod && env.isSessionChannel(session) =>
             //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
@@ -129,11 +135,8 @@ trait SessionTypeCheckingTraversers {
           // message receive, no label: s('Alice).?[Int]
           case TypeApply(
                  qmark@Select(
-                   Apply(
-                     Select(Ident(session), _),
-                     SymbolMatcher(role)::Nil
-                   ),
-                 _),
+                   SessionRole(session, role),
+                   _),
                _)
           if sym == qmarkMethod && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
@@ -152,10 +155,7 @@ trait SessionTypeCheckingTraversers {
             Typed(
               qqMark@Apply(
                 Select(
-                  Apply(
-                    Select(Ident(session), _),
-                    SymbolMatcher(role)::Nil
-                  ),
+                  SessionRole(session, role),
                   _
                 ),
                 Nil
@@ -184,10 +184,7 @@ trait SessionTypeCheckingTraversers {
           case Apply(
                  TypeApply(
                    Select(
-                     Apply(
-                       Select(Ident(session),_),
-                       SymbolMatcher(role)::Nil
-                     ), _
+                     SessionRole(session, role), _
                    ), _
                  ),
                  (f@Function(_,Match(_,cases)))::Nil
