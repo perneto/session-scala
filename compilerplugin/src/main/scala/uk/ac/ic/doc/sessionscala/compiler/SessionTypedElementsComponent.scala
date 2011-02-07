@@ -12,7 +12,7 @@ trait SessionTypedElementsComponent {
   val global: Global
   import global._
 
-  type SharedChannels = Map[Name, ProtocolModel]
+  type SharedChannels = Map[Name, (ProtocolModel, Set[String])]
   type Sessions = Map[Name, Session]
   type LAA = List[(Activity, Activity)]
   type Inferred = Map[Symbol, InferredMethod]
@@ -85,15 +85,23 @@ trait SessionTypedElementsComponent {
     def updated(sessChan: Name, newSess: Session): SessionTypedElements =
       copy(sessions = sessions.updated(sessChan, newSess))
 
-    def updated(sharedChan: Name, model: ProtocolModel): SessionTypedElements =
-      copy(sharedChannels = sharedChannels.updated(sharedChan, model))
+    def updated(sharedChan: Name, model: ProtocolModel, roles: Set[String]): SessionTypedElements =
+      copy(sharedChannels = sharedChannels.updated(sharedChan, (model,roles)))
 
     def updated(newSess: Sessions) = copy(sessions = newSess)
 
     def updated(method: Symbol, inf: InferredMethod): SessionTypedElements =
       copy(inferred = inferred.updated(method, inf))
 
-    def getSharedChan(name: Name) = sharedChannels.get(name)
+    def getSharedChan(name: Name) = sharedChannels.get(name).map(_._1)
+
+    def currentInviteCapabilities(sharedChan: Name) =
+      sharedChannels(sharedChan)._2
+
+    def consumeInviteCapability(sharedChan: Name, invited: String) = {
+      val current = sharedChannels(sharedChan)
+      updated(sharedChan, current._1, current._2 - invited)
+    }
 
     def getInferredFor(method: Symbol, chan: Name): LA =
       getInferredFor(method).getOrElse(chan, Nil)

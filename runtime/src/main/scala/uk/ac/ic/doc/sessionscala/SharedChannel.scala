@@ -38,7 +38,7 @@ object SharedChannel {
       new ByteArrayInputStream(protocol.getBytes), errorsJournal, null)
     if (errorsJournal.hasError) throw new IllegalArgumentException(
       "Could not parse Scribble protocol: " + protocol)
-    Set(model.getRoles.asScala.map(r => Symbol(r.getName)): _*)
+    ScribbleUtils.roleSymbols(model)
   }
 }
 

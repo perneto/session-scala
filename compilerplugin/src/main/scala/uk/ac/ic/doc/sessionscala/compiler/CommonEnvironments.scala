@@ -39,9 +39,12 @@ trait CommonEnvironments {
       registerSharedChannel(name, globalType, this)
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment
 
+    def invite(sharedChan: Name, roles: List[String]): SessionTypingEnvironment = invite(this, sharedChan, roles)
+    def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]): SessionTypingEnvironment = delegator
+
     def enterJoin(sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
       enterJoin(this, sharedChannel, roleName, sessChan)
-    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = this
+    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = delegator
     def leaveJoin: SessionTypingEnvironment = this
 
     def getGlobalTypeForChannel(name: Name): ProtocolModel =
@@ -53,12 +56,12 @@ trait CommonEnvironments {
 
     def send(sessChan: Name, role: String, msgSig: MsgSig): SessionTypingEnvironment =
       send(sessChan, role, msgSig, this)
-    def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = this
+    def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = delegator
     def receive(sessChan: Name, role: String, msgSig: MsgSig): SessionTypingEnvironment =
       receive(sessChan, role, msgSig, this)
-    def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = this
+    def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = delegator
 
-    def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String): SessionTypingEnvironment = this
+    def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String): SessionTypingEnvironment = delegator
     def enterChoiceReceiveBlock(sessChan: Name, srcRole: String): SessionTypingEnvironment =
       enterChoiceReceiveBlock(this, sessChan, srcRole)
 
@@ -91,13 +94,13 @@ trait CommonEnvironments {
 
     def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment =
       delegation(this, function, channels, returnedChannels)
-    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = this
+    def delegation(delegator: SessionTypingEnvironment, function: Symbol, channels: List[Name], returnedChannels: List[Name]): SessionTypingEnvironment = delegator
 
     def enterSessionMethod(fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = enterSessionMethod(this, fun, sessChans)
-    def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = this
-    def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = { println("base leaveSessionMethod, this: " + this); this}
+    def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = delegator
+    def leaveSessionMethod(returnedChans: List[Name]): SessionTypingEnvironment = throw new IllegalStateException("not in session method")
 
-    def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig): SessionTypedElements = throw new IllegalStateException
+    def branchComplete(parentSte: SessionTypedElements, chan: Name, branch1: SessionTypedElements, branch2: SessionTypedElements, label: MsgSig): SessionTypedElements = ste
 
     def inferred: InferredTypeRegistry = throw new IllegalStateException("this environment does not have inferred types")
   }
@@ -108,6 +111,9 @@ trait CommonEnvironments {
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       parent.registerSharedChannel(name, globalType, delegator)
+
+    override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) =
+      parent.invite(delegator, sharedChan, roles)
 
     override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name) =
       parent.enterJoin(delegator, sharedChannel, roleName, sessChan)

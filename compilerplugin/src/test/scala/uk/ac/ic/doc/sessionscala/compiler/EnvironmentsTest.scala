@@ -15,7 +15,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
 
   import global._
 
-  val topEnv = new JoinBlocksPassTopLevelEnv
+  val topEnv = new ProcessBlocksPassTopLevelEnv
   val sharedChan = newTermName("sharedChannel")
   val sharedChan2 = newTermName("sharedChan2")
   val sessChan = newTermName("sessionChannel")
@@ -482,7 +482,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(Nil)
     
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -499,7 +499,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -516,7 +516,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -535,7 +535,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -552,7 +552,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -568,7 +568,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveIf
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     intercept[SessionTypeCheckingException] {
@@ -592,7 +592,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveSessionMethod(Nil)
     
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, recurModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -636,7 +636,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, 0)))
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(ymethod, 0)))
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, multiRecurModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(xmethod, List(sessChan), Nil)
@@ -647,7 +647,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -660,7 +660,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     var env = sessionMethod(fooMethod, sessChan)
     env = env.leaveSessionMethod(List(sessChan))
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     val returnedSessChan = newTermName("returnedChan")
@@ -695,7 +695,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(List(sessChan2, sessChan))
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, twoMsgProto)
     env = env.registerSharedChannel(sharedChan2, twoMsgProto)
 
@@ -716,7 +716,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan2)
     env = env.delegation(fooMethod, List(sessChan2), Nil)
@@ -728,7 +728,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveSessionMethod(List(sessChan))
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, twoMsgProto)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), List(sessChan2))
@@ -763,7 +763,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(List())
     env = env.leaveClosure
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
@@ -781,7 +781,7 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.receive(sessChan, "Bob", sig(intT))
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, twoMsgProto)
     env = env.registerSharedChannel(sharedChan2, sendStringModel)
     env = env.enterJoin(sharedChan, "Alice", sessChan)
@@ -853,10 +853,103 @@ class EnvironmentsTest extends FunSuite with SessionTypingEnvironments
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
-    env = new JoinBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
+    env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
     env = env.registerSharedChannel(sharedChan, choiceProtoModel)
     env = env.enterJoin(sharedChan, "Bob", sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
+  }
+
+  test("can invite listed participants") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob", "Alice"))
+  }
+
+  test("cannot invite for other roles") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Bob", "Foo"))
+    }
+  }
+
+  test("cannot invite twice for the same role") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Bob", "Bob"))
+    }
+  }
+
+  test("cannot invite twice for the same role in separate calls to invite") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob", "Alice"))
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Bob"))
+    }
+  }
+
+  test("can invite listed participants in several calls to invite") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob"))
+    env = env.invite(sharedChan, List("Alice"))
+  }
+
+  test("entering closure doesn't interfere with invites (happy path)") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob"))
+    env = env.enterClosure(Nil)
+    env = env.invite(sharedChan, List("Alice"))
+    env = env.leaveClosure
+  }
+
+  test("entering closure doesn't interfere with invites (error path)") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob"))
+    env = env.enterClosure(Nil)
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Foo"))
+    }
+  }
+
+test("entering if doesn't interfere with invites (happy path)", Tag("wip")) {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob"))
+    env = env.enterThen
+    env = env.invite(sharedChan, List("Alice"))
+    env = env.enterElse
+    env = env.invite(sharedChan, List("Alice"))
+    env = env.leaveIf
+  }
+
+  test("entering if doesn't interfere with invites (error path)") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.invite(sharedChan, List("Bob"))
+    env = env.enterThen
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Foo"))
+    }
+  }
+
+  test("nested leaveJoin in closure") {
+    var env = join(sendStringModel, "Alice")
+    env = env.enterClosure(Nil)
+    env = env.enterJoin(sharedChan, "Alice", sessChan2)
+    env = env.send(sessChan2, "Bob", sig(stringT))
+    env = env.leaveJoin
+    env = env.leaveClosure
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveJoin
+  }
+
+  test("send in if in closure") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterClosure(Nil)
+    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.enterThen
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.enterElse
+    env = env.send(sessChan, "Bob", sig(stringT))
+    env = env.leaveIf
+    env = env.leaveJoin
+    env = env.leaveClosure
   }
 }

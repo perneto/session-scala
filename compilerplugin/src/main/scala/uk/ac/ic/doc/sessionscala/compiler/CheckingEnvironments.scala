@@ -4,6 +4,7 @@ import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
 import scalaj.collection.Imports._
+import uk.ac.ic.doc.sessionscala.ScribbleUtils
 
 
 /**
@@ -17,13 +18,25 @@ trait CheckingEnvironments extends TypeCheckingUtils {
 val scribbleJournal: Journal
   import global.{Block => _, _}
 
-  class JoinBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
+  class ProcessBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
     def this() = this(EmptySTE, null)
     def this(ste: SessionTypedElements) = this(ste, null)
     def this(infEnv: InferredTypeRegistry) = this(EmptySTE, infEnv)
 
-    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
-      delegator.updated(delegator.ste.updated(name, globalType))
+    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      val roles = ScribbleUtils.roles(globalType)
+      delegator.updated(delegator.ste.updated(name, globalType, roles))
+    }
+
+    override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
+      val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
+        val caps = currentSte.currentInviteCapabilities(sharedChan)
+        if (!caps.contains(role))
+          throw new SessionTypeCheckingException("Cannot invite role: " + role + ", another participant was already invited for this role")
+        currentSte.consumeInviteCapability(sharedChan, role)
+      }
+      delegator.updated(newSte)
+    }
 
     override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = {
       //println("enterJoin: " + ste)
@@ -36,10 +49,12 @@ val scribbleJournal: Journal
         delegator, role, sessChan, infEnv)
     }
 
+    override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
+
     def updated(ste: SessionTypedElements) = {
       assert(ste.sessions.values.map(_.isComplete).foldRight(true)(_&&_),
         "Top-level env should only be updated with completed sessions. ste: " + ste)
-      new JoinBlocksPassTopLevelEnv(ste, infEnv)
+      new ProcessBlocksPassTopLevelEnv(ste, infEnv)
     }
 
     override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("send")
@@ -115,8 +130,6 @@ val scribbleJournal: Journal
 
     override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) =
       new ChoiceReceiveBlockEnv(delegator.ste, delegator, sessChan, srcRole, Nil, None)
-
-    override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
 
     def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
     Seq[(Name, Int, RecBlock, Option[Name])] =

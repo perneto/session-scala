@@ -21,7 +21,7 @@ abstract class JoinBlocksPass extends PluginComponent
   class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
-    def initEnvironment = new JoinBlocksPassTopLevelEnv(inferred)
+    def initEnvironment = new ProcessBlocksPassTopLevelEnv(inferred)
 
     def file(filename: String) = new File(unitPath, filename)
     def parseFile(filename: String, pos: Position) = {
