@@ -28,6 +28,8 @@ val scribbleJournal: Journal
       delegator.updated(delegator.ste.updated(name, globalType, roles))
     }
 
+    override def isSharedChannel(c: Name) = ste.sharedChannels.contains(c)
+
     override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
       val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
         val caps = currentSte.currentInviteCapabilities(sharedChan)

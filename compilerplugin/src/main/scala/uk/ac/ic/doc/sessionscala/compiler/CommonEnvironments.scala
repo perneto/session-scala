@@ -34,6 +34,7 @@ trait CommonEnvironments {
     }
 
     def isSessionChannel(c: Name): Boolean
+    def isSharedChannel(c: Name): Boolean
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment =
       registerSharedChannel(name, globalType, this)
@@ -108,6 +109,7 @@ trait CommonEnvironments {
   abstract class AbstractDelegatingEnv(val parent: SessionTypingEnvironment)
   extends SessionTypingEnvironment {
     def isSessionChannel(c: Name) = parent.isSessionChannel(c)
+    def isSharedChannel(c: Name) = parent.isSharedChannel(c)
 
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       parent.registerSharedChannel(name, globalType, delegator)
@@ -150,6 +152,7 @@ trait CommonEnvironments {
   abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
     val parent = null
     override def isSessionChannel(c: Name) = false
+    override def isSharedChannel(c: Name) = false
 
     protected def notYet(what: String) =
       throw new SessionTypeCheckingException("trying to do a " + what

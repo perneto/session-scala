@@ -32,6 +32,14 @@ trait SessionTypeCheckingTraversers {
       }
     }
 
+    object Channel {
+     def unapply(tree: Tree): Option[Name] = tree match {
+       case SessionChannel(name) => Some(name)
+       case Ident(name) if env.isSharedChannel(name) => Some(name)
+       case _ => None
+     }
+   }
+
     object SymbolMatcher {
       def unapply(tree: Tree): Option[String] = tree match {
         case Apply(_, StringLit(role)::Nil) if tree.symbol == symbolApplyMethod =>
@@ -261,9 +269,9 @@ trait SessionTypeCheckingTraversers {
           // todo: support pattern matching on standard receives, checking that all
           // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
 
-          case Assign(lhs,rhs) if isSessionChannel(rhs) => linearityError(lhs,rhs)
+          case Assign(lhs,rhs@Channel(_)) => linearityError(lhs,rhs)
           // ValDef actually covers both val and var definitions
-          case ValDef(_,name,_,rhs) if isSessionChannel(rhs) => linearityError(name,rhs)
+          case ValDef(_,name,_,rhs@Channel(_)) => linearityError(name,rhs)
 
           case If(cond,thenp,elsep) =>
             pos = thenp.pos
