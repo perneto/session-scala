@@ -56,11 +56,10 @@ object util {
   def testcase = System.getProperty("testcase")
 
   def disabled(path: File): Boolean = {
-    if (testcase != null) {
-      !path.getName.matches(".*" + testcase + ".*")
-    } else withBufferedReader(path) { reader =>
-      reader.readLine.matches("//DISABLED")
-    }
+    (testcase != null && !path.getName.matches(".*" + testcase + ".*")) ||
+      withBufferedReader(path) { reader =>
+        reader.readLine.matches("//DISABLED")
+      }
   }
 
   def withBufferedReader[T](path: File)(block: BufferedReader => T): T = {
