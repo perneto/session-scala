@@ -7,7 +7,7 @@ import uk.ac.ic.doc.sessionscala.{ParticipantChannel, SharedChannel}
  * Created by: omp08
  */
 
-object BadAssignmentTest {
+object SessionChannelAliasingTest {
   def m {
 
     SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.spr") {
