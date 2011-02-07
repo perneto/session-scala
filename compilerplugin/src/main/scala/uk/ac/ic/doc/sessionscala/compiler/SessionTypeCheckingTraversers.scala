@@ -266,18 +266,6 @@ trait SessionTypeCheckingTraversers {
             env = env.leaveIf
             println("after leaveIf")
 
-          case DefDef(_,name,tparams,_,_,rhs) =>
-            //println("method def: " + name + ", symbol: " + tree.symbol)
-
-            val chanNames = sessionChannelNames(tree.symbol.tpe)
-            if (!chanNames.isEmpty) {
-              if (!tparams.isEmpty) reporter.error(tree.pos,
-                  "Type parameters not supported for session methods")
-              visitSessionMethod(tree.symbol, rhs, chanNames)
-            } else {
-              super.traverse(tree)
-            }
-
           case LabelDef(_,_,block) =>
             env = env.enterLoop
             traverse(block)
@@ -319,8 +307,6 @@ trait SessionTypeCheckingTraversers {
       pos = c.body.pos
       env = env.leaveChoiceReceiveBranch
     }
-
-    def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name])
 
     def isSessionChannelType(t: Type): Boolean = {
       val function1 = definitions.FunctionClass(1)

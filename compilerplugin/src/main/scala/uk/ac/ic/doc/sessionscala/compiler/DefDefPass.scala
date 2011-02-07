@@ -16,7 +16,22 @@ abstract class DefDefPass extends PluginComponent
 	class SessionMethodDefTraverser extends SessionTypeCheckingTraverser {
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
 
-    override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
+    override def traverse(tree: Tree) = tree match {
+      case DefDef(_,name,tparams,_,_,rhs) =>
+        //println("method def: " + name + ", symbol: " + tree.symbol)
+
+        val chanNames = sessionChannelNames(tree.symbol.tpe)
+        if (!chanNames.isEmpty) {
+          if (!tparams.isEmpty) reporter.error(tree.pos,
+              "Type parameters not supported for session methods")
+          visitSessionMethod(tree.symbol, rhs, chanNames)
+        } else {
+          super.traverse(tree)
+        }
+      case _ => super.traverse(tree)
+    }
+
+    def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       println("visit session method "+method+", chans: " + chanNames)
       val savedEnv = env
       env = env.enterSessionMethod(method, chanNames)

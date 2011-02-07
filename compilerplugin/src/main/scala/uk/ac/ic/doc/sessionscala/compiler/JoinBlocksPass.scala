@@ -69,10 +69,6 @@ abstract class JoinBlocksPass extends PluginComponent
         false
     }
 
-    override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
-      // do nothing, and skip visiting the method body as it's checked by DefDefPass
-    }
-
     def getStringLiteralArg(sym: Symbol, annotation: Symbol) = {
       val (literal: Literal)::_ = sym.getAnnotation(annotation).get.args
       literal.value.stringValue
