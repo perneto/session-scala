@@ -90,9 +90,13 @@ abstract class DefDefPass extends PluginComponent
 
       //global.treeBrowsers.create().browse(unit.body)
       val inferenceTraverser = new SessionMethodDefTraverser
-      inferenceTraverser(unit.body)
-      println(inferenceTraverser.env)
-      nextPass.inferred = inferenceTraverser.env.inferred.asInstanceOf[nextPass.InferredTypeRegistry]
+      try {
+        inferenceTraverser(unit.body)
+        println(inferenceTraverser.env)
+        nextPass.inferred = inferenceTraverser.env.inferred.asInstanceOf[nextPass.InferredTypeRegistry]
+      } catch {
+        case _ =>
+      }
     }
   }
 

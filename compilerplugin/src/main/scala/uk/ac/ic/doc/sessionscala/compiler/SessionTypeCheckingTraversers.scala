@@ -291,7 +291,7 @@ trait SessionTypeCheckingTraversers {
           reporter.error(pos, rex.getMessage)
         case e: SessionTypeCheckingException =>
           reporter.error(pos, e.getMessage)
-          //e.printStackTrace()
+          throw e
       }
     }
 

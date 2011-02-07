@@ -128,7 +128,7 @@ abstract class JoinBlocksPass extends PluginComponent
       try {
         typeChecker(unit.body)
       } catch {
-        case e: AbortException =>
+        case _ =>
       }
     }
   }
