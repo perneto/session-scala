@@ -260,7 +260,7 @@ trait SessionTypeCheckingTraversers {
                   // tuples are used to return session channels from inside session methods
                   && !definitions.isTupleType(sym.owner.tpe) =>
             println("delegation of session channel: " + tree)
-            env = env.delegation(fun.symbol, getSessionChannels(args), List())
+            env = env.delegation(fun.symbol, getSessionChannels(args), Nil)
             super.traverse(tree)
 
           // todo: support pattern matching on standard receives, checking that all
@@ -286,12 +286,16 @@ trait SessionTypeCheckingTraversers {
             println("after leaveIf")
 
           case DefDef(_,name,tparams,_,_,rhs) =>
-            //println("method def: " + name + ", symbol: " + tree.symbol)
+            println("method def: " + name + ", symbol: " + tree.symbol)
 
             val chanNames = sessionChannelNames(tree.symbol.tpe)
-            if (!chanNames.isEmpty) {
+            val sharedChanNames = sharedChannelNames(tree.symbol.tpe)
+            if (!sharedChanNames.isEmpty) {
+              throw new SessionTypeCheckingException(
+                "Shared channels cannot be used as method parameters")
+            } else if (!chanNames.isEmpty) {
               if (!tparams.isEmpty) reporter.error(tree.pos,
-                  "Type parameters not supported for session methods")
+                "Type parameters not supported for session methods")
               visitSessionMethod(tree.symbol, rhs, chanNames)
             } else {
               super.traverse(tree)
@@ -349,12 +353,15 @@ trait SessionTypeCheckingTraversers {
       t <:< sessionChannel
     }
 
-    def sessionChannelNames(tpe: Type): List[Name] = tpe match {
+    def sessionChannelNames(tpe: Type): List[Name] = chanNames(tpe, isSessionChannelType(_))
+
+    def sharedChannelNames(tpe: Type): List[Name] = chanNames(tpe, (_ <:< sharedChannelTrait.tpe))
+
+    def chanNames(tpe: Type, predicate: (Type => Boolean)) = tpe match {
       case MethodType(argTypes, _) =>
-        (for (argS <- argTypes if isSessionChannelType(argS.tpe))
+        (for (argS <- argTypes if predicate(argS.tpe))
           yield Some(argS.name)) flatten
       case _ => Nil
     }
-    
   }
 }
