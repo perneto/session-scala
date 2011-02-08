@@ -141,7 +141,7 @@ trait SessionTypeCheckingTraversers {
           if sym == qmarkMethod && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-            println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
+            //println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
             pos = qmark.pos
             env = env.receive(session, role, sig(tree.tpe))
             super.traverse(tree)
@@ -172,8 +172,8 @@ trait SessionTypeCheckingTraversers {
               _,
               _)::Nil
             )) if qqMark.symbol == qqMarkMethod && env.isSessionChannel(session) =>
-            println("?????????? message receive, session: " + session + ", role: "
-                    + role+", msg type: " + tpt.tpe + ", label: " + label)
+            //println("?????????? message receive, session: " + session + ", role: "
+            //        + role+", msg type: " + tpt.tpe + ", label: " + label)
             pos = app.pos
             val unitSymbol = definitions.getClass("scala.Unit")
             val tpe = if (tpt.tpe == unitSymbol.tpe) None
@@ -235,12 +235,12 @@ trait SessionTypeCheckingTraversers {
             syntheticValName = synValName
             sessionMethodSym = app.symbol
             sessionMethodArgs = args
-            println("@@@@@@@@@ found synthetic valdef: " + synValName)
+            //println("@@@@@@@@@ found synthetic valdef: " + synValName)
 
           // 2. valdef of each returned channel
           case ValDef(_, valName, tpt, sel@Select(Ident(selName), tupleAccessor))
           if syntheticValName != null && selName == syntheticValName && isSessionChannelType(sym.tpe) =>
-            println("$$$$$$$$$ found valdef for returned channel " + valName)
+            //println("$$$$$$$$$ found valdef for returned channel " + valName)
             collectedRetVals = valName :: collectedRetVals
             // test whether this is the last accessor - then we have seen all generated valdefs
             if (tupleArity(sel.symbol.owner) == indexAccessor(tupleAccessor)) {
@@ -251,7 +251,7 @@ trait SessionTypeCheckingTraversers {
 
           // delegation returning 1 session channel
           case ValDef(_, valName, tpt, app@Apply(fun, args)) if hasSessionChannels(args) =>
-            println("delegation returning channel: " + valName + ", method call: " + app)
+            //println("delegation returning channel: " + valName + ", method call: " + app)
             env = env.delegation(fun.symbol, getSessionChannels(args), List(valName))
             super.traverse(app)
 
@@ -259,7 +259,7 @@ trait SessionTypeCheckingTraversers {
           case Apply(fun,args) if hasSessionChannels(args)
                   // tuples are used to return session channels from inside session methods
                   && !definitions.isTupleType(sym.owner.tpe) =>
-            println("delegation of session channel: " + tree)
+            //println("delegation of session channel: " + tree)
             env = env.delegation(fun.symbol, getSessionChannels(args), Nil)
             super.traverse(tree)
 
@@ -272,22 +272,21 @@ trait SessionTypeCheckingTraversers {
 
           case If(cond,thenp,elsep) =>
             pos = thenp.pos
-            println("enterThen")
+            //println("enterThen")
             env = env.enterThen
-            println("after enterThen, traversing body")
+            //println("after enterThen, traversing body")
             traverse(thenp)
             pos = elsep.pos
-            println("enterElse")
+            //println("enterElse")
             env = env.enterElse
-            println("after enterElse, traversing body")
+            //println("after enterElse, traversing body")
             traverse(elsep)
-            println("leaveIf")
+            //println("leaveIf")
             env = env.leaveIf
-            println("after leaveIf")
+            //println("after leaveIf")
 
           case DefDef(_,name,tparams,_,_,rhs) =>
-            println("method def: " + name + ", symbol: " + tree.symbol)
-
+            //println("method def: " + name + ", symbol: " + tree.symbol)
             val chanNames = sessionChannelNames(tree.symbol.tpe)
             val sharedChanNames = sharedChannelNames(tree.symbol.tpe)
             if (!sharedChanNames.isEmpty) {

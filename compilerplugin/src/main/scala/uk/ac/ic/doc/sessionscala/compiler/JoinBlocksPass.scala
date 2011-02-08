@@ -71,7 +71,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       env = env.enterSessionMethod(method, chanNames)
-      println("@@@@@@@@@@@@ traversing method body: " + method)
+      //println("@@@@@@@@@@@@ traversing method body: " + method)
       traverse(body)
       env = env.leaveSessionMethod(Nil)
     }

@@ -8,7 +8,7 @@ object BuyerSellerAMQP {
   def main(args: Array[String]) {
     withAMQPChannel("protocol Test { role Buyer, Seller; } ") { sharedChannel =>
 
-      sharedChannel.invite("", 'Buyer -> localhost, 'Seller -> localhost)
+      sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
 
       sharedChannel.forwardInvite('Buyer -> localhost)
 
