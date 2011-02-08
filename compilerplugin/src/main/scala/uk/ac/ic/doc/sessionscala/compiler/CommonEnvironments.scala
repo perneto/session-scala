@@ -36,8 +36,10 @@ trait CommonEnvironments {
     def isSessionChannel(c: Name): Boolean
     def isSharedChannel(c: Name): Boolean
 
-    def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment =
+    def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment = {
+      //println("regisiterSharedChannel: " + this)
       registerSharedChannel(name, globalType, this)
+    }
     def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment
 
     def invite(sharedChan: Name, roles: List[String]): SessionTypingEnvironment = invite(this, sharedChan, roles)
@@ -77,13 +79,13 @@ trait CommonEnvironments {
     def leaveIf: SessionTypingEnvironment = leaveIf(this)
     def leaveIf(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("leaveIf:" + this + ", delegator: " + delegator); delegator}
 
-    def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, "cannot be used in a loop")
+    def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, ste.sharedChannels.keysIterator, "loop")
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
 
     def enterClosure(params: List[Name]): SessionTypingEnvironment = {
       println("enter closure: " + this + ", params: " + params + ", frozen: " + (ste.sessions.keySet -- params))
       new FrozenChannelsEnv(
-      ste, this, (ste.sessions.keySet -- params).iterator, "cannot be used in a closure")
+      ste, this, (ste.sessions.keySet -- params).iterator, (ste.sharedChannels.keySet -- params).iterator, "closure")
     }
     def leaveClosure: SessionTypingEnvironment = {
       println("leave closure: " + this + ", parent: " + parent + ", ste: " + ste)
@@ -182,38 +184,54 @@ trait CommonEnvironments {
   }
 
   class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment,
-                          frozenChannels: Iterator[Name], reason: String) extends AbstractDelegatingEnv(parent) {
-      def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(newSte, parent, frozenChannels, reason)
+                          frozenSessionChannels: Iterator[Name],
+                          frozenSharedChannels: Iterator[Name], location: String) extends AbstractDelegatingEnv(parent)
+  {
+    def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(
+      newSte, parent, frozenSessionChannels, frozenSharedChannels, location)
 
-      override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
-        checkFrozen(sessChan)
-        parent.send(sessChan, role, msgSig)
-      }
-
-      override def receive(sessChan: Name, role: String, msgSig: MsgSig) = {
-        checkFrozen(sessChan)
-        parent.receive(sessChan, role, msgSig)
-      }
-
-      override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
-        checkFrozen(channels)
-        parent.delegation(function, channels, returnedChannels)
-      }
-
-      override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
-        checkFrozen(sessChan)
-        parent.enterChoiceReceiveBlock(sessChan, srcRole)
-      }
-
-      def checkFrozen(chan: Name) {
-        if (frozenChannels.contains(chan))
-          throw new SessionTypeCheckingException("Channel " + chan + " " + reason)
-      }
-
-      def checkFrozen(channels: List[Name]) {
-        channels foreach (c => checkFrozen(c))
-      }
+    override def invite(sharedChan: Name, roles: List[String]) = {
+      checkSharedFrozen(sharedChan)
+      parent.invite(this, sharedChan, roles)
     }
+
+    override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
+      checkFrozen(sessChan)
+      parent.send(sessChan, role, msgSig)
+    }
+
+    override def receive(sessChan: Name, role: String, msgSig: MsgSig) = {
+      checkFrozen(sessChan)
+      parent.receive(sessChan, role, msgSig)
+    }
+
+    override def delegation(function: Symbol, channels: List[Name], returnedChannels: List[Name]) = {
+      checkFrozen(channels)
+      parent.delegation(function, channels, returnedChannels)
+    }
+
+    override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
+      checkFrozen(sessChan)
+      parent.enterChoiceReceiveBlock(sessChan, srcRole)
+    }
+
+    def checkSharedFrozen(chan: Name) {
+      checkFrozen(chan, frozenSharedChannels, " cannot be used for invites in a " + location)
+    }
+
+    def checkFrozen(chan: Name) {
+      checkFrozen(chan, frozenSessionChannels, " cannot be used in a " + location)
+    }
+
+    def checkFrozen(chan: Name, frozen: Iterator[Name], reason: String) {
+      if (frozen.contains(chan))
+        throw new SessionTypeCheckingException("Channel " + chan + reason)
+    }
+
+    def checkFrozen(channels: List[Name]) {
+      channels foreach (c => checkFrozen(c))
+    }
+  }
 
   def illegalReturn() = throw new SessionTypeCheckingException(
     "Return statements are not allowed inside session methods or accept/join blocks")

@@ -2,7 +2,7 @@ package compileerror
 
 import uk.ac.ic.doc.sessionscala.SharedChannel
 
-object SharedChannelAssignmentAliasingTest {
+object SharedChannelInvitesInClosureTest {
   def main(args: Array[String]) {
     SharedChannel.withLocalChannel(
     """
@@ -11,8 +11,8 @@ object SharedChannelAssignmentAliasingTest {
     }
     """
     ) { sharedChannel =>
-      // Static checking of invites requires linearity.
-      val shared2 = sharedChannel
+
+      for (i <- 1 to 10) sharedChannel.invite('Alice -> SharedChannel.localhost)
     }
   }
 }

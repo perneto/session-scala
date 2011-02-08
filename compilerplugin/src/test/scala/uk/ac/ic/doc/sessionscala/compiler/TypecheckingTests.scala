@@ -176,10 +176,10 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("closure env don't lose inferred method types") {
     var env: SessionTypingEnvironment = new MethodSessionTypeInferenceTopLevelEnv
-    env = env.enterClosure(List())
+    env = env.enterClosure(Nil)
     env = env.enterSessionMethod(fooMethod, List(sessChan))
     env = env.send(sessChan, "Bob", sig(stringT))
-    env = env.leaveSessionMethod(List())
+    env = env.leaveSessionMethod(Nil)
     env = env.leaveClosure
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
@@ -292,24 +292,24 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
     env = env.invite(sharedChan, List("Alice"))
   }
 
-  test("entering closure doesn't interfere with invites (happy path)") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+  test("entering closure doesn't interfere with invites (happy path)", Tag("wip")) {
+    var env = topEnv.enterClosure(Nil)
+    env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
-    env = env.enterClosure(Nil)
     env = env.invite(sharedChan, List("Alice"))
     env = env.leaveClosure
   }
 
   test("entering closure doesn't interfere with invites (error path)") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.enterClosure(Nil)
+    env = env.registerSharedChannel(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
-    env = env.enterClosure(Nil)
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Foo"))
     }
   }
 
-test("entering if doesn't interfere with invites (happy path)", Tag("wip")) {
+test("entering if doesn't interfere with invites (happy path)") {
     var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
     env = env.enterThen
@@ -331,7 +331,8 @@ test("entering if doesn't interfere with invites (happy path)", Tag("wip")) {
   test("nested leaveJoin in closure") {
     var env = join(sendStringModel, "Alice")
     env = env.enterClosure(Nil)
-    env = env.enterJoin(sharedChan, "Alice", sessChan2)
+    env = env.registerSharedChannel(sharedChan2, sendStringModel)
+    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
     env = env.send(sessChan2, "Bob", sig(stringT))
     env = env.leaveJoin
     env = env.leaveClosure
@@ -350,5 +351,13 @@ test("entering if doesn't interfere with invites (happy path)", Tag("wip")) {
     env = env.leaveIf
     env = env.leaveJoin
     env = env.leaveClosure
+  }
+
+  test("closures forbid invites") {
+    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.enterClosure(Nil)
+    intercept[SessionTypeCheckingException] {
+      env = env.invite(sharedChan, List("Alice"))
+    }
   }
 }

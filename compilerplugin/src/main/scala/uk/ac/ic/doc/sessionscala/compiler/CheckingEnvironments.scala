@@ -31,6 +31,7 @@ val scribbleJournal: Journal
     override def isSharedChannel(c: Name) = ste.sharedChannels.contains(c)
 
     override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
+      println("invite: " + this + ", delegator: " + delegator + ", delegator.ste: " + delegator.ste)
       val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
         val caps = currentSte.currentInviteCapabilities(sharedChan)
         if (!caps.contains(role))
@@ -169,7 +170,7 @@ val scribbleJournal: Journal
       // FrozenChannelsEnv is necessary only for bad programs where the delegation
       // did not complete the session, but the channel was not returned
       // and bound to a new value to be completed after the method call
-      new FrozenChannelsEnv(updated.ste, updated, delegatedChans.iterator,
+      new FrozenChannelsEnv(updated.ste, updated, delegatedChans.iterator, Nil.iterator,
         "cannot be used anymore in this scope after it has been passed as a method parameter")
     }
 
