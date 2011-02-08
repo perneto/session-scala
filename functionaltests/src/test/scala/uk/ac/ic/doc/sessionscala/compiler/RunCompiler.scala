@@ -45,7 +45,7 @@ object util {
       val path = new File(dir,name)
       if (path.isDirectory)
         scalaFilesInDir(path)
-      else if (path.getName.endsWith("Test.scala")) {
+      else if (path.getName.endsWith(".scala")) {
         if (disabled(path)) Nil
         else List(path.getAbsolutePath)
       }
