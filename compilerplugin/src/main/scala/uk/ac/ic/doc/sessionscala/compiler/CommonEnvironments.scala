@@ -2,6 +2,7 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import tools.nsc.Global
 import org.scribble.protocol.model.{RecBlock, ProtocolModel}
+import uk.ac.ic.doc.sessionscala.ScribbleUtils
 
 /**
  * Created by: omp08
@@ -151,10 +152,14 @@ trait CommonEnvironments {
     override def returnStatement(delegator: SessionTypingEnvironment) = parent.returnStatement(delegator)
   }
 
-  abstract class AbstractTopLevelEnv extends SessionTypingEnvironment {
-    val parent = null
+  abstract class AbstractTopLevelEnv(val parent: SessionTypingEnvironment) extends SessionTypingEnvironment {
     override def isSessionChannel(c: Name) = false
     override def isSharedChannel(c: Name) = false
+
+    override def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      val roles = ScribbleUtils.roles(globalType)
+      delegator.updated(delegator.ste.updated(name, globalType, roles))
+    }
 
     protected def notYet(what: String) =
       throw new SessionTypeCheckingException("trying to do a " + what

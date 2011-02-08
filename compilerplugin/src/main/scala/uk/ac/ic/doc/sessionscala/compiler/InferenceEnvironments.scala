@@ -24,10 +24,10 @@ trait InferenceEnvironments {
     inf1.channels ++ inf2.channels
   }
 
-  class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv with InferredTypeRegistry {
+  class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv(null) with InferredTypeRegistry {
     def this() = this(EmptySTE)
 
-    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
+    override def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
 
     def updated(ste: SessionTypedElements) =

@@ -18,15 +18,10 @@ trait CheckingEnvironments extends TypeCheckingUtils {
 val scribbleJournal: Journal
   import global.{Block => _, _}
 
-  class ProcessBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv {
+  class ProcessBlocksPassTopLevelEnv(val ste: SessionTypedElements, val infEnv: InferredTypeRegistry) extends AbstractTopLevelEnv(null) {
     def this() = this(EmptySTE, null)
     def this(ste: SessionTypedElements) = this(ste, null)
     def this(infEnv: InferredTypeRegistry) = this(EmptySTE, infEnv)
-
-    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
-      val roles = ScribbleUtils.roles(globalType)
-      delegator.updated(delegator.ste.updated(name, globalType, roles))
-    }
 
     override def isSharedChannel(c: Name) = ste.sharedChannels.contains(c)
 
@@ -68,6 +63,17 @@ val scribbleJournal: Journal
 
     override def enterChoiceReceiveBranch(msgSig: MsgSig) = notYet("choice receive branch")
     override def leaveChoiceReceiveBranch = notLeavingYet("choice receive branch")
+
+    override def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]) =
+      new WaitForJoinEnv(delegator.ste, delegator)
+  }
+
+  class WaitForJoinEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment) extends AbstractTopLevelEnv(parent) {
+    override def leaveSessionMethod(returnedChans: List[Name]) = parent
+    def updated(ste: SessionTypedElements) = new WaitForJoinEnv(ste, parent)
+
+    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name) =
+      parent.enterJoin(delegator, sharedChannel, roleName, sessChan)
   }
 
   class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment)

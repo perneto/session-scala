@@ -70,7 +70,10 @@ abstract class JoinBlocksPass extends PluginComponent
     }
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
-      // do nothing, and skip visiting the method body as it's checked by DefDefPass
+      env = env.enterSessionMethod(method, chanNames)
+      println("@@@@@@@@@@@@ traversing method body: " + method)
+      traverse(body)
+      env = env.leaveSessionMethod(Nil)
     }
 
     def getStringLiteralArg(sym: Symbol, annotation: Symbol) = {
@@ -116,12 +119,12 @@ abstract class JoinBlocksPass extends PluginComponent
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
         if sym == joinMethod || sym == acceptMethod =>
-          //println("join: " + role + ", sessChan: " + sessChan)
+          println("join: " + role + ", sessChan: " + sessChan)
           try {
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
             pos = tree.pos
-            println("leaveJoin")
+            println("leaveJoin, env: " + env)
             env = env.leaveJoin
           } catch {
             case rex: RecoverableTypeCheckingException =>
