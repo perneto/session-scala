@@ -37,9 +37,14 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
     val scribble_projection = "org.scribble.bundles" % "org.scribble.protocol.projection" % "2.0.0-SNAPSHOT"
   }
 
-  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with ScribbleBase with Utils {
+  class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with ScribbleBase with Utils  with ProguardProject {
     val scribble_conformance = "org.scribble.bundles" % "org.scribble.protocol.conformance" % "2.0.0-SNAPSHOT"
     val antlr = "org.antlr" % "antlr-runtime" % "3.2" // shouldn't be needed, something funny with scribble deps
+
+    override def proguardOptions = List(
+      "-keep class uk.ac.ic.doc.sessionscala.** { *; }"
+    )
+    override def proguardLibraryJars = super.proguardLibraryJars +++ scalaLibraryPath
   }
 
   lazy val runtime = project("runtime", "runtime", new Runtime(_))
