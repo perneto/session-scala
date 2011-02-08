@@ -100,7 +100,7 @@ abstract class JoinBlocksPass extends PluginComponent
             ,_)
           ,_) => role
       }
-      println("getRoles: " + result)
+      //println("getRoles: " + result)
       result
     }
 
@@ -124,7 +124,7 @@ abstract class JoinBlocksPass extends PluginComponent
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)
             pos = tree.pos
-            println("leaveJoin, env: " + env)
+            //println("leaveJoin, env: " + env)
             env = env.leaveJoin
           } catch {
             case rex: RecoverableTypeCheckingException =>
@@ -146,7 +146,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      println("JoinBlockPass starting")
+      println("   JoinBlockPass starting")
       val unitPath = new File(unit.source.path).getParent()
       val typeChecker = new JoinBlocksTraverser(unitPath)
       try {

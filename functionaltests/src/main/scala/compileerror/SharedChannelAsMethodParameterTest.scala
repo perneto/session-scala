@@ -25,6 +25,9 @@ object SharedChannelAsMethodParameterTest {
     were required to have a @protocol annotation (to be able to typecheck the method body),
     and were treated as linear resources in the caller scope (because of invites).
 
+    We could also infer what capabilities each such method uses in DefDef pass,
+    and consume them at once in JoinBlockPass (sounds better).
+
     For now, we're not allowing anything of this form.
     */
   }

@@ -3,10 +3,6 @@ package uk.ac.ic.doc.sessionscala.compiler
 import tools.nsc.plugins.PluginComponent
 import tools.nsc.{Global, Phase}
 
-/**
- * Created by: omp08
- */
-
 abstract class DefDefPass extends PluginComponent
                              with SessionTypingEnvironments
                              with SessionDefinitions
@@ -17,15 +13,15 @@ abstract class DefDefPass extends PluginComponent
     def initEnvironment = new MethodSessionTypeInferenceTopLevelEnv
 
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
-      println("visit session method "+method+", chans: " + chanNames)
+      //println("visit session method "+method+", chans: " + chanNames)
       val savedEnv = env
       env = env.enterSessionMethod(method, chanNames)
       // needs to be here because it requires env to know about the channels in chanNames
       val retChanNames = checkReturnedChannels(body, savedEnv)
-      println("&&&&& retChanNames: " + retChanNames)
+      //println("&&&&& retChanNames: " + retChanNames)
       traverse(body)
       env = env.leaveSessionMethod(retChanNames)
-      println("left session method "+method + ", env: " + env)
+      //println("left session method "+method + ", env: " + env)
     }
 
     def checkReturnedChannels(body: Tree, savedEnv: SessionTypingEnvironment): List[Name] = {
@@ -71,9 +67,9 @@ abstract class DefDefPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      println("DefDefPass starting")
+      println("   DefDefPass starting")
 
-      //global.treeBrowsers.create().browse(unit.body)
+      global.treeBrowsers.create().browse(unit.body)
       val inferenceTraverser = new SessionMethodDefTraverser
       try {
         inferenceTraverser(unit.body)
