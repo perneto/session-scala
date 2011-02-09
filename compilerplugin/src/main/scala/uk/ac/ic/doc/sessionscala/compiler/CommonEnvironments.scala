@@ -84,12 +84,12 @@ trait CommonEnvironments {
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
 
     def enterClosure(params: List[Name]): SessionTypingEnvironment = {
-      println("enter closure: " + this + ", params: " + params + ", frozen: " + (ste.sessions.keySet -- params))
+      //println("enter closure: " + this + ", params: " + params + ", frozen: " + (ste.sessions.keySet -- params))
       new FrozenChannelsEnv(
       ste, this, (ste.sessions.keySet -- params).iterator, (ste.sharedChannels.keySet -- params).iterator, "closure")
     }
     def leaveClosure: SessionTypingEnvironment = {
-      println("leave closure: " + this + ", parent: " + parent + ", ste: " + ste)
+      //println("leave closure: " + this + ", parent: " + parent + ", ste: " + ste)
       parent.updated(ste)
     }
 
