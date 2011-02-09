@@ -18,7 +18,7 @@ class RunCompiler(file: String) {
         ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar" +
         ":runtime/target/scala_"+scalaVersion+"/classes" +
         ":compilerplugin/target/scala_"+scalaVersion+"/classes" +
-        ":examples/target/scala_"+scalaVersion+"/classes"
+        ":functionaltests/target/scala_"+scalaVersion+"/classes"
     ))
     //settings.showPlugins only works if you're not compiling a file, same as -help
     settings.require.tryToSet(List("sessiontyping"))
