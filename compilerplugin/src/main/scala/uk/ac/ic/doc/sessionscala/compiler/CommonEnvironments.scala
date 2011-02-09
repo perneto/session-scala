@@ -84,7 +84,10 @@ trait CommonEnvironments {
       delegator
     }
     def leaveIf: SessionTypingEnvironment = leaveIf(this)
-    def leaveIf(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("leaveIf:" + this + ", delegator: " + delegator); delegator}
+    def leaveIf(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      //println("leaveIf:" + this + ", delegator: " + delegator)
+      delegator
+    }
 
     def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, ste.sharedChannels.keysIterator, "loop")
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
