@@ -128,7 +128,6 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.delegation(ymethod, List(sessChan), Nil)
     env = env.leaveSessionMethod(Nil)
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(xmethod, 0)))
-    println("after assert")
 
     env = env.enterSessionMethod(ymethod, List(sessChan))
     env = env.enterThen
