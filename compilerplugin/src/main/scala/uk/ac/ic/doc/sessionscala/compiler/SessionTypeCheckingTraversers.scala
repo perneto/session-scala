@@ -111,10 +111,10 @@ trait SessionTypeCheckingTraversers {
     def isTupleMethod(sel: Tree) = definitions.isTupleType(sel.symbol.owner.tpe)
     // Required for multiple-return session method calls, as the call desugars into
     // several valdefs
-    var syntheticValName: Name = null
-    var collectedRetVals: List[Name] = Nil
-    var sessionMethodSym: Symbol = null
-    var sessionMethodArgs: List[Tree] = Nil
+    private var syntheticValName: Name = null
+    private var collectedRetVals: List[Name] = Nil
+    private var sessionMethodSym: Symbol = null
+    private var sessionMethodArgs: List[Tree] = Nil
 
     override def traverse(tree: Tree) {
       val sym = tree.symbol

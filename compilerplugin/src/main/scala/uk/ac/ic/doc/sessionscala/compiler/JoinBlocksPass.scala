@@ -51,7 +51,9 @@ abstract class JoinBlocksPass extends PluginComponent
     def isSharedChannelFunction(tpe: Type): Boolean = tpe match {
       case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< sharedChannelTrait.tpe =>
         true
-      case x => false
+      case x =>
+        println("Not shared channel function: " + x)
+        false
     }
     def takesSharedChannel(tpe: Type): Boolean = tpe match {
       case PolyType(
@@ -62,10 +64,10 @@ abstract class JoinBlocksPass extends PluginComponent
             functionParamSymbol::Nil,
             _)))
       if isSharedChannelFunction(functionParamSymbol.tpe) =>
-        println("FOUND SHARED CHANNEL: " + tpe + ", functionParamSymbol: " + functionParamSymbol)
+        //println("FOUND SHARED CHANNEL: " + tpe + ", functionParamSymbol: " + functionParamSymbol)
         true
       case x =>
-        println("not shared channel function: " + tpe)
+        //println("not shared channel function: " + tpe)
         false
     }
 
@@ -104,16 +106,36 @@ abstract class JoinBlocksPass extends PluginComponent
       result
     }
 
+    var sharedChanBody: Tree = null
+    var sharedChanName: Name = null
+    var syntheticValName: Name = null
     override def traverse(tree: Tree) {
       val sym = tree.symbol
       pos = tree.pos
 
       tree match {
+        case ValDef(_,syntheticName,_, f@Function(ValDef(_,name,_,_)::Nil, body))
+        if isSharedChannelFunction(f.tpe) =>
+          println("FOUND synthetic var: " + syntheticName)
+          sharedChanName = name
+          sharedChanBody = body
+          syntheticValName = syntheticName
+
         case Apply(Apply(_,args), Function(ValDef(_,name,_,_)::Nil, body)::Nil)
         if takesSharedChannel(sym.tpe) =>
           println("shared channel creation: " + sym + ", channel name: " + name)
           val globalModel = parseProtocol(args, tree.pos)
           env = env.registerSharedChannel(name, globalModel)
+          traverse(body)
+
+        case Apply(Apply(_,args), Ident(name)::Nil) if syntheticValName != null && name == syntheticValName =>
+          println("shared channel creation: " + sym + ", channel name: " + sharedChanName)
+          val globalModel = parseProtocol(args, tree.pos)
+          env = env.registerSharedChannel(sharedChanName, globalModel)
+          val body = sharedChanBody
+          sharedChanBody = null // can have nested shared channel creations
+          sharedChanName = null
+          syntheticValName = null
           traverse(body)
 
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),

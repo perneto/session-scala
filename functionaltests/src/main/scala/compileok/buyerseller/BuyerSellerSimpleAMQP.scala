@@ -9,7 +9,15 @@ object BuyerSellerSimpleAMQP {
   case object Quit
 
   def main(args: Array[String]) {
-    withAMQPChannel("protocol Test { role Buyer, Seller; }", port = 5672) { sharedChannel =>
+    withAMQPChannel("""protocol Test {
+      role Buyer, Seller;
+      Title(String) from Buyer to Seller;
+      Quote(Int) from Seller to Buyer;
+      choice from Buyer to Seller {
+        String: Date(String) from Buyer to Seller;
+        Quit():
+      }
+    }""", port = 5672) { sharedChannel =>
 
       sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
 
@@ -31,7 +39,7 @@ object BuyerSellerSimpleAMQP {
         val ('Quote, quote: Int) = s('Seller).??
         if (quote < 1000) {
           s('Seller) ! "123 Penny Lane"
-          s('Seller) ! "4/6/2011 10:00 UTC-7"
+          s('Seller) ! ('Date, "4/6/2011 10:00 UTC-7")
         } else {
           s('Seller) ! 'Quit
         }
