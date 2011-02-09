@@ -157,7 +157,7 @@ trait SessionTypedElementsComponent {
       var i = 1
       def value = "X"+i+"c"+rank
       while (labels.get(value).isDefined) i += 1
-      println("newLabel: "+ value)
+      //println("newLabel: "+ value)
       value
     }
     def recordChanReturnOrder(method: Symbol, returnedChans: List[Name]) = {

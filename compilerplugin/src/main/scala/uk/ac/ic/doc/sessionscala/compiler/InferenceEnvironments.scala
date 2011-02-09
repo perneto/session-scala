@@ -41,17 +41,17 @@ trait InferenceEnvironments {
       val newSte = (indexedChans foldLeft delegator.ste) { case (ste, (chan, index)) =>
         ste.createInferred(fun, chan, index)
       }
-      println("enterSessionMethod, delegator.ste: " + delegator.ste + ", newSte: " + newSte)
+      //println("enterSessionMethod, delegator.ste: " + delegator.ste + ", newSte: " + newSte)
       new InMethodInferenceEnv(delegator, newSte, fun, sessChans)
     }
 
     def inferredSessionType(method: Symbol, rank: Int): RecBlock = {
-      println("inferredSessionType: " + method + ", rank: " + rank + ", ste: " + ste)
+      //println("inferredSessionType: " + method + ", rank: " + rank + ", ste: " + ste)
       ste.getInferred(method, rank)
     }
 
     def inferredSessionType(label: String): RecBlock = {
-      println("inferredSessionType: " + label + ", ste: " + ste)
+      //println("inferredSessionType: " + label + ", ste: " + ste)
       ste.inferredFor(label)
     }
 
@@ -89,14 +89,14 @@ trait InferenceEnvironments {
     }
 
     override def delegation(delegator: SessionTypingEnvironment, function: Symbol, delegatedChans: List[Name], returnedChannels: List[Name]) = {
-      println("delegation, calling method: " + function + ", delegatedChans: " + delegatedChans)
+      //println("delegation, calling method: " + function + ", delegatedChans: " + delegatedChans)
       val dSte = delegator.ste
       val newSte = (delegatedChans.zipWithIndex foldLeft dSte) { case (ste, (chan, rank)) =>
         val (steRegistered, label) = ste.ensureMethodParamLabelExists(function, rank)
-        println("delegation, appending inferred recursion variable: " + label)
+        //println("delegation, appending inferred recursion variable: " + label)
         steRegistered.append(method, chan, createRecursion(label))
       }
-      println("delegation, final newSte: " + newSte)
+      //println("delegation, final newSte: " + newSte)
       delegator.updated(newSte)
     }
 
@@ -111,7 +111,7 @@ trait InferenceEnvironments {
 
     override def leaveSessionMethod(returnedChans: List[Name]) = {
       val updatedParent = parent.updated(ste.registerCompletedMethod(method, chans, returnedChans))
-      println("leaveSessionMethod, updated parent: " + updatedParent)
+      //println("leaveSessionMethod, updated parent: " + updatedParent)
       updatedParent
     }
 

@@ -17,7 +17,7 @@ trait CoordinationActorsComponent {
           with AMQPConnectionComponent =>
   
   val invitationReceiverActor = actor {
-    println("Starting invitation receiver actor...")
+    //println("Starting invitation receiver actor...")
     connectionManagerActor ! (('queueDeclare, localhost))
     // noAck = true, automatically sends acks
     connectionManagerActor ! (('consume, localhost, self))
@@ -29,9 +29,9 @@ trait CoordinationActorsComponent {
           val (invitedRole,sessExchange,protocol) = openInvite(body)
           // todo: check protocol is compatible with the local protocol
           matchMakerActor ! Invite(invitedRole, sessExchange, protocol)
-          println("sent invitation for " + invitedRole + " to matchmaker")
+          //println("sent invitation for " + invitedRole + " to matchmaker")
         case Quit =>
-          println("Invitation receiver exiting")
+          //println("Invitation receiver exiting")
           exit()
       }
     }
@@ -43,7 +43,7 @@ trait CoordinationActorsComponent {
     // at startup so I left it aside for now.
     var mapProxies = Map.empty[Symbol, Actor]
     def sendAll(msg: Any) = {
-      println("proxy registry sending: " + msg + " to proxies: " + mapProxies)
+      //println("proxy registry sending: " + msg + " to proxies: " + mapProxies)
       mapProxies.values foreach (_ ! msg)
     }
     loop {
@@ -52,7 +52,7 @@ trait CoordinationActorsComponent {
           mapProxies += (role -> proxy)
           //sendAll(mapProxies)
         case Quit =>
-          println("Proxy registry exiting")
+          //println("Proxy registry exiting")
           // no need to send Quit to proxies here, this is done at the end of the accept
           // method in AMQPSharedChannel
           exit()

@@ -26,7 +26,7 @@ val scribbleJournal: Journal
     override def isSharedChannel(c: Name) = ste.sharedChannels.contains(c)
 
     override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
-      println("invite: " + this + ", delegator: " + delegator + ", delegator.ste: " + delegator.ste)
+      //println("invite: " + this + ", delegator: " + delegator + ", delegator.ste: " + delegator.ste)
       val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
         val caps = currentSte.currentInviteCapabilities(sharedChan)
         if (!caps.contains(role))
@@ -94,7 +94,7 @@ val scribbleJournal: Journal
       val scopedSessions = scopedChans map (c => (c, ste.sessions(c)))
 
       val newSte = ste.removeSessions(scopedChans)
-      println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
+      //println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
       val newEnv = parent.updated(newSte)
 
       scopedSessions foreach { case (chan, session) =>
@@ -161,7 +161,7 @@ val scribbleJournal: Journal
     }
     override def delegation(delegator: SessionTypingEnvironment, method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]): SessionTypingEnvironment = {
       val inferred = retrieveInferred(method, delegatedChans, returnedChans)
-      println("INFERRED:   " + inferred)
+      //println("INFERRED:   " + inferred)
       val updated = (inferred foldLeft delegator) {
         case (env, (chan, chanRank, recur, retChanOpt)) =>
           val sess = env.ste.sessions(chan)
@@ -209,11 +209,11 @@ val scribbleJournal: Journal
           advanceList(sess, unroll(r), replacedLabels)
         }
       case r: Recursion =>
-        println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
+        //println("Recursion: " + r.getLabel + ", replacedLabels: " + replacedLabels)
         if (replacedLabels contains r.getLabel) sess.dropMatchingRecursionLabel(r)
         else {
           val recur = infEnv.inferredSessionType(r.getLabel)
-          println("inferred for " + r.getLabel + ": " + recur)
+          //println("inferred for " + r.getLabel + ": " + recur)
           advanceOne(sess, recur, replacedLabels)
         }
     }
@@ -226,7 +226,7 @@ val scribbleJournal: Journal
       val src = i.getFromRole
       val dsts = i.getToRoles
       val dst = if (dsts.isEmpty) null else dsts.get(0)
-      println("sendOrReceive - " + i + ", msig: " + msig)
+      //println("sendOrReceive - " + i + ", msig: " + msig)
       sess.interaction(src, dst, msig)
     }
 

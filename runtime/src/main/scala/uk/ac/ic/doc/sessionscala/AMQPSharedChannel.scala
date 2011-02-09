@@ -50,7 +50,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocol: String, val brokerHost:
       def sessName = "s" + i
       while (notDeclared) {
         try {
-          println("initSessionExchange trying exchange name: " + sessName + ", i: " + i)
+          //println("initSessionExchange trying exchange name: " + sessName + ", i: " + i)
           chan.exchangeDeclarePassive(sessName) // throws ioe if exchange does not exist. This closes the channel, why oh why?
           // exchange already exists, try another name
           i += 1
@@ -94,10 +94,10 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocol: String, val brokerHost:
 
   def forwardInvite(mapping: (Symbol,String)*): Unit = {
     mapping foreach { case (role, host) =>
-      println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
+      //println("forwardInvite: " + role + ", awaiting: " + awaiting + ", host: " + host)
       checkRoleAwaiting(role)
       val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
-      println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
+      //println("forwarding invite for role: " + role + " on session exchange: " + sessExchange)
       inviteImpl(sessExchange, protocol, role -> host)
     }
   }
@@ -110,11 +110,11 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocol: String, val brokerHost:
   }
 
   def accept(role: Symbol)(act: ActorFun): Unit = {
-    println("accept: " + role + ", awaiting: " + awaiting)
+    //println("accept: " + role + ", awaiting: " + awaiting)
     checkRoleAwaiting(role)
-    println("sending blocking message")
+    //println("sending blocking message")
     val (sessExchange, protocol) = (matchMakerActor !? Accept(role)).asInstanceOf[(String,String)]
-    println("got reply from matchmaker")
+    //println("got reply from matchmaker")
     // to implement optimized local communication, should receive list of local proxies from matchmaker along with
     // sessExchange. Probably requires changing the API to have all local accepts at once - then we can wait for
     // all invites, and be sure of which roles are local. With current approach, I am sending some messages over
@@ -135,7 +135,7 @@ class AMQPSharedChannel(awaiting: Set[Symbol], protocol: String, val brokerHost:
       }
     }
     act(sessChan)
-    println("!!!!!!!!!!!!!!!!accept: call to act finished")
+    //println("!!!!!!!!!!!!!!!!accept: call to act finished")
     proxy ! Quit
   }
 

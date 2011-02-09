@@ -25,10 +25,10 @@ trait AMQPActorProxyComponent {
     def publish(dstRole: Symbol, label: Symbol, msg: Option[Any]) {
       mapProxies.get(dstRole) match {
         case Some(localProxy: Actor) =>
-          println("Direct message send to local proxy: " + localProxy + ", msg: " + msg)
+          //println("Direct message send to local proxy: " + localProxy + ", msg: " + msg)
           localProxy ! DeserializedMsgReceive(role, label, msg)
         case None => // always this case at the moment, will implement optimized local communication later
-          println("Proxy for "+role+" is sending label:" +label+ ", message: " + msg + " to exchange: " + sessExchangeName + " with routingKey: " + dstRole.name)
+          //println("Proxy for "+role+" is sending label:" +label+ ", message: " + msg + " to exchange: " + sessExchangeName + " with routingKey: " + dstRole.name)
           connectionManagerActor ! (('publish, sessExchangeName, dstRole.name,
             serialize(sessExchangeName, role, dstRole, label, msg)))
       }
@@ -53,18 +53,18 @@ trait AMQPActorProxyComponent {
         }
       case rawMsg: Array[Byte] =>
         val (srcRole, label, msg) = deserialize(rawMsg)
-        println("Proxy for " + role + " received from: "
+        //println("Proxy for " + role + " received from: "
                 + srcRole + ", label: " + label + ", msg: " + msg)
         self ! DeserializedMsgReceive(srcRole, label, msg)
       case NewSourceRole(srcRole, actorChan) =>
         srcRoleChans += (srcRole -> actorChan)
-        println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
+        //println("In proxy for "+role+", expanded srcRoleChans: " + srcRoleChans)
       case DeserializedMsgReceive(role, label, msg) if srcRoleChans.isDefinedAt(role) =>
         // in case the mapping is not defined yet, the message will wait in the mailbox until it eventually is
-        println("sending (" + label + ", "+ msg + ")"+" to channel " + srcRoleChans(role))
+        //println("sending (" + label + ", "+ msg + ")"+" to channel " + srcRoleChans(role))
         srcRoleChans(role) ! buildTuple(if (label == Symbol("")) None else Some(label), msg)
       case Quit =>
-        println("#############################Proxy for role "+role+" exiting")
+        //println("#############################Proxy for role "+role+" exiting")
         connectionManagerActor ! (('stop, self))
         exit()
     }

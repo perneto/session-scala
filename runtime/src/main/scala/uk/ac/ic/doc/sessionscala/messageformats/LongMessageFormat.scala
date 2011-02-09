@@ -100,7 +100,7 @@ trait LongMessageFormat {
         Symbol(readStr(buf)),
         Symbol(readStr(buf)),
         deserializeOption(buf)))
-      println("FromBytes, result: " + res)
+      //println("FromBytes, result: " + res)
       res
     }
   }  

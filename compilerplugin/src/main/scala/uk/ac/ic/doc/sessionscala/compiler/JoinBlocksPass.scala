@@ -52,7 +52,7 @@ abstract class JoinBlocksPass extends PluginComponent
       case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< sharedChannelTrait.tpe =>
         true
       case x =>
-        println("Not shared channel function: " + x)
+        //println("Not shared channel function: " + x)
         false
     }
     def takesSharedChannel(tpe: Type): Boolean = tpe match {

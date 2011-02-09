@@ -18,7 +18,7 @@ trait AMQPMessageFormats extends ShortMessageFormat with LongMessageFormat {
 
   def openInvite(body: Array[Byte]): (Symbol, String, String) = {
     val invite = FORMAT.openInvite(body)
-    println("received invite: " + invite)
+    //println("received invite: " + invite)
     invite
   }
 
@@ -49,7 +49,7 @@ trait AMQPMessageFormats extends ShortMessageFormat with LongMessageFormat {
   
   
   def serialize(sessName: String, srcRole: Symbol, dstRole: Symbol, label: Symbol, msg: Option[Any]): Array[Byte] = {
-    println("serialize, msg: " + msg)
+    //println("serialize, msg: " + msg)
     val result = withBuf { buf =>
       val sessMsg = FORMAT.extractor.apply(sessName, srcRole, dstRole, label, msg)
       sessMsg.serialize(buf)

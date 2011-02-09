@@ -124,7 +124,7 @@ trait ShortMessageFormat {
         javaDeserializeObject(buf)
       case t => throw new IllegalArgumentException("Unsupported type code in deserialize: " + t)
     } )
-    println("deserialize: " + value)
+    //println("deserialize: " + value)
     value
   }
 

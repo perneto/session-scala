@@ -24,7 +24,7 @@ trait AMQPConnectionComponent {
 
 
   def close(chan: Channel) {
-    println("Closing: " + chan)
+    //println("Closing: " + chan)
     chan.getConnection.close()
   }
 
@@ -57,7 +57,7 @@ trait AMQPConnectionComponent {
         case ('stop, proxy: Actor) => proxies -= proxy
         case Quit if proxies.isEmpty =>
           close(chan)
-          println("@@@@@@@@@@@@@@@ Connection manager actor exiting, connection has been closed")
+          //println("@@@@@@@@@@@@@@@ Connection manager actor exiting, connection has been closed")
           exit()
       }
     }

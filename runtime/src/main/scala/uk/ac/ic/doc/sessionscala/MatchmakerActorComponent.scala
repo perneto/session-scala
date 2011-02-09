@@ -13,7 +13,7 @@ trait MatchmakerActorComponent {
 
   import actors.Actor._
   val matchMakerActor = actor {
-    println("started matchmaker")
+    //println("started matchmaker")
 
     val invites = mutable.Map.empty[Symbol, List[(String,String)]] // List[(ExchangeName, Protocol)]
     val accepts = mutable.Map.empty[Symbol, List[OC]]
@@ -33,17 +33,17 @@ trait MatchmakerActorComponent {
     loop {
       react {
         case i: Invite =>
-          println("matchmaker: got invite " + i)
+          //println("matchmaker: got invite " + i)
           matchMsg(accepts, i.role, (i.sessExchange, i.protocol), invites) { acceptSender =>
             acceptSender ! (i.sessExchange, i.protocol)  //todo: give list of local proxies to proxy registry so it can give it to all proxies
           }
         case Accept(acceptRole: Symbol) =>
-          println("matchmaker: got accept for role " + acceptRole)
+          //println("matchmaker: got accept for role " + acceptRole)
           matchMsg(invites, acceptRole, sender, accepts) { sessExchAndProtocol =>
             sender ! sessExchAndProtocol // todo: ditto above
           }
         case Quit =>
-          println("Matchmaker exiting")
+          //println("Matchmaker exiting")
           exit()
       }
     }
