@@ -74,9 +74,15 @@ trait CommonEnvironments {
     def leaveChoiceReceiveBlock: SessionTypingEnvironment = this
 
     def enterThen: SessionTypingEnvironment = enterThen(this)
-    def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("enterThen:" + this + ", delegator: " + delegator); delegator}
+    def enterThen(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      //println("enterThen:" + this + ", delegator: " + delegator)
+      delegator
+    }
     def enterElse: SessionTypingEnvironment = enterElse(this)
-    def enterElse(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("enterElse:" + this+ ", delegator: " + delegator); delegator}
+    def enterElse(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      //println("enterElse:" + this+ ", delegator: " + delegator)
+      delegator
+    }
     def leaveIf: SessionTypingEnvironment = leaveIf(this)
     def leaveIf(delegator: SessionTypingEnvironment): SessionTypingEnvironment = {println("leaveIf:" + this + ", delegator: " + delegator); delegator}
 
