@@ -73,7 +73,6 @@ abstract class DefDefPass extends PluginComponent
       val inferenceTraverser = new SessionMethodDefTraverser
       try {
         inferenceTraverser(unit.body)
-        println(inferenceTraverser.env)
         nextPass.inferred = inferenceTraverser.env.inferred.asInstanceOf[nextPass.InferredTypeRegistry]
       } catch {
         case _: SessionTypeCheckingException =>
