@@ -116,20 +116,20 @@ abstract class JoinBlocksPass extends PluginComponent
       tree match {
         case ValDef(_,syntheticName,_, f@Function(ValDef(_,name,_,_)::Nil, body))
         if isSharedChannelFunction(f.tpe) =>
-          println("FOUND synthetic var: " + syntheticName)
+          //println("FOUND synthetic var: " + syntheticName)
           sharedChanName = name
           sharedChanBody = body
           syntheticValName = syntheticName
 
         case Apply(Apply(_,args), Function(ValDef(_,name,_,_)::Nil, body)::Nil)
         if takesSharedChannel(sym.tpe) =>
-          println("shared channel creation: " + sym + ", channel name: " + name)
+          //println("shared channel creation: " + sym + ", channel name: " + name)
           val globalModel = parseProtocol(args, tree.pos)
           env = env.registerSharedChannel(name, globalModel)
           traverse(body)
 
         case Apply(Apply(_,args), Ident(name)::Nil) if syntheticValName != null && name == syntheticValName =>
-          println("shared channel creation: " + sym + ", channel name: " + sharedChanName)
+          //println("shared channel creation: " + sym + ", channel name: " + sharedChanName)
           val globalModel = parseProtocol(args, tree.pos)
           env = env.registerSharedChannel(sharedChanName, globalModel)
           val body = sharedChanBody
@@ -141,7 +141,7 @@ abstract class JoinBlocksPass extends PluginComponent
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
         if sym == joinMethod || sym == acceptMethod =>
-          println("join: " + role + ", sessChan: " + sessChan)
+          //println("join: " + role + ", sessChan: " + sessChan)
           try {
             env = env.enterJoin(chanIdent, role.stringValue, sessChan)
             traverse(block)

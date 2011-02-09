@@ -82,7 +82,7 @@ trait SessionTypeCheckingTraversers {
     def getType(arg: Tree): Option[Type] = Some(realType(arg.tpe))
 
     def getLabelAndArgType(arg: Tree): (Option[String], Option[Type]) = {
-      println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
+      //println("arg.symbol.tpe: " + (if (arg.symbol == null) "(symbol null)" else arg.symbol.tpe))
       val ret = arg match {
         // The first pattern might be too broad, as it doesn't check that the outer Apply
         // is for a Tuple constructor
