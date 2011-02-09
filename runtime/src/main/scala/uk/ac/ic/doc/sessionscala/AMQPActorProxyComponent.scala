@@ -54,7 +54,7 @@ trait AMQPActorProxyComponent {
       case rawMsg: Array[Byte] =>
         val (srcRole, label, msg) = deserialize(rawMsg)
         //println("Proxy for " + role + " received from: "
-                + srcRole + ", label: " + label + ", msg: " + msg)
+        //        + srcRole + ", label: " + label + ", msg: " + msg)
         self ! DeserializedMsgReceive(srcRole, label, msg)
       case NewSourceRole(srcRole, actorChan) =>
         srcRoleChans += (srcRole -> actorChan)
