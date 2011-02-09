@@ -106,6 +106,13 @@ abstract class JoinBlocksPass extends PluginComponent
       result
     }
 
+    def visitSharedChanCreation(pos: Position, chanName: Name, body: Tree, args: List[Tree]) {
+      //println("shared channel creation: " + sym + ", channel name: " + name)
+      val globalModel = parseProtocol(args, pos)
+      env = env.registerSharedChannel(chanName, globalModel)
+      traverse(body)
+    }
+
     var sharedChanBody: Tree = null
     var sharedChanName: Name = null
     var syntheticValName: Name = null
@@ -123,20 +130,15 @@ abstract class JoinBlocksPass extends PluginComponent
 
         case Apply(Apply(_,args), Function(ValDef(_,name,_,_)::Nil, body)::Nil)
         if takesSharedChannel(sym.tpe) =>
-          //println("shared channel creation: " + sym + ", channel name: " + name)
-          val globalModel = parseProtocol(args, tree.pos)
-          env = env.registerSharedChannel(name, globalModel)
-          traverse(body)
+          visitSharedChanCreation(tree.pos, name, body, args)
 
         case Apply(Apply(_,args), Ident(name)::Nil) if syntheticValName != null && name == syntheticValName =>
-          //println("shared channel creation: " + sym + ", channel name: " + sharedChanName)
-          val globalModel = parseProtocol(args, tree.pos)
-          env = env.registerSharedChannel(sharedChanName, globalModel)
           val body = sharedChanBody
           sharedChanBody = null // can have nested shared channel creations
+          val chanName = sharedChanName
           sharedChanName = null
           syntheticValName = null
-          traverse(body)
+          visitSharedChanCreation(tree.pos, chanName, body, args)
 
         case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
                    Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
