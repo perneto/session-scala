@@ -6,24 +6,20 @@ import org.scalatest.{Suite, FunSuite}
 import java.lang.String
 import java.io.{FileReader, BufferedReader, File}
 
-/**
- * Created by: omp08
- */
 class RunCompiler(file: String) {
   val scalaVersion = "2.8.1"
   def runCompiler(file: String): Global = {
     val settings = new Settings
     settings.classpath.tryToSet(List(
-        "project/boot/scala-"+scalaVersion+"/lib/scala-compiler.jar" +
-        ":project/boot/scala-"+scalaVersion+"/lib/scala-library.jar" +
-        ":runtime/target/scala_"+scalaVersion+"/classes" +
-        ":compilerplugin/target/scala_"+scalaVersion+"/classes" +
-        ":functionaltests/target/scala_"+scalaVersion+"/classes"
+      "/usr/local/Cellar/scala/"+scalaVersion+"/libexec/lib/scala-compiler.jar"+
+      ":/usr/local/Cellar/scala/"+scalaVersion+"/libexec/lib/scala-library.jar"+
+      ":runtime/target/scala_"+scalaVersion+"/runtime_"+scalaVersion+"-0.1.jar"+
+      ":functionaltests/target/scala_"+scalaVersion+"/classes" // for tests that use externally defined classes
     ))
     //settings.showPlugins only works if you're not compiling a file, same as -help
     settings.require.tryToSet(List("sessiontyping"))
     settings.plugin.tryToSet(List(
-      "compilerplugin/target/scala_"+scalaVersion+"/compilerplugin_"+scalaVersion+"-0.1.jar"))
+      "compilerplugin/target/scala_"+scalaVersion+"/compilerplugin_"+scalaVersion+"-0.1.min.jar"))
     settings.pluginOptions.tryToSet(List())
     //settings.print.tryToSet(List("all"))
     //settings.verbose.tryToSet(List())
