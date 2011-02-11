@@ -88,12 +88,19 @@ trait SessionTypeCheckingTraversers {
         // is for a Tuple constructor
         case Apply(_, List(SymbolMatcher(label), arg)) =>
           (Some(label), getType(arg))
-        case Apply(_,StringLit(label)::Nil) if arg.symbol == symbolApplyMethod =>
-          // todo: using SymbolMatcher here didn't work, figure out why
-          (Some(label), None)
         case arg =>
-          //println("###########  " + arg)
-          (None, getType(arg))
+          // This is the best way I've found as a workaround to a bug in the Scala compiler:
+          // http://lampsvn.epfl.ch/trac/scala/ticket/1697
+          // https://lampsvn.epfl.ch/trac/scala/ticket/2337
+          // Explanations about the bug:
+          // http://permalink.gmane.org/gmane.comp.lang.scala.internals/2752
+          // http://scala-programming-language.1934581.n4.nabble.com/Possible-scala-partial-function-pattern-matching-bug-td3029632.html#none
+          arg match {
+            case SymbolMatcher(label) =>
+              (Some(label), None)
+            case _ =>
+              (None, getType(arg))
+          }
       }
       //println("getLabelAndArgType, returning: " + ret)
       assert(ret._1.isDefined || ret._2.get != definitions.getClass("scala.Symbol").tpe)
