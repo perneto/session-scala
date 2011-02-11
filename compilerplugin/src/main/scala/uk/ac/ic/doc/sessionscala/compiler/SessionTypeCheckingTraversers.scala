@@ -95,7 +95,7 @@ trait SessionTypeCheckingTraversers {
           //println("###########  " + arg)
           (None, getType(arg))
       }
-      println("getLabelAndArgType, returning: " + ret)
+      //println("getLabelAndArgType, returning: " + ret)
       assert(ret._1.isDefined || ret._2.get != definitions.getClass("scala.Symbol").tpe)
       ret
     }

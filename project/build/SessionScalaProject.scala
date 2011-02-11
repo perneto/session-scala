@@ -9,7 +9,10 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
   val mavenRepo = DefaultMavenRepository
   val scalatools = ScalaToolsReleases
 
-  class Runtime(info: ProjectInfo) extends DefaultProject(info) {
+  val proguardFilter = ",!META-INF/**" + ",!OSGI-INF/**" + ",!*.html" + "!images/**" +
+          "!OSGI-OPT/**" + "!LICENSE"
+
+  class Runtime(info: ProjectInfo) extends DefaultProject(info) with ProguardProject {
     override def fork = forkRun
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.3.1"
 
@@ -19,6 +22,24 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
 
     val scalatest = "org.scalatest" % "scalatest" % "1.2"
     val scalaj_collection = "org.scalaj" % "scalaj-collection_2.8.0" % "1.0"
+
+    override def proguardOptions = List(
+      "-keep class uk.ac.ic.doc.sessionscala.** { *; }",
+      "-keep class org.scribble.** { *; }",
+      "-keep class org.osgi.framework.* { *; }",
+      "-keep class org.osgi.util.tracker.** { *; }",
+      "-keep class org.antlr.** { *; }",
+      "-keep class antlr.** { *; }",
+      "-keep class com.rabbitmq.** { *; }"
+    )
+    override def proguardLibraryJars = super.proguardLibraryJars +++ scalaLibraryPath
+    lazy val felixRuntimeJar = managedDependencyPath / "compile" / "org.apache.felix.framework-3.0.1.jar"
+    lazy val scalatestRuntimeJar = managedDependencyPath / "compile" / "scalatest-1.2.jar"
+
+    override def proguardExclude = super.proguardExclude +++ felixRuntimeJar +++ scalatestRuntimeJar
+    override def makeInJarFilter(file :String) = file match {
+      case _ => super.makeInJarFilter(file) + proguardFilter
+    }
   }
 
   class ForkingProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -26,9 +47,10 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
   }
 
   class FunctionalTests(info: ProjectInfo) extends ForkingProject(info) {
-    def dep(t: Task) = t.dependsOn(compilerplugin.`proguard`)
-    override def testAction = extraDep(super.testAction)
-    override def testOnlyAction = task { args => extraDep(super.testOnlyAction(args)) }
+    override def testAction = super.testAction dependsOn(compilerplugin.`proguard`, runtime.`proguard`)
+    override def testOnlyAction = task { args =>
+      super.testOnlyAction(args) dependsOn(compilerplugin.`proguard`, runtime.`proguard`)
+    }
   }
 
   class CompilerPlugin(info: ProjectInfo) extends DefaultProject(info) with ProguardProject {
@@ -47,14 +69,11 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
       "-keep class com.rabbitmq.** { *; }"
     )
     override def proguardLibraryJars = super.proguardLibraryJars +++ scalaLibraryPath
-    lazy val felixCompilerPluginJar = managedDependencyPath  / "compile" / "org.apache.felix.framework-3.0.1.jar"
-    lazy val felixRuntimeJar = runtime.managedDependencyPath / "compile" / "org.apache.felix.framework-3.0.1.jar"
     lazy val scalatestRuntimeJar = runtime.managedDependencyPath / "compile" / "scalatest-1.2.jar"
 
-    override def proguardExclude = super.proguardExclude +++ felixCompilerPluginJar +++
-            felixRuntimeJar +++ scalatestRuntimeJar
+    override def proguardExclude = super.proguardExclude +++ scalatestRuntimeJar
     override def makeInJarFilter(file :String) = file match {
-      case _ => super.makeInJarFilter(file) + ",!META-INF/**" + ",!OSGI-INF/**" + ",!**/*.html" + "!images/**"
+      case _ => super.makeInJarFilter(file) + proguardFilter
     }
   }
 

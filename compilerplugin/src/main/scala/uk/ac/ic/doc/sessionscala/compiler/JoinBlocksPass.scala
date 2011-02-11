@@ -170,7 +170,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      println("   JoinBlockPass starting")
+      //println("   JoinBlockPass starting")
       val unitPath = new File(unit.source.path).getParent()
       val typeChecker = new JoinBlocksTraverser(unitPath)
       try {

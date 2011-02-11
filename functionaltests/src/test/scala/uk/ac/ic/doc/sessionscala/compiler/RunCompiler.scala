@@ -13,7 +13,7 @@ class RunCompiler(file: String) {
     settings.classpath.tryToSet(List(
       "/usr/local/Cellar/scala/"+scalaVersion+"/libexec/lib/scala-compiler.jar"+
       ":/usr/local/Cellar/scala/"+scalaVersion+"/libexec/lib/scala-library.jar"+
-      ":runtime/target/scala_"+scalaVersion+"/runtime_"+scalaVersion+"-0.1.jar"+
+      ":runtime/target/scala_"+scalaVersion+"/runtime_"+scalaVersion+"-0.1.min.jar"+
       ":functionaltests/target/scala_"+scalaVersion+"/classes" // for tests that use externally defined classes
     ))
     //settings.showPlugins only works if you're not compiling a file, same as -help

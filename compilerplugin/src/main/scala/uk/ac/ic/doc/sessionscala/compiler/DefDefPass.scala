@@ -67,7 +67,7 @@ abstract class DefDefPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      println("   DefDefPass starting")
+      //println("   DefDefPass starting")
 
       //treeBrowsers.create().browse(unit.body)
       val inferenceTraverser = new SessionMethodDefTraverser
