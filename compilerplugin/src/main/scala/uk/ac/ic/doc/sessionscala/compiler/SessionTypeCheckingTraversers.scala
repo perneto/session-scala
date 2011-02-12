@@ -23,6 +23,54 @@ trait SessionTypeCheckingTraversers {
         + " to " + lhs + ": aliasing of session channels is forbidden")
     }
 
+    abstract class Extractor[A] {
+      val none: PartialFunction[Tree, Option[A]] = {case _ => None}
+      def unapply(t: Tree): Option[A] =
+        (impl orElse none)(t)
+      val impl: PartialFunction[Tree, Option[A]]
+    }
+
+    object SelectIdent extends Extractor[Name] {
+      val impl: PartialFunction[Tree, Option[Name]] = {
+        case Select(Ident(name), _) => Some(name)
+      }
+    }
+
+    object Apply1 {
+      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
+        case Apply(f, arg::Nil) => Some((f,arg))
+        case _ => None
+      }
+    }
+
+    object UnApply1 {
+      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
+        case UnApply(f, arg::Nil) => Some((f,arg))
+        case _ => None
+      }
+    }
+
+    object ApplyArg {
+      def unapply(tree: Tree): Option[Tree] = tree match {
+        case ApplyArgs(arg::Nil) => Some(arg)
+        case _ => None
+      }
+    }
+
+    object ApplyArgs {
+      def unapply(tree: Tree): Option[List[Tree]] = tree match {
+        case (Apply(_, args)) => Some(args)
+        case _ => None
+      }
+    }
+
+    object Function1 {
+      def unapply(tree: Tree): Option[(Name, Tree)] = tree match {
+        case Function(ValDef(_,name,_,_)::Nil, body) => Some((name, body))
+        case _ => None
+      }
+    }
+
     object SessionChannel {
       def unapply(tree: Tree): Option[Name] = tree match {
         case Ident(name) if env.isSessionChannel(name) => Some(name)
@@ -132,7 +180,7 @@ trait SessionTypeCheckingTraversers {
           // message send. Without label: s('Alice) ! 42
           // with label: s('Alice) ! ('mylabel, 42)
           // or: s('Alice) ! 'quit
-          case Apply(Select(SessionRole(session, role),_), arg::Nil)
+          case Apply1(Select(SessionRole(session, role),_), arg)
           if sym == bangMethod && env.isSessionChannel(session) =>
             //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
@@ -170,11 +218,8 @@ trait SessionTypeCheckingTraversers {
               _
             ),
             CaseDef(
-              app@Apply(
-                _,
-                UnApply(
-                  _,
-                  StringLit(label)::Nil)::_
+              app@ApplyArgs(
+                UnApply1(_, StringLit(label))::_
                 ),
               _,
               _)::Nil
@@ -218,10 +263,10 @@ trait SessionTypeCheckingTraversers {
                       val msgTpe = realType(t)
                       visitBranch(c, sig(msgTpe))
 
-                    case UnApply(fun, StringLit(label)::Nil) if fun.symbol == symbolUnapplyMethod =>
+                    case UnApply1(fun, StringLit(label)) if fun.symbol == symbolUnapplyMethod =>
                       visitBranch(c, sig(label))
 
-                    case Apply(tpt, List(UnApply(fun, StringLit(label)::Nil), bind@Bind(_,_))) if fun.symbol == symbolUnapplyMethod =>
+                    case Apply(tpt, List(UnApply1(fun, StringLit(label)), bind:Bind)) if fun.symbol == symbolUnapplyMethod =>
                       visitBranch(c, sig(label, bind.symbol.tpe))
 
                     case _ =>

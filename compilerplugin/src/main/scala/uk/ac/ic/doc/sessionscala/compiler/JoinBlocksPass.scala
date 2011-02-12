@@ -97,7 +97,7 @@ abstract class JoinBlocksPass extends PluginComponent
         case Apply(
           TypeApply(
             Select(
-              Apply(_,SymbolMatcher(role)::Nil),
+              ApplyArg(SymbolMatcher(role)),
               _minusgt)
             ,_)
           ,_) => role
@@ -121,18 +121,18 @@ abstract class JoinBlocksPass extends PluginComponent
       pos = tree.pos
 
       tree match {
-        case ValDef(_,syntheticName,_, f@Function(ValDef(_,name,_,_)::Nil, body))
+        case ValDef(_,syntheticName,_, f@Function1(name, body))
         if isSharedChannelFunction(f.tpe) =>
           //println("FOUND synthetic var: " + syntheticName)
           sharedChanName = name
           sharedChanBody = body
           syntheticValName = syntheticName
 
-        case Apply(Apply(_,args), Function(ValDef(_,name,_,_)::Nil, body)::Nil)
+        case Apply1(ApplyArgs(args), Function1(name, body))
         if takesSharedChannel(sym.tpe) =>
           visitSharedChanCreation(tree.pos, name, body, args)
 
-        case Apply(Apply(_,args), Ident(name)::Nil) if syntheticValName != null && name == syntheticValName =>
+        case Apply1(ApplyArgs(args), Ident(name)) if syntheticValName != null && name == syntheticValName =>
           val body = sharedChanBody
           sharedChanBody = null // can have nested shared channel creations
           val chanName = sharedChanName
@@ -140,12 +140,12 @@ abstract class JoinBlocksPass extends PluginComponent
           syntheticValName = null
           visitSharedChanCreation(tree.pos, chanName, body, args)
 
-        case Apply(Apply(Select(Ident(chanIdent), _), Apply(_, Literal(role)::Nil)::Nil),
-                   Function(ValDef(_,sessChan,_,_)::Nil, block)::Nil)
+        case Apply(Apply(SelectIdent(chanIdent), ApplyArg(StringLit(role))::Nil),
+                   Function1(sessChan, block)::Nil)
         if sym == joinMethod || sym == acceptMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
           try {
-            env = env.enterJoin(chanIdent, role.stringValue, sessChan)
+            env = env.enterJoin(chanIdent, role, sessChan)
             traverse(block)
             pos = tree.pos
             //println("leaveJoin, env: " + env)
@@ -159,7 +159,7 @@ abstract class JoinBlocksPass extends PluginComponent
               //e.printStackTrace()
           }
 
-        case Apply(Select(Ident(sharedChan),_), args) if sym == inviteMethod =>
+        case Apply(SelectIdent(sharedChan), args) if sym == inviteMethod =>
           env = env.invite(sharedChan, getRoles(args))
 
         case _ =>
