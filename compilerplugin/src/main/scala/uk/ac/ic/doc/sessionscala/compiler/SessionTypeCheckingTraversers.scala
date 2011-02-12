@@ -24,88 +24,75 @@ trait SessionTypeCheckingTraversers {
     }
 
     abstract class Extractor[A] {
-      val none: PartialFunction[Tree, Option[A]] = {case _ => None}
-      def unapply(t: Tree): Option[A] =
-        (impl orElse none)(t)
-      val impl: PartialFunction[Tree, Option[A]]
+      def unapply(t: Tree): Option[A] = (impl.lift)(t)
+      val impl: PartialFunction[Tree, A]
     }
 
     object SelectIdent extends Extractor[Name] {
-      val impl: PartialFunction[Tree, Option[Name]] = {
-        case Select(Ident(name), _) => Some(name)
+      val impl: PartialFunction[Tree, Name] = {
+        case Select(Ident(name), _) => name
       }
     }
 
-    object Apply1 {
-      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
-        case Apply(f, arg::Nil) => Some((f,arg))
-        case _ => None
+    object Apply1 extends Extractor[(Tree, Tree)] {
+      val impl: PartialFunction[Tree, (Tree, Tree)] = {
+        case Apply(f, arg::Nil) => (f,arg)
       }
     }
 
-    object UnApply1 {
-      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
-        case UnApply(f, arg::Nil) => Some((f,arg))
-        case _ => None
+    object UnApply1 extends Extractor[(Tree, Tree)] {
+      val impl: PartialFunction[Tree, (Tree, Tree)] = {
+        case UnApply(f, arg::Nil) => (f,arg)
       }
     }
 
-    object ApplyArg {
-      def unapply(tree: Tree): Option[Tree] = tree match {
-        case ApplyArgs(arg::Nil) => Some(arg)
-        case _ => None
+    object ApplyArg extends Extractor[Tree] {
+      val impl: PartialFunction[Tree, Tree] = {
+        case ApplyArgs(arg::Nil) => arg
       }
     }
 
-    object ApplyArgs {
-      def unapply(tree: Tree): Option[List[Tree]] = tree match {
-        case (Apply(_, args)) => Some(args)
-        case _ => None
+    object ApplyArgs extends Extractor[List[Tree]] {
+      val impl: PartialFunction[Tree, List[Tree]] = {
+        case (Apply(_, args)) => args
       }
     }
 
-    object Function1 {
-      def unapply(tree: Tree): Option[(Name, Tree)] = tree match {
-        case Function(ValDef(_,name,_,_)::Nil, body) => Some((name, body))
-        case _ => None
+    object Function1 extends Extractor[(Name, Tree)] {
+      val impl: PartialFunction[Tree, (Name, Tree)] = {
+        case Function(ValDef(_,name,_,_)::Nil, body) => (name, body)
       }
     }
 
-    object SessionChannel {
-      def unapply(tree: Tree): Option[Name] = tree match {
-        case Ident(name) if env.isSessionChannel(name) => Some(name)
-        case _ => None
+    object SessionChannel extends Extractor[Name] {
+      val impl: PartialFunction[Tree, Name] = {
+        case Ident(name) if env.isSessionChannel(name) => name
       }
     }
 
-    object Channel {
-     def unapply(tree: Tree): Option[Name] = tree match {
-       case SessionChannel(name) => Some(name)
-       case Ident(name) if env.isSharedChannel(name) => Some(name)
-       case _ => None
+    object Channel extends Extractor[Name] {
+     val impl: PartialFunction[Tree, Name] = {
+       case SessionChannel(name) => name
+       case Ident(name) if env.isSharedChannel(name) => name
      }
    }
 
-    object SymbolMatcher {
-      def unapply(tree: Tree): Option[String] = tree match {
-        case Apply(_, StringLit(role)::Nil) if tree.symbol == symbolApplyMethod =>
-          Some(role)
-        case _ => None
+    object SymbolMatcher extends Extractor[String] {
+      val impl: PartialFunction[Tree, String] = {
+        case a@Apply(_, StringLit(role)::Nil) if a.symbol == symbolApplyMethod => role
       }
     }
 
-    object StringLit {
-      def unapply(tree: Tree): Option[String] = tree match {
-        case Literal(role) => Some(role.stringValue)
-        case _ => None
+    object StringLit extends Extractor[String] {
+      val impl: PartialFunction[Tree, String] = {
+        case Literal(role) => role.stringValue
       }
     }
 
-    object SessionRole {
-      def unapply(tree: Tree): Option[(Name, String)] = tree match {
+    object SessionRole extends Extractor[(Name, String)] {
+      val impl: PartialFunction[Tree, (Name, String)] = {
         case Apply(Select(Ident(session), _),
-                   SymbolMatcher(role)::Nil) => Some((session, role))
-        case _ => None
+                   SymbolMatcher(role)::Nil) => (session, role)
       }
     }
 
