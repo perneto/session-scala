@@ -30,7 +30,8 @@ abstract class JoinBlocksPass extends PluginComponent
     }
 
     def parseString(proto: String, pos: Position) = {
-      val is = new ByteArrayInputStream(proto.getBytes()) // todo: find out which charset the Scribble parser supports
+      // Scribble doesn't use any chars outside ascii, so any charset is fine
+      val is = new ByteArrayInputStream(proto.getBytes)
       parseStream(is, pos, proto)
     }
 

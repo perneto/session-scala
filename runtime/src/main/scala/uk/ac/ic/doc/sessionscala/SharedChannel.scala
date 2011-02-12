@@ -34,7 +34,7 @@ object SharedChannel {
   private def retrieveRolesSet(protocol: String): Set[Symbol] = {
     val scribbleParser = new ANTLRProtocolParser
     val errorsJournal = new ExceptionsJournal
-    val model = scribbleParser.parse( // todo: find out what charset Scribble uses
+    val model = scribbleParser.parse( // Scribble doesn't use any chars outside ascii, so any charset is fine
       new ByteArrayInputStream(protocol.getBytes), errorsJournal, null)
     if (errorsJournal.hasError) throw new IllegalArgumentException(
       "Could not parse Scribble protocol: " + protocol)
