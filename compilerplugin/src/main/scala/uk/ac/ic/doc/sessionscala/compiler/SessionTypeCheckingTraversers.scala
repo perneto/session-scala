@@ -23,74 +23,70 @@ trait SessionTypeCheckingTraversers {
         + " to " + lhs + ": aliasing of session channels is forbidden")
     }
 
-    abstract class Extractor[A] {
-      def unapply(t: Tree): Option[A] = (impl.lift)(t)
-      val impl: PartialFunction[Tree, A]
-    }
-
-    object SelectIdent extends Extractor[Name] {
-      val impl: PartialFunction[Tree, Name] = {
+    import PartialFunction.condOpt
+    object SelectIdent {
+      def unapply(t: Tree) = condOpt(t) {
         case Select(Ident(name), _) => name
       }
     }
 
-    object Apply1 extends Extractor[(Tree, Tree)] {
-      val impl: PartialFunction[Tree, (Tree, Tree)] = {
+    object Apply1 {
+      def unapply(t: Tree) = condOpt(t) {
         case Apply(f, arg::Nil) => (f,arg)
       }
     }
 
-    object UnApply1 extends Extractor[(Tree, Tree)] {
-      val impl: PartialFunction[Tree, (Tree, Tree)] = {
+    object UnApply1 {
+      def unapply(t: Tree) = condOpt(t) {
         case UnApply(f, arg::Nil) => (f,arg)
       }
     }
 
-    object ApplyArg extends Extractor[Tree] {
-      val impl: PartialFunction[Tree, Tree] = {
+    object ApplyArg {
+      def unapply(t: Tree) = condOpt(t) {
         case ApplyArgs(arg::Nil) => arg
       }
     }
 
-    object ApplyArgs extends Extractor[List[Tree]] {
-      val impl: PartialFunction[Tree, List[Tree]] = {
+    object ApplyArgs {
+      def unapply(t: Tree) = condOpt(t) {
         case (Apply(_, args)) => args
       }
     }
 
-    object Function1 extends Extractor[(Name, Tree)] {
-      val impl: PartialFunction[Tree, (Name, Tree)] = {
+    object Function1 {
+      def unapply(t: Tree) = condOpt(t) {
         case Function(ValDef(_,name,_,_)::Nil, body) => (name, body)
       }
     }
 
-    object SessionChannel extends Extractor[Name] {
-      val impl: PartialFunction[Tree, Name] = {
+    object SessionChannel {
+      def unapply(t: Tree) = condOpt(t) {
         case Ident(name) if env.isSessionChannel(name) => name
       }
     }
 
-    object Channel extends Extractor[Name] {
-     val impl: PartialFunction[Tree, Name] = {
+    object Channel {
+     def unapply(t: Tree) = condOpt(t) {
        case SessionChannel(name) => name
        case Ident(name) if env.isSharedChannel(name) => name
      }
    }
 
-    object SymbolMatcher extends Extractor[String] {
-      val impl: PartialFunction[Tree, String] = {
+    object SymbolMatcher {
+      def unapply(t: Tree) = condOpt(t) {
         case a@Apply(_, StringLit(role)::Nil) if a.symbol == symbolApplyMethod => role
       }
     }
 
-    object StringLit extends Extractor[String] {
-      val impl: PartialFunction[Tree, String] = {
+    object StringLit {
+      def unapply(t: Tree) = condOpt(t) {
         case Literal(role) => role.stringValue
       }
     }
 
-    object SessionRole extends Extractor[(Name, String)] {
-      val impl: PartialFunction[Tree, (Name, String)] = {
+    object SessionRole {
+      def unapply(t: Tree) = condOpt(t) {
         case Apply(Select(Ident(session), _),
                    SymbolMatcher(role)::Nil) => (session, role)
       }
