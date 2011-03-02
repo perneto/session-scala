@@ -135,12 +135,12 @@ def desugar(interactions: Global): Global = interactions map { interaction =>
 
 def sugar(local: Local): Local = local flatMap { l => l match {
   case SendChoice(to, List(branch)) => Send(to, branch.label)::sugar(branch.body)
+  case SendChoice(to, branches) => SendChoice(to, branches map (b => b.copy(body = sugar(b.body))))::Nil
   case ReceiveChoice(from, List(branch)) => Receive(from, branch.label)::sugar(branch.body)
   case ReceiveChoice(from, branches) => ReceiveChoice(from, branches map (b => b.copy(body = sugar(b.body))))::Nil
   case LocalRecursion(x, body) => LocalRecursion(x, sugar(body))::Nil
   case l: RecursionLabel => l::Nil
 }}
-
 
 import PartialFunction.cond
 def contains(global: Global, role: String): Boolean = global exists (cond(_) {
@@ -198,7 +198,7 @@ object Projector {
     case (RecursionLabel(x)::rest1, RecursionLabel(y)::rest2) if x == y =>
       RecursionLabel(x)::merge(rest1, rest2, canConcat)
 
-    case (_, Nil) | (Nil, _) if canConcat => throw new ConcatNeeded()
+    case (_::_, Nil) | (Nil, _::_) if canConcat => throw new ConcatNeeded()
 
     case (Nil, Nil) => Nil
     case (a,b) => error("Not mergeable: "+a+" and "+b)
