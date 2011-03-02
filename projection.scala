@@ -26,20 +26,24 @@ case class LocalRecursion(label: String, body: Local) extends LocalInteraction
 case class Send(to: String, msgSig: String) extends LocalInteraction
 case class Receive(from: String, msgSig: String) extends LocalInteraction
 
-def pretty(local: Local) {
-  if (!local.isEmpty) {
+object PrettyPrint {
+  def prettyBranches(header: String, branches: List[LocalBranch]) {
+    println(header+" {")
+    branches foreach { b =>
+      print(b.label+":"); pretty(b.body);
+    }
+    println("}")
+  }
+  def pretty(local: Local) {
     println("{")
     local foreach { i =>
       i match {
         case ReceiveChoice(from, branches) => 
-          println("ReceiveChoice from "+from+" {")
-          branches foreach { b =>
-            print(b.label+":"); pretty(b.body); println()
-          }
-          print("}")
-        case _ => print(i)
+          prettyBranches("ReceiveChoice from "+from, branches)
+        case SendChoice(to, branches) =>
+          prettyBranches("SendChoice to "+to, branches)
+        case _ => println(i+";")
       }
-      println(";")
     }
     println("}")
   }
