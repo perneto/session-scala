@@ -24,7 +24,7 @@ class TypeMappingTest extends FunSuite
   }
 
   test("map user-defined object") {
-    val okTpe = definitions.getModule("buyerseller.OK").tpe
+    val okTpe = definitions.getModule("uk.ac.ic.doc.sessionscala.compiler.TestObject").tpe
     ScalaTypeSystem.scalaToScribble(okTpe) should be === (ScalaTypeReference(okTpe))      
   }
 }

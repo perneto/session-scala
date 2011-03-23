@@ -86,21 +86,21 @@ class SharedChannelInviteSpec extends FunSuite with Timeouts with ShouldMatchers
     withShared { shared =>
       withTimeoutAndWait {
         actor { shared.accept('Alice) { s =>
-          println("ALICE STARTED")
+          //println("ALICE STARTED")
           s('Bob) ! 4242
-          println("ALICE SENT 4242 TO BOB")
+          //println("ALICE SENT 4242 TO BOB")
           val recv = s('Bob).?[String]
-          println("ALICE RECEIVED: " + recv)
+          //println("ALICE RECEIVED: " + recv)
           aliceOk = recv == "foo"
         }}
 
         shared.accept('Bob) { s =>
-          println("BOB STARTED")
+          //println("BOB STARTED")
           s('Alice) ! "foo"
-          println("BOB SENT foo TO ALICE")
+          //println("BOB SENT foo TO ALICE")
           val recv = s('Alice).?[Int]
           
-          println("BOB RECEIVED: " + recv)
+          //println("BOB RECEIVED: " + recv)
           bobOk = recv == 4242
         }
       }

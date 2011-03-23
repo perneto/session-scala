@@ -15,7 +15,7 @@ object SharedChannel {
 
   def localhost: String = {
     val name = java.net.InetAddress.getLocalHost.getCanonicalHostName
-    println("localhost: " + name)
+    //println("localhost: " + name)
     name
   }
   def withLocalChannel[T](protocol: String)(block: SharedChannel => T): T = {

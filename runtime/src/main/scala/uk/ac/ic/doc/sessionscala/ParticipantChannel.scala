@@ -12,6 +12,8 @@ class ParticipantChannel(val chanFrom: Channel[Any], val chanTo: OutputChannel[A
   // Needs a return type different from AnyRef, otherwise this
   // and the other ? method have the same return type after erasure,
   // thus the class won't compile.
+  // If using the same name as ?, the other method has priority
+  // because it is polymorphic (i think) - see spec, 6.26.3
   def ??(): Product = {
     chanFrom.? match {
       case p: Product => p
