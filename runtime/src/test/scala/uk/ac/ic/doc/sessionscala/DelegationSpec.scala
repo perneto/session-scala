@@ -1,8 +1,9 @@
 package uk.ac.ic.doc.sessionscala
 
-import uk.ac.ic.doc.sessionscala.SharedChannel._
+import uk.ac.ic.doc.sessionscala.PublicPort._
 import actors.Actor
 import Actor._
+import concurrent.ops.spawn
 
 /**
  * Created by: omp08
@@ -11,49 +12,54 @@ import Actor._
 class DelegationSpec extends Timeouts {
 
   test("Session interleaving") {
-    val chanA = createLocalChannel(Set('Alice, 'Bob))
-    val chanB = createLocalChannel(Set('Bob,'Carol))
+    val alice = newLocalPort("protocol P { role Alice, Bob; }", 'Alice)
+    val bobQ = newLocalPort("protocol Q { role Bob, Carol; }", 'Bob)
+    val bobP = newLocalPort("protocol P { role Alice, Bob; }", 'Bob)
+    val carol = newLocalPort("protocol Q { role Bob, Carol; }", 'Carol)
     var bothAccepted = false ; var aliceOK = false ; var carolOK = false
     var bobOK1 = false; var bobOK2 = false ; var bobOK3 = false 
 
-    actor {
-      chanA.join('Alice) { sA =>
-        sA('Bob) ! "Hello from Alice"
+    spawn { startSession(alice, bobP) }
+    spawn { startSession(bobQ, carol) }
+
+    spawn {
+      alice.bind { sA =>
+        sA ! 'Bob -> "Hello from Alice"
         //println("Hello (1) from Alice sent to: " + sA('Bob))
-        aliceOK = sA('Bob).? == "Hello from Bob"
-        sA('Bob) ! "Hello from Alice"
+        aliceOK = sA.?('Bob) == "Hello from Bob"
+        sA ! 'Bob -> "Hello from Alice"
         //println("Hello (2) from Alice sent to: " + sA('Bob))
       }
     }
 
-    actor {
-      chanA.join('Bob) { sA =>
+    spawn {
+      bobP.bind { sA =>
         // println("before first receive on: " + sA)
-        bobOK1 = sA('Alice).? == "Hello from Alice"
+        bobOK1 = sA.?('Alice) == "Hello from Alice"
 
-        chanB.join('Bob) { sB =>
+        bobQ.bind { sB =>
           bothAccepted = true
           //println("before send to Alice")
-          sA('Alice) ! "Hello from Bob"
+          sA ! 'Alice -> "Hello from Bob"
           //println("sA: " + sA)
           //println("sB: " + sB)
           //println(this)
           //println("before second receive on: " + sA)
-          bobOK2 = sA('Alice).? == "Hello from Alice"
+          bobOK2 = sA.?('Alice) == "Hello from Alice"
           //println("before receive on: " + sB)
-          bobOK3 = sB('Carol).? == "Hello from Carol"
+          bobOK3 = sB.?('Carol) == "Hello from Carol"
           //println("after sB receive")
-          sB('Carol) ! "Hello from Bob"
+          sB ! 'Carol -> "Hello from Bob"
 
         }
       }
     }
 
-    actor {
-      chanB.join('Carol) { sB =>
-        sB('Bob) ! "Hello from Carol"
+    spawn {
+      carol.bind { sB =>
+        sB ! 'Bob -> "Hello from Carol"
         //println("Hello from Carol sent to: " + sB('Bob))
-        carolOK = sB('Bob).? == "Hello from Bob"
+        carolOK = sB.?('Bob) == "Hello from Bob"
       }
     }
 
