@@ -72,7 +72,7 @@ object PublicPort {
     }
   }
 
-  def finalLocationsMapping(replies: Seq[AcceptedInvite]) = {
+  def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivatePort] = {
     (replies foldLeft Map[Symbol, PrivatePort]()) { case (result, AcceptedInvite(role, pp)) =>
       result + (role -> pp)
     }
@@ -111,8 +111,9 @@ trait PublicPort {
    */
   def bind[T](act: SessionChannel => T): T
 
-  def checkProtocolsCompatible(proto1: String, proto2: String) {
+  def protocolsCompatible(proto1: String, proto2: String): Boolean = {
     // TODO later: check two Scribble protocols are compatible (for invite receive)
+    true
   }
 
   def retrieveRolesSet: Set[Symbol] = {
