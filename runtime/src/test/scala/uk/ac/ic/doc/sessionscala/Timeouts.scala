@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import scala.actors.Actor, Actor._
+import scala.actors.{DaemonActor, Actor, Futures, TIMEOUT}, Actor._, Futures.future
 import org.scalatest.FunSuite
 
 /**
@@ -14,17 +14,16 @@ trait Timeouts extends FunSuite {
   case class Except(e: Throwable) extends CallResult[Nothing]
 
   def callWithTimeout[T](timeout: Int)(block: => T): CallResult[T] = {
-    val a = actor {
+    val f = future {
       val ret = try {
         Ok(block)
       } catch {
         case e => Except(e)
       }
-      react { case _ => Actor.reply(ret) }
     }
-    (a !? (timeout, true)) match {
-      case Some(x:CallResult[T]) => x 
-      case None => Timeout
+    f.inputChannel.receiveWithin(timeout) {
+      case x:CallResult[T] => x
+      case TIMEOUT => Timeout
     }
   }
   def withTimeout[T](timeout: Int)(block: => T): T = {
