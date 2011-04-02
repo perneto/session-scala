@@ -6,8 +6,11 @@ import actors.{Channel, !}
 case class ChannelPair(toOther: Channel[Any], fromOther: Channel[Any])
 
 class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
+  println("Creating SessionChannel: "+this+", mapping: "+map)
   def !(msg: (Symbol, Any)) = msg match {
-    case (role: Symbol, msg: Any) => map(role).toOther ! msg
+    case (role: Symbol, msg: Any) => 
+      println("send to role: "+role+" using chan: "+map(role).toOther)
+      map(role).toOther ! msg
   }
 
   def ?[T](role: Symbol): T = {
@@ -26,7 +29,7 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
         val seq = msg.asInstanceOf[Seq[Any]]
         extractMsg(seq).asInstanceOf[T]
       case label: Symbol =>
-        throw new IllegalStateException("Trying to receive an unlabelled message, but got label with no message")
+        ().asInstanceOf[T]
       case msg: Any =>
         throw new IllegalStateException("Trying to receive a labelled message, but got unlabelled message")
     }

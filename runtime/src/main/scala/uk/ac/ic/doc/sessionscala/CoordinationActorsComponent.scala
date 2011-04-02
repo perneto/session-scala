@@ -3,7 +3,6 @@ package uk.ac.ic.doc.sessionscala
 import actors.Actor
 import Actor._
 import messageformats.AMQPMessageFormats
-import SharedChannel.localhost
 import actors.Actor
 
 /**
@@ -15,12 +14,14 @@ trait CoordinationActorsComponent {
           with AMQPMessageFormats
           with AMQPActorProxyComponent
           with AMQPConnectionComponent =>
-  
+
+  val queueName: String
+
   val invitationReceiverActor = actor {
     //println("Starting invitation receiver actor...")
-    connectionManagerActor ! (('queueDeclare, localhost))
+    connectionManagerActor ! (('queueDeclare, queueName))
     // noAck = true, automatically sends acks
-    connectionManagerActor ! (('consume, localhost, self))
+    connectionManagerActor ! (('consume, queueName, self))
     println("Invitation receiver is consuming messages...")
 
     loop {
@@ -53,8 +54,8 @@ trait CoordinationActorsComponent {
           //sendAll(mapProxies)
         case Quit =>
           //println("Proxy registry exiting")
-          // no need to send Quit to proxies here, this is done at the end of the accept
-          // method in AMQPSharedChannel
+          // no need to send Quit to proxies here, this is done at the end of the bind
+          // method in AMQPPublicPort
           exit()
       }
     }

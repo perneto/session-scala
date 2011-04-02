@@ -7,14 +7,21 @@ import actors.Actor, Actor._
 
 class PublicPortSpec extends FunSuite with Timeouts {
 
+  val rng = new java.util.Random
+  def randomName(): String = {
+    val rand = rng.nextInt(1000000000)
+    var name = rand.toString
+    while (name.length < 9) name = "0" + name
+    "q"+name
+  }
+
   override def nestedSuites = List(
-    //new SessionPortSpecImpl("AMQP", AMQPPort(_, _, "myqueue"), AMQPPort(_, _, "otherqueue"))//,
-    new SessionPortSpecImpl("Shared Mem", newLocalPort, newLocalPort)
+    new SessionPortSpecImpl("AMQP", {(proto,role) => AMQPPort(proto, role, randomName())})//,
+    //new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
   class SessionPortSpecImpl(name: String,
-                            createDefaultPort: (String, Symbol) => PublicPort,
-                            createOtherPort: (String, Symbol) => PublicPort)
+                            freshPort: (String, Symbol) => PublicPort)
           extends FunSuite with BeforeAndAfterEach {
     var alice: PublicPort = null
     var bob: PublicPort = null
@@ -23,8 +30,8 @@ class PublicPortSpec extends FunSuite with Timeouts {
     override def suiteName = "SessionPortSpec: "+name+" implementation"
 
     override def beforeEach() {
-      alice = createDefaultPort("protocol Test { role Alice, Bob; }", 'Alice)
-      bob = createDefaultPort("protocol Test { role Alice, Bob; }", 'Bob)
+      alice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
+      bob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
     }
 
     test("non-exhaustive invite: no runtime error (should be checked by compiler). Timeouts since no bound process", Tag("timeouts")) {
@@ -37,26 +44,26 @@ class PublicPortSpec extends FunSuite with Timeouts {
     test("role not in protocol: error") {
       println("started next")
       intercept[IllegalArgumentException] {
-        createDefaultPort("protocol Test { role Alice, Bob; }", 'Foo)
+        freshPort("protocol Test { role Alice, Bob; }", 'Foo)
       }
     }
 
     test("complains if protocol is not valid Scribble") {
       intercept[IllegalArgumentException] {
-        createDefaultPort("foobar", 'Foo)
+        freshPort("foobar", 'Foo)
       }
     }
 
     test("complains if protocol does not have at least 1 role") {
       intercept[IllegalArgumentException] {
-        createDefaultPort("protocol P {}", 'Foo)
+        freshPort("protocol P {}", 'Foo)
       }
     }
 
     test("bind when not invited: timeouts", Tag("timeouts")) {
       var didRun = false
-      val otherAlice = createOtherPort("protocol Test { role Alice, Bob; }", 'Alice)
-      val otherBob = createOtherPort("protocol Test { role Alice, Bob; }", 'Bob)
+      val otherAlice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
+      val otherBob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
       expectTimeout(1000) {
         spawn { startSession(otherAlice, otherBob) }
 
@@ -99,18 +106,24 @@ class PublicPortSpec extends FunSuite with Timeouts {
     test("invited participants can talk", Tag("talk")) {
       var aliceOk = false; var bobOk = false
       withTimeoutAndWait {
-        spawn { startSession(alice, bob) }
+        spawn { startSession(alice, bob) 
+          println("done starting session")
+        }
 
         spawn { alice.bind { s =>
           s ! 'Bob -> 42
+          println("Alice sent 42 to Bob")
           val recv = s.?[String]('Bob)
+          println("Alice received "+recv+" from Bob")
           aliceOk = recv == "foo"
         }}
 
         bob.bind { s =>
           val recv = s.?[Int]('Alice)
+          println("Bob received "+recv+" from Alice")
           bobOk = recv == 42
           s ! 'Alice -> "foo"
+          println("Bob sent foo to Alice")
         }
       }
       assert(aliceOk, "Alice was not able to communicate")
@@ -171,7 +184,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
     case object Foo ; case object Bar
     test("doesn't interfere with standard actor messaging") {
       var fooReceived = false ; var barReceived = false
-      val single = createDefaultPort("protocol P { role Single; }", 'Single)
+      val single = freshPort("protocol P { role Single; }", 'Single)
       withTimeout(1000) {
         spawn { startSession(single) }
         val fooActor = actor {
@@ -222,8 +235,8 @@ class PublicPortSpec extends FunSuite with Timeouts {
     }
 
     // Too long for routine testing
-    test("many waiting binds don't blow the stack", Tag("slow")) {
-      val manyWaiting = createDefaultPort("protocol P { role One, Other; }", 'One)
+    ignore("many waiting binds don't blow the stack", Tag("slow")) {
+      val manyWaiting = freshPort("protocol P { role One, Other; }", 'One)
       for (i <- List.range(1,1000000)) {
         actor { manyWaiting.bind { _ => } }
       }

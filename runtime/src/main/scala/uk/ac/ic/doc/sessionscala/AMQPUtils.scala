@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import com.rabbitmq.client.ConnectionFactory
+import com.rabbitmq.client.{Channel, ConnectionFactory}
 
 /**
  * Created by: omp08
@@ -18,7 +18,7 @@ object AMQPUtils {
   }
 
   def connect(factory: ConnectionFactory) = {
-    println("Connecting to AMQP broker at: " + factory.getHost + ", port: " + factory.getPort + ", user: " + factory.getUsername)
+    //println("Connecting to AMQP broker at: " + factory.getHost + ", port: " + factory.getPort + ", user: " + factory.getUsername)
     val connection = factory.newConnection
     connection.createChannel
   }
@@ -26,5 +26,22 @@ object AMQPUtils {
   def connectDefaults() = {
     val factory = new ConnectionFactory
     factory.newConnection.createChannel
-  }  
+  }
+  
+  def close(chan: Channel) {
+    chan.getConnection.close()
+  }
+  
+  def withChan[T](fact: ConnectionFactory)(f: Channel => T) = {
+    val chan = connect(fact)
+    try {
+      f(chan)
+    } catch {
+      case e => e.printStackTrace
+      throw e
+    } finally {
+      close(chan)
+    }
+  }
+    
 }

@@ -38,7 +38,7 @@ trait MatchmakerActorComponent {
             acceptSender ! (i.sessExchange, i.protocol)  //todo: give list of local proxies to proxy registry so it can give it to all proxies
           }
         case Accept(acceptRole: Symbol) =>
-          //println("matchmaker: got accept for role " + acceptRole)
+          //println("matchmaker: got bind for role " + acceptRole)
           matchMsg(invites, acceptRole, sender, accepts) { sessExchAndProtocol =>
             sender ! sessExchAndProtocol // todo: ditto above
           }
