@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import scala.actors.{DaemonActor, Actor, Futures, TIMEOUT}, Actor._, Futures.future
+import scala.actors.{Future, Futures, TIMEOUT}, Futures.future
 import org.scalatest.FunSuite
 
 /**
@@ -14,8 +14,8 @@ trait Timeouts extends FunSuite {
   case class Except(e: Throwable) extends CallResult[Nothing]
 
   def callWithTimeout[T](timeout: Int)(block: => T): CallResult[T] = {
-    val f = future {
-      val ret = try {
+    val f: Future[CallResult[T]] = future {
+      try {
         Ok(block)
       } catch {
         case e => Except(e)
@@ -27,14 +27,11 @@ trait Timeouts extends FunSuite {
     }
   }
   def withTimeout[T](timeout: Int)(block: => T): T = {
-    block
-    /*
     callWithTimeout(timeout)(block) match {
       case Ok(v) => v
       case Except(e) => throw e
       case Timeout => fail("Timeout (exceeded " + timeout + "ms)")
     }
-    */
   }
 
   def withTimeoutAndWait[T](timeout: Int, wait: Int)(block: => T): T = {
