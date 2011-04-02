@@ -33,60 +33,56 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
 
   def bind[T](act: SessionChannel => T): T = {
     println("bind: " + role + ", waiting for invite on: " + queueName)
-    val chan = connect(fact)
-    ensureQueueExists(chan)
-    println("bind "+role+" consuming invite on: "+queueName)
-    val Invite(sessIDPort, invProtocol, invRole) = consumeOne(chan, queueName)
-    println("got invite: " + invRole)
-    
-    if (role != invRole) {
-      println("WARNING: Got invite for another role: "+invRole+
-              ", expecting "+role+". Discarding and waiting again...")
-      bind(act)
-    } else if (!protocolsCompatible(protocol, invProtocol)) {
-      println("WARNING: Got invite for correct role: "+invRole+
-              ", but incompatible protocols. Local: "+protocol+", invitation: "+
-              invProtocol+". Discarding and waiting again...")
-      bind(act)
-    } else {  
-      // server-named, non-durable, exclusive, non-autodelete
-      // non-autodelete because there is a short consume interruption between mapping receive and ActorProxy start
-      val declareOK = chan.queueDeclare("",false,true,false,null)
-      val privateQueue = declareOK.getQueue
+    withChan(fact) { chan =>
+      ensureQueueExists(chan)
+      println("bind "+role+" consuming invite on: "+queueName)
+      val Invite(sessIDPort, invProtocol, invRole) = consumeOne(chan, queueName)
+      println("got invite: " + invRole)
       
-      sessIDPort.send(
-        AcceptedInvite(invRole, 
-                       AMQPPrivatePort(privateQueue, brokerHost, port, user, pwd))
-      )
-      val mapping = consumeOne(chan, privateQueue).asInstanceOf[Map[Symbol,PrivatePort]]
-      println("Got mapping from inviter: "+mapping)
-      val proxy = new AMQPActorProxy(chan, privateQueue, role)
-      proxy.start()
-      
-      val sessChan = (protocolRoles foldLeft Map[Symbol, ChannelPair]()) { case (result, otherRole) =>
-        // binds the channel to the current actor (Actor.self). 
-        // self is the only actor that can receive on the channel
-        val chanFrom = new actors.Channel[Any]() 
-        val chanTo = new actors.Channel[Any](proxy)
-        proxy ! NewSourceRole(otherRole, chanFrom)
-        proxy ! NewDestinationRole(otherRole, chanTo, addressOf(otherRole, mapping))
-        result + (otherRole -> new ChannelPair(chanTo, chanFrom))
+      if (role != invRole) {
+        println("WARNING: Got invite for another role: "+invRole+
+                ", expecting "+role+". Discarding and waiting again...")
+        bind(act)
+      } else if (!protocolsCompatible(protocol, invProtocol)) {
+        println("WARNING: Got invite for correct role: "+invRole+
+                ", but incompatible protocols. Local: "+protocol+", invitation: "+
+                invProtocol+". Discarding and waiting again...")
+        bind(act)
+      } else {  
+        // server-named, non-durable, exclusive, non-autodelete
+        // non-autodelete because there is a short consume interruption between mapping receive and ActorProxy start
+        val declareOK = chan.queueDeclare("",false,true,false,null)
+        val privateQueue = declareOK.getQueue
+        
+        sessIDPort.send(
+          AcceptedInvite(invRole, 
+                         AMQPPrivatePort(privateQueue, brokerHost, port, user, pwd))
+        )
+        val mapping = consumeOne(chan, privateQueue).asInstanceOf[Map[Symbol,AMQPPrivatePort]]
+        //FIXME: Could lose messages here if consumer already received the first session message
+        println("Got mapping from inviter: "+mapping)
+        
+        val proxy = new AMQPActorProxy(mapping, chan, privateQueue, role)
+        val chanMap = (protocolRoles foldLeft Map[Symbol, ChannelPair]()) { case (result, otherRole) =>
+          // binds the channel to the current actor (Actor.self). 
+          // self is the only actor that can receive on the channel
+          val chanFrom = new actors.Channel[Any]() 
+          val chanTo = new actors.Channel[Any](proxy)
+          result + (otherRole -> new ChannelPair(chanTo, chanFrom))
+        }
+            
+        proxy.setChanMap(chanMap)      
+        println(role+": Mapping: "+chanMap)
+        
+        proxy.start()      
+        val res = act(new SessionChannel(role, chanMap))
+        //println("!!!!!!!!!!!!!!!!bind: call to act finished")
+        proxy ! Quit
+        res
       }
-      println(role+": Mapping: "+sessChan)
-      val res = act(new SessionChannel(role, sessChan))
-      //println("!!!!!!!!!!!!!!!!bind: call to act finished")
-      proxy ! Quit
-      close(chan)
-      res
     }
   }
 
-  def addressOf(role: Symbol, mapping: Map[Symbol, PrivatePort]) = {
-    val pp = mapping(role).asInstanceOf[AMQPPrivatePort]
-    println("addressOf "+role+": "+pp.privateQueue)
-    (pp.privateQueue, pp.brokerHost, pp.port, pp.user, pp.pwd)
-  }
-  
   def publish(chan: Channel, queue: String, msg: Any) {
     println("publishing: "+msg+"to queue: "+queue)
     chan.basicPublish("", queue, MessageProperties.BASIC, serialize(msg))
@@ -117,6 +113,8 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
     def send(msg: Any) = withChan(fact) { chan =>      
       publish(chan, privateQueue, msg)
     }
+    
+    def address = (privateQueue, brokerHost, port, user, pwd)
   }
   
 }
