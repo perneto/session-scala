@@ -23,10 +23,7 @@ object AMQPUtils {
     connection.createChannel
   }
 
-  def connectDefaults() = {
-    val factory = new ConnectionFactory
-    factory.newConnection.createChannel
-  }
+  def connectDefaults() = connect(new ConnectionFactory)
   
   def close(chan: Channel) {
     //println("closing: "+chan)

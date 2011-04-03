@@ -1,10 +1,10 @@
 package uk.ac.ic.doc.sessionscala
 
 import uk.ac.ic.doc.sessionscala.PublicPort._
-import org.scalatest.{BeforeAndAfterEach, FunSuite, Tag}
+import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FunSuite, Tag}
 import actors.Actor, Actor._
 
-class PublicPortSpec extends FunSuite with Timeouts {
+class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
   val rng = new java.util.Random
   def randomName(): String = {
@@ -20,17 +20,19 @@ class PublicPortSpec extends FunSuite with Timeouts {
     queuesInTest += name
     AMQPPort(proto, role, name)
   }
+  
+  override def afterAll() {
+    val chan = AMQPUtils.connectDefaults()
+    for (q <- queuesInTest) {
+      // need to ensure it's there first, as some tests don't really create the queue
+      // (randomName is called for every call to AMQPPort, but not all ports get bound/invited)
+      chan.queueDeclare(q,false,false,false,null)
+      chan.queueDelete(q)
+    }
+  }
 
   override def nestedSuites = List(
-    new SessionPortSpecImpl("AMQP", createQueue) {
-      override def afterEach() {
-        val chan = AMQPUtils.connectDefaults()
-        for (q <- queuesInTest) {
-          //chan.queueDelete(q)
-        }
-        queuesInTest.clear()
-      }
-    },
+    new SessionPortSpecImpl("AMQP", createQueue),
     new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
