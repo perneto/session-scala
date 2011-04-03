@@ -73,7 +73,7 @@ trait AMQPActorProxyComponent {
         
         case Quit =>
           amqpChan.basicCancel(consumerTag)
-          for (c <- openedChans) close(c)
+          for (c <- openedChans) AMQPUtils.close(c)
           //println("Proxy for role "+ourRole+" exiting")
           reply(())
           exit()

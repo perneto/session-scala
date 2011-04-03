@@ -13,9 +13,24 @@ class PublicPortSpec extends FunSuite with Timeouts {
     while (name.length < 9) name = "0" + name
     "q"+name
   }
+  
+  val queuesInTest = collection.mutable.Set[String]()
+  def createQueue(proto: String, role: Symbol) = {
+    val name = randomName()
+    queuesInTest += name
+    AMQPPort(proto, role, name)
+  }
 
   override def nestedSuites = List(
-    new SessionPortSpecImpl("AMQP", {(proto,role) => AMQPPort(proto, role, randomName())}),
+    new SessionPortSpecImpl("AMQP", createQueue) {
+      override def afterEach() {
+        val chan = AMQPUtils.connectDefaults()
+        for (q <- queuesInTest) {
+          //chan.queueDelete(q)
+        }
+        queuesInTest.clear()
+      }
+    },
     new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
@@ -25,7 +40,6 @@ class PublicPortSpec extends FunSuite with Timeouts {
     var alice: PublicPort = null
     var bob: PublicPort = null
 
-
     override def suiteName = "SessionPortSpec: "+name+" implementation"
 
     override def beforeEach() {
@@ -33,7 +47,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
       bob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
     }
 
-    test("non-exhaustive invite: no runtime error (should be checked by compiler). Timeouts since no bound process", Tag("timeouts")) {
+    test("non-exhaustive invite: no runtime error (should be checked by compiler). Timeouts since no bound process", Tag("timeouts"), Tag("leftoverq")) {
       expectTimeout(500) {
         startSession(alice)
       }
@@ -57,7 +71,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
       }
     }
 
-    test("bind when not invited: timeouts", Tag("timeouts")) {
+    test("bind when not invited: timeouts", Tag("timeouts"), Tag("leftoverq")) {
       var didRun = false
       val otherAlice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
       val otherBob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)

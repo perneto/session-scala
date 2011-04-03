@@ -71,6 +71,7 @@ object PublicPort {
       //println("send mapping to: "+rp)
       rp.send(mapping)
     }
+    sessIDPort.close()
   }
 
   def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivatePort] = {
@@ -101,6 +102,8 @@ trait PublicPort {
 
   def receive(): Any
 
+  def close() {}
+  
   /** Accept to play a given role. Waits for an invite, creates
    *  a local session channel, and sends back a confirmation message
    *  with the name of the session channel before proceeding.

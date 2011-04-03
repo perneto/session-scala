@@ -135,5 +135,9 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
     
     def address = (privateQueue, brokerHost, port, user, pwd)
   }
-  
+
+  override def close() = withChan(fact) { chan =>
+    chan.queueDelete(queueName)
+    //println("deleted: "+queueName)
+  }
 }
