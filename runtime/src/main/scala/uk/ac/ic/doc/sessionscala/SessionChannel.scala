@@ -15,8 +15,6 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
 
   def ?[T](role: Symbol): T = {
     map(role).fromOther.receive {
-      case Labelled(label: Symbol, msg: Any) =>
-        throw new IllegalStateException("Trying to receive an unlabelled message, but got labelled message")
       case label: Symbol =>
         throw new IllegalStateException("Trying to receive an unlabelled message, but got label")
       case msg: Any => msg.asInstanceOf[T]
@@ -24,14 +22,12 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   }
 
   def ?[T](role: Symbol, label: Symbol): T = {
-    map(role).fromOther.receive {
-      case Labelled(`label`, msgs) =>
-        extractMsg(msgs)
+    map(role).fromOther.receive (dropLabel(label) orElse {
       case label: Symbol =>
         ().asInstanceOf[T]
       case msg: Any =>
         throw new IllegalStateException("Trying to receive a labelled message, but got unlabelled message")
-    }
+    })
   }
 
   def react(role1: Symbol, role2: Symbol, otherRoles: Symbol*)
@@ -63,29 +59,22 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
     val srcRoles = filtMap map { case (role,cp) => (cp.fromOther -> role) }
     {
       case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) =>
-        val realMsg = msg match {
-          case Labelled(label, msg) => (label, extractMsg(msg))
-          case x => x
-        }
-        f((srcRoles(chan), realMsg))
+        f((srcRoles(chan), msg))
     }
   }
-
-  def extractMsg[T](seq: Seq[Any]): T = {
-    val tuple = seq match {
-      case Seq(a) => a
-      case Seq(a,b) => (a,b)
-      case Seq(a,b,c) => (a,b,c)
-      case Seq(a,b,c,d) => (a,b,c,d)
-      case Seq(a,b,c,d,e) => (a,b,c,d,e)  
-      case Seq(a,b,c,d,e,f) => (a,b,c,d,e,f)  
-      case Seq(a,b,c,d,e,f,g) => (a,b,c,d,e,f,g)  
-      case Seq(a,b,c,d,e,f,g,h) => (a,b,c,d,e,f,g,h)  
-      case Seq(a,b,c,d,e,f,g,h,i) => (a,b,c,d,e,f,g,h,i)
-      case Seq(a,b,c,d,e,f,g,h,i,j) => (a,b,c,d,e,f,g,h,i,j)
-      case Seq(a,b,c,d,e,f,g,h,i,j,k) => (a,b,c,d,e,f,g,h,i,j,k)
+  
+  def dropLabel[T](label: Symbol): PartialFunction[Any,T] = {
+    val f: PartialFunction[Any, Any] = {
+      case (`label`,a) => a
+      case (`label`,a,b) => (a,b)
+      case (`label`,a,b,c) => (a,b,c)
+      case (`label`,a,b,c,d) => (a,b,c,d)
+      case (`label`,a,b,c,d,e) => (a,b,c,d,e)
+      case (`label`,a,b,c,d,e,f) => (a,b,c,d,e,f)
+      case (`label`,a,b,c,d,e,f,g) => (a,b,c,d,e,f,g)
+      case (`label`,a,b,c,d,e,f,g,h) => (a,b,c,d,e,f,g,h)
       // TODO extend to Tuple22
     }
-    tuple.asInstanceOf[T]
+    f.andThen(_.asInstanceOf[T])
   }
 }

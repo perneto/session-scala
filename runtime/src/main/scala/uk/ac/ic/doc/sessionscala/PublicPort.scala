@@ -12,8 +12,6 @@ trait PrivatePort {
   def send(msg: Any)
 }
 
-case class Labelled(label: Symbol, msg: Seq[Any])
-
 //case class -> [L,R](left: L, right: R)
 
 object PublicPort {
@@ -91,11 +89,6 @@ object PublicPort {
     map foreach { case (from, to) =>
       actor { to.send(from.receive()) }
     }
-  }
-
-  implicit def symbol2Labelled(sym: Symbol) = new {
-    def apply(arg: Any, args: Any*) =
-      Labelled(sym, arg +: args)
   }
 }
 

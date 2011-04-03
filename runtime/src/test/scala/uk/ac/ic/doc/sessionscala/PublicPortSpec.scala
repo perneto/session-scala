@@ -132,22 +132,22 @@ class PublicPortSpec extends FunSuite with Timeouts {
         actor { startSession(alice, bob) }
 
         actor { alice.bind { s =>
-          s ! 'Bob -> 'foo(42)
+          s ! 'Bob -> ('foo, 42)
           s ! 'Bob -> 'foo
           s ! 'Bob -> 'label
           
           val recv = s.?[(String,Int)]('Bob,'bar)
-          aliceOk = recv == ("foo",43)
+          aliceOk = recv == ("foo", 43)
           //println("Alice got foo, 43")
 
           s.receive('Bob) {
-            case ('bar, (s:String, i:Int)) => aliceOk2 = true
+            case ('bar, s:String, i:Int) => aliceOk2 = true
           }          
         }}
 
         bob.bind { s =>
-          s ! 'Alice -> 'bar("foo",43)
-          s ! 'Alice -> 'bar("foo",43)
+          s ! 'Alice -> ('bar, "foo", 43)
+          s ! 'Alice -> ('bar, "foo", 43)
                     
           val recv = s.?[Int]('Alice,'foo)
           bobOk = recv == 42

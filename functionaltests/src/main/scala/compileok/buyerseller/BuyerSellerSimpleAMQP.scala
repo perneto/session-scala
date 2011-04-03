@@ -25,7 +25,7 @@ object BuyerSellerSimpleAMQP {
     actor {
       seller.bind { s =>
         val item = s.?[String]('Buyer)
-        s ! 'Buyer -> 'Quote(2000)
+        s ! 'Buyer -> ('Quote, 2000)
         s.receive('Buyer) {
           case address: String =>
             val deliveryDate = s.?[String]('Buyer, 'Date)
@@ -36,11 +36,11 @@ object BuyerSellerSimpleAMQP {
     }
 
     buyer.bind { s =>
-      s ! 'Seller -> 'Title("Widget A")
+      s ! 'Seller -> ('Title, "Widget A")
       val quote = s.?[Int]('Seller)
       if (quote < 1000) {
         s ! 'Seller -> "123 Penny Lane"
-        s ! 'Seller -> 'Date("4/6/2011 10:00 UTC-7")
+        s ! 'Seller -> ('Date, "4/6/2011 10:00 UTC-7")
       } else {
         s ! 'Seller -> 'Quit
       }

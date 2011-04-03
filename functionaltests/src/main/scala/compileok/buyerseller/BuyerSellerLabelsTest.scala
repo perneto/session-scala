@@ -28,7 +28,7 @@ object BuyerSellerLabelsTest {
     actor {
       seller.bind { s =>
         val item = s.?[String]('Buyer)
-        s ! 'Buyer -> 'quote(900)
+        s ! 'Buyer -> ('quote, 900)
         s ! 'Buyer -> 'details
         println("Seller about to receive")
         s.receive('Buyer) {

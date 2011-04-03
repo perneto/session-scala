@@ -14,7 +14,7 @@ object Buyer {
     val buyer = AMQPPort("../../buyerseller/buyerseller.spr", 'Buyer, "buyer", brokerHost)
     buyer.bind { s =>
       //println("Buyer accepted")
-      s ! 'Seller -> 'title("Widget A")
+      s ! 'Seller -> ('title, "Widget A")
       val quote = s.?[Int]('Seller)
       if (quote < 1000) {
         s ! 'Seller -> "123 Penny Lane"
