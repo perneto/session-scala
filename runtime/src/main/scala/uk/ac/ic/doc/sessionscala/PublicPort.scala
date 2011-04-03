@@ -1,7 +1,7 @@
 package uk.ac.ic.doc.sessionscala
 
+import actors.Actor.actor
 import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
-import concurrent.ops.spawn
 import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
@@ -20,7 +20,7 @@ object PublicPort {
   def newLocalPort(protocol: String, role: Symbol): PublicPort =
     new PublicPortSameVM(protocol, role)
 
-  def AMQPPort(protocol: String, role: Symbol, queueAddr: String,
+  def AMQPPort(protocol: String, role: Symbol, queueAddr: String = "",
                user: String = "guest", password: String = "guest"): PublicPort = {
 
     def splitAddr(queueAddr: String) = {
@@ -28,7 +28,9 @@ object PublicPort {
         if (array.length > 2) throw new IllegalArgumentException("Bad queue address: " + queueAddr)
       }
 
-      val array = queueAddr.split(Array('@'))
+      val array = 
+        if (queueAddr == "") Array(role.name)
+        else queueAddr.split(Array('@'))
       checkLength2(array)
       val queue = array(0)
       val (hostname, port) =
@@ -87,7 +89,7 @@ object PublicPort {
 
   def forwardInvite(map: (PublicPort, PublicPort)*) {
     map foreach { case (from, to) =>
-      spawn { to.send(from.receive()) }
+      actor { to.send(from.receive()) }
     }
   }
 
