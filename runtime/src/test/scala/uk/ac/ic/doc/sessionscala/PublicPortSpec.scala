@@ -146,7 +146,8 @@ class PublicPortSpec extends FunSuite with Timeouts {
           s ! 'Alice -> 'bar("foo",43)
           
           s.receive('Alice) {
-            case ('Alice, 'foo) => bobOk2 = true
+            // TODO: Static checking for errors like ('Alice, ...)
+            case 'foo => bobOk2 = true
           }
         }
       }

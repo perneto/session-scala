@@ -16,10 +16,10 @@ object BuyerSellerRecursiveTest {
         def quoteRecursionSeller(s: SessionChannel, quote: Int) {
           s ! 'Buyer -> quote
           s.receive('Buyer) {
-            case ('Buyer, OK) =>
+            case OK =>
               s ! 'Buyer -> Invoice(quote)
               val payment = s.?[Payment]('Buyer)
-            case ('Buyer, NotOK) =>
+            case NotOK =>
               val reason = s.?[String]('Buyer)
               quoteRecursionSeller(s, quote - 100)
           }

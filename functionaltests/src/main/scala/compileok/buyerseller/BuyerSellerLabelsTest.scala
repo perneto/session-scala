@@ -32,10 +32,10 @@ object BuyerSellerLabelsTest {
         s ! 'Buyer -> 'details
         println("Seller about to receive")
         s.receive('Buyer) {
-          case ('Buyer, address: String) =>
+          case address: String =>
             val deliveryDate = s.?[String]('Buyer, 'date)
-          case ('Buyer, ('mylabel, s: String)) =>
-          case ('Buyer, 'quit) => println("received 'quit")
+          case ('mylabel, s: String) =>
+          case 'quit => println("received 'quit")
         }
       }
     }

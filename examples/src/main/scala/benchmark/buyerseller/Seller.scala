@@ -19,10 +19,10 @@ object Seller {
       val item = s.?[String]('Buyer, 'title)
       s ! 'Buyer -> 2000
       s.receive('Buyer) {
-        case ('Buyer, ('address, address: String)) =>
+        case ('address, address: String) =>
           val deliveryDate = s.?[String]('Buyer)
           println("placing order: " + item + " " + address + " " + deliveryDate)
-        case ('Buyer, 'quit) => println("received 'quit")
+        case 'quit => println("received 'quit")
       }
       println("*****************Seller: finished")
     }

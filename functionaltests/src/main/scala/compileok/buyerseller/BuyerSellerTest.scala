@@ -20,10 +20,10 @@ object BuyerSellerTest {
         val o = s.?[Order]('Buyer)
         s ! 'Buyer -> 2000
         s.receive('Buyer) {
-          case ('Buyer, OK) =>
+          case OK =>
             s ! 'Buyer -> new Invoice(2000)
             val payment = s.?[Payment]('Buyer)
-          case ('Buyer, NotOK) =>
+          case NotOK =>
             val reason = s.?[String]('Buyer)
         }
         println("Seller: finished")

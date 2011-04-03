@@ -27,9 +27,9 @@ object BuyerSellerSimpleAMQP {
         val item = s.?[String]('Buyer)
         s ! 'Buyer -> 'Quote(2000)
         s.receive('Buyer) {
-          case ('Buyer, address: String) =>
+          case address: String =>
             val deliveryDate = s.?[String]('Buyer, 'Date)
-          case ('Buyer, 'Quit) => println("received 'Quit")
+          case 'Quit => println("received 'Quit")
         }
         println("*****************Seller: finished")
       }

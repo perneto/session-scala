@@ -15,9 +15,9 @@ object MoreChoiceReceiveBranchesThanSpecTest {
     """, 'Alice)
     sharedChannel.bind { s =>
       s.receive('Bob) {
-        case ('Bob, s: String) =>
-        case ('Bob, i: Int) =>
-        case ('Bob, d: Double) =>
+        case s: String =>
+        case i: Int =>
+        case d: Double =>
       }
     }
   }

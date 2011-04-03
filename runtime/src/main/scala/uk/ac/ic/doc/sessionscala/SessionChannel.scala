@@ -35,16 +35,31 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
     }
   }
 
-  def react(role: Symbol, otherRoles: Symbol*)(f: PartialFunction[(Symbol,Any), Unit]): Nothing = {
-    self.react(buildBody(role, otherRoles, f))
+  def react(role1: Symbol, role2: Symbol, otherRoles: Symbol*)
+           (f: PartialFunction[(Symbol,Any), Unit]): Nothing = {
+    self.react(buildBody(Set(role1,role2) ++ otherRoles, f))
+  }
+  
+  def react(role: Symbol)(f: PartialFunction[Any,Unit]): Nothing = {
+    self.react(buildBody(Set(role),addRole(role, f)))
+  }
+    
+  def receive[T](role: Symbol)(f: PartialFunction[Any,T]): T = {
+    self.receive(buildBody(Set(role),addRole(role, f)))
+  }
+  
+  def receive[T](role1: Symbol, role2: Symbol, otherRoles: Symbol*)
+                (f: PartialFunction[(Symbol,Any), T]): T = {
+    self.receive(buildBody(Set(role1,role2) ++ otherRoles, f))
   }
 
-  def receive[T](role: Symbol, otherRoles: Symbol*)(f: PartialFunction[(Symbol,Any), T]): T = {
-    self.receive(buildBody(role, otherRoles, f))
-  }
-
-  def buildBody[T](role: Symbol, otherRoles: Seq[Symbol], f: PartialFunction[(Symbol,Any), T]): PartialFunction[Any,T] = {
-    val roles = Set(role) ++ otherRoles
+  def addRole[T](role: Symbol, f: PartialFunction[Any,T]): PartialFunction[(Symbol,Any),T] = 
+    new PartialFunction[(Symbol,Any),T] {
+      def isDefinedAt(x: (Symbol, Any)) = x._1 == role && f.isDefinedAt(x._2)
+      def apply(x: (Symbol, Any)) = f.apply(x._2)
+    }
+  
+  def buildBody[T](roles: Set[Symbol], f: PartialFunction[(Symbol,Any), T]): PartialFunction[Any,T] = {
     val filtMap = map filterKeys(roles.contains _) 
     val srcRoles = filtMap map { case (role,cp) => (cp.fromOther -> role) }
     {
