@@ -50,7 +50,7 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
       } else {  
         // server-named, non-durable, exclusive, non-autodelete
         // non-autodelete because there is a short consume interruption between mapping receive and ActorProxy start
-        val declareOK = chan.queueDeclare("",false,true,false,null)
+        val declareOK = chan.queueDeclare()
         val sessionQueue = declareOK.getQueue
         
         val declareOk2 = chan.queueDeclare()
@@ -104,9 +104,24 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
   }
   
   def ensureQueueExists(chan: Channel) {
-    // durable: false, exclusive: true, autodelete: false, arguments: none (null)
-    //chan.queueDeclare(queueName, false, true, false, null)
-    // temp: exclusive: false - seems there's a race somewhere, or someone isn't closing
+    // args: durable, exclusive, autodelete, arguments (null if no extra args)
+    
+    // exclusive: false to allow more than 1 process to bind to this port,
+    // creating a race for invites (a good thing, follows theory).
+    // Would seem not needed in the simple case of 1 invite - 1 process,
+    // but the ensureQueueExists done in send() then breaks. Exclusive really
+    // means exclusive-everything, not just consume-exclusive.
+    
+    // auto-delete: false, as when several procs bind on this channel we don't want to lose any invites
+    // it would seem to work as we call ensureQueueExists every time we bind(),
+    // but an invite message could get lost in the following scenario:
+    // 1. inviter creates queue
+    // 2. inviter sends two invites
+    // 3. process 1 binds, declares queue but does not create it as the inviter did,
+    // consumes one invite
+    // 4. process 1 finishes reading invite, stops listening to queue
+    // 5. queue is auto-deleted, losing the second invite
+    // 6. process 2 binds later, re-creates the queue, but the invite is no longer there
     chan.queueDeclare(queueName, false, false, false, null)
   }
   
