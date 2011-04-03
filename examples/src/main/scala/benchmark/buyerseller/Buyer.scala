@@ -1,7 +1,7 @@
 package benchmark.buyerseller
 
-import uk.ac.ic.doc.sessionscala.SharedChannel
-import SharedChannel._
+import uk.ac.ic.doc.sessionscala.PublicPort
+import PublicPort._
 
 
 /**
@@ -11,20 +11,18 @@ import SharedChannel._
 object Buyer {
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    withAMQPChannel("../../buyerseller/buyerseller.spr", brokerHost) { sharedChannel =>
-      println("Buyer: before accept")
-      sharedChannel.accept('Buyer) { s =>
-        println("Buyer accepted")
-        s('Seller) ! ('title, "Widget A")
-        val quote = s('Seller).?[Int]
-        if (quote < 1000) {
-          s('Seller) ! "123 Penny Lane"
-          s('Seller) ! "4/6/2011 10:00 UTC-7"
-        } else {
-          s('Seller) ! 'quit
-        }
-        println("*****************Buyer: finished")
+    val buyer = AMQPPort("../../buyerseller/buyerseller.spr", 'Buyer, "buyer", brokerHost)
+    buyer.bind { s =>
+      //println("Buyer accepted")
+      s ! 'Seller -> 'title("Widget A")
+      val quote = s.?[Int]('Seller)
+      if (quote < 1000) {
+        s ! 'Seller -> "123 Penny Lane"
+        s ! 'Seller -> "4/6/2011 10:00 UTC-7"
+      } else {
+        s ! 'Seller -> 'quit
       }
+      //println("*****************Buyer: finished")
     }
   }
 }

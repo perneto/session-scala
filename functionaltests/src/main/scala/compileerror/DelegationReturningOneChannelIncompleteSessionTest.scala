@@ -1,7 +1,7 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
+import uk.ac.ic.doc.sessionscala.{PublicPort, SessionChannel}
 
 /**
  * Created by: omp08
@@ -9,33 +9,33 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
 
 object DelegationReturningOneChannelIncompleteSessionTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel(
-    """
+    val delegation = """
     protocol Delegation {
       role Alice, Bob;
       String from Alice to Bob;
       Int from Bob to Alice;
     }
-    """) { sharedChannel =>
+    """
+    val alice = PublicPort.newLocalPort(delegation, 'Alice)
+    val bob = PublicPort.newLocalPort(delegation, 'Bob)
+                                      
+    def myMethod(s: SessionChannel): SessionChannel = {
+      s ! 'Bob -> "foo"
+      s
+    }
 
-      def myMethod(s: SessionChannel): SessionChannel = {
-        s('Bob) ! "foo"
-        s
+    actor {
+      alice.bind { s =>
+        val s2 = myMethod(s)
+        // missing: s2('Bob).?[Int]
       }
+    }
 
-      actor {
-        sharedChannel.join('Alice) { s =>
-          val s2 = myMethod(s)
-          // missing: s2('Bob).?[Int]
-        }
-      }
-
-      actor {
-        sharedChannel.join('Bob) { s =>
-          s('Alice).?[String]
-          s('Alice) ! 42
-          println("Bob: finished")
-        }
+    actor {
+      bob.bind { s =>
+        s.?[String]('Alice)
+        s ! 'Alice -> 42
+        println("Bob: finished")
       }
     }
   }

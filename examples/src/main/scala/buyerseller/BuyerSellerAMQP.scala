@@ -1,54 +1,53 @@
 package buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.{SharedChannel}
-import SharedChannel._
+import uk.ac.ic.doc.sessionscala.{PublicPort}
+import PublicPort._
 
 object BuyerSellerAMQP {
   def main(args: Array[String]) {
-    withAMQPChannel("protocol Test { role Buyer, Seller; } ") { sharedChannel =>
+    val buyer = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Buyer)
+    val seller = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Seller)
+    val otherbuyer = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Buyer, "otherbuyer")
+    
+    actor { startSession(buyer, seller) }
 
-      sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
+    forwardInvite(buyer -> otherbuyer)
 
-      sharedChannel.forwardInvite('Buyer -> localhost)
+    println("running...")
 
-      println("running...")
-
-      // To start Seller only once
-      actor {
-        sharedChannel.accept('Seller) { s =>
-          println("Seller: started")
-          val o = s('Buyer).?[Order]
-          s('Buyer) ! 2000
-          s('Buyer).receive {
-            case OK =>
-              s('Buyer) ! new Invoice(2000)
-              val payment = s('Buyer).?[Payment]
-            case NotOK =>
-              val reason = s('Buyer).?[String]
-          }
-          println("*****************Seller: finished")
+    // To start Seller only once
+    actor {
+      seller.bind { s =>
+        println("Seller: started")
+        val o = s.?[Order]('Buyer)
+        s ! 'Buyer -> 2000
+        s.receive('Buyer) {
+          case ('Buyer, OK) =>
+            s ! 'Buyer -> new Invoice(2000)
+            val payment = s.?[Payment]('Buyer)
+          case ('Buyer, NotOK) =>
+            val reason = s.?[String]('Buyer)
         }
-        println("############## Seller: sharedChannel.accept exited")
+        println("*****************Seller: finished")
       }
-
-      sharedChannel.accept('Buyer) { s =>
-        println("Buyer: started")
-        s('Seller) ! new Order(100)
-        val price = s('Seller).?[Int]
-        if (price < 10000) {
-          s('Seller) ! OK
-          val invoice = s('Seller).?[Invoice]
-          s('Seller) ! new Payment(price)
-        } else {
-          s('Seller) ! NotOK
-          s('Seller) ! "Too expensive"
-
-        }
-        println("*****************Buyer: finished")
-      }
-      println("############## Buyer: sharedChannel.accept exited")
+      println("############## Seller: sharedChannel.bind exited")
     }
-    println("$$$$$$$$$$$$$$$$closed shared channel")
+
+    otherbuyer.bind { s =>
+      println("Buyer: started")
+      s ! 'Seller -> new Order(100)
+      val price = s.?[Int]('Seller)
+      if (price < 10000) {
+        s ! 'Seller -> OK
+        val invoice = s.?[Invoice]('Seller)
+        s ! 'Seller -> new Payment(price)
+      } else {
+        s ! 'Seller -> NotOK
+        s ! 'Seller -> "Too expensive"
+      }
+      println("*****************Buyer: finished")
+    }
+    println("############## Buyer: sharedChannel.bind exited")
   }
 }

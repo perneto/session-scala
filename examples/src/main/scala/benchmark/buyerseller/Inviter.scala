@@ -1,7 +1,7 @@
 package benchmark.buyerseller
 
-import uk.ac.ic.doc.sessionscala.SharedChannel
-import SharedChannel._
+import uk.ac.ic.doc.sessionscala.PublicPort
+import PublicPort._
 
 
 /**
@@ -11,10 +11,9 @@ import SharedChannel._
 object Inviter {
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    withAMQPChannel("../../buyerseller/buyerseller.spr", brokerHost) { sharedChannel =>
-
-      sharedChannel.invite('Buyer -> "shadeXX", 'Seller -> "shade04")
-    }
+    val shadeXX = AMQPPort("../../buyerseller/buyerseller.spr", 'Buyer, "shadeXX@"+brokerHost)
+    val shade04 = AMQPPort("../../buyerseller/buyerseller.spr", 'Seller, "shade04@"+brokerHost)
+    startSession(shade04, shadeXX)
     println("Inviter exiting")
   }
 }

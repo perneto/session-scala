@@ -1,21 +1,18 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.SharedChannel
-import SharedChannel.localhost
+import uk.ac.ic.doc.sessionscala.PublicPort._
 
 object ExtraInviteTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel(
-    """
+    val proto = """
     protocol Delegation {
       role Alice, Bob;
       String from Alice to Bob;
       Int from Bob to Alice;
     }
     """
-    ) { sharedChannel =>
-
-      sharedChannel.invite('Alice -> localhost, 'Alice -> localhost)
-    }
+    val alice = newLocalPort(proto, 'Alice)
+    val bob = newLocalPort(proto, 'Bob)
+    startSession(alice, bob, bob)
   }
 }

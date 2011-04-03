@@ -8,10 +8,10 @@ trait SessionDefinitions {
   import global._
 
   // Lazy because otherwise global is not set yet, so NPE trying to access definitions
-  lazy val sharedChannelTrait = definitions.getClass("uk.ac.ic.doc.sessionscala.SharedChannel")
+  lazy val sharedChannelTrait = definitions.getClass("uk.ac.ic.doc.sessionscala.PublicPort")
   lazy val participantChannelClass = definitions.getClass("uk.ac.ic.doc.sessionscala.ParticipantChannel")
   lazy val joinMethod = definitions.getMember(sharedChannelTrait, "join")
-  lazy val acceptMethod = definitions.getMember(sharedChannelTrait, "accept")
+  lazy val acceptMethod = definitions.getMember(sharedChannelTrait, "bind")
   lazy val inviteMethod = definitions.getMember(sharedChannelTrait, "invite")
   lazy val qmarkMethod = definitions.getMember(participantChannelClass, "$qmark")
   lazy val qqMarkMethod = definitions.getMember(participantChannelClass, "$qmark$qmark")

@@ -1,10 +1,10 @@
 package compileok
 
-import uk.ac.ic.doc.sessionscala.{SharedChannel}
+import uk.ac.ic.doc.sessionscala.{PublicPort}
 
 object MoreChoiceReceiveBranchesThanSpecTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel("""
+    val sharedChannel = PublicPort.newLocalPort("""
     protocol Branches {
       role Alice, Bob;
       choice from Bob to Alice {
@@ -12,14 +12,12 @@ object MoreChoiceReceiveBranchesThanSpecTest {
         String:
       }
     }
-    """) { sharedChannel =>
-
-      sharedChannel.join('Alice) { s =>
-        s('Bob).receive {
-          case s: String =>
-          case i: Int =>
-          case d: Double =>
-        }
+    """, 'Alice)
+    sharedChannel.bind { s =>
+      s.receive('Bob) {
+        case ('Bob, s: String) =>
+        case ('Bob, i: Int) =>
+        case ('Bob, d: Double) =>
       }
     }
   }

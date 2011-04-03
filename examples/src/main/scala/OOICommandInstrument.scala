@@ -1,6 +1,6 @@
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.SharedChannel
-import SharedChannel._
+import uk.ac.ic.doc.sessionscala.PublicPort
+import PublicPort._
 
 /*
 2 protocol OOI_Command_Instrument {
@@ -12,7 +12,7 @@ import SharedChannel._
 8
 9 stdAccess() from User to Instrument_Agent;
 10 choice from Instrument_Agent to User {
-11 accept() {
+11 bind() {
 12 X: {
 13 choice from User to Instrument_Agent {
 14 more_commands() {
@@ -37,46 +37,47 @@ class ListCommands
 
 object OOICommandInstrument {
   def main(args: Array[String]) {
-    withAMQPChannel("""
+    val protocol = """
       protocol Test {
         role User, CI_Authority, Instrument, Instrument_Registry, Instrument_Agent;
       }
-    """) { sharedChannel =>
+    """
+    val user = AMQPPort(protocol, 'User, "user")
+    val authority = AMQPPort(protocol, 'CI_Authority, "authority")
+    val instrument = AMQPPort(protocol, 'Instrument, "instrument")
+    val reg = AMQPPort(protocol, 'Instrument_Registry, "reg")
+    val agent = AMQPPort(protocol, 'Instrument_Agent, "agent")
 
-      sharedChannel.invite('User -> localhost, 'CI_Authority -> localhost, 'Instrument -> localhost, 'Instrument_Registry -> localhost, 'Instrument_Agent -> localhost)
-
-      actor {
-        sharedChannel.accept('User) { s =>
-          //s('Instrument_Registry) ! 'interfaceReq(Id("submarine"))
-          //s('Instrument_Registry).?
-          println("*************** User: finished")
-        }
+    actor { startSession(user, authority, instrument, reg, agent) }
+    
+    actor {
+      user.bind { s =>
+        //s('Instrument_Registry) ! 'interfaceReq(Id("submarine"))
+        //s('Instrument_Registry).?
+        println("*************** User: finished")
       }
+    }
 
-      actor {
-        sharedChannel.accept('CI_Authority) { s =>
-          println("***************** CI_Authority: finished")
-        }
+    actor {
+      authority.bind { s =>
+        println("***************** CI_Authority: finished")
       }
+    }
 
-      actor {
-        sharedChannel.accept('Instrument) { s =>
-          println("***************** Instrument: finished")
-        }
+    actor {
+      instrument.bind { s =>
+        println("***************** Instrument: finished")
       }
+    }
 
-      actor {
-        sharedChannel.accept('Instrument_Registry) { s =>
-          println("***************** Instrument_Registry: finished")
-        }
+    actor {
+      reg.bind { s =>
+        println("***************** Instrument_Registry: finished")
       }
+    }
 
-      //actor {
-        sharedChannel.accept('Instrument_Agent) { s =>
-          println("***************** Instrument_Agent: finished")
-        }
-      //}
-
+    agent.bind { s =>
+      println("***************** Instrument_Agent: finished")
     }
   }
 }

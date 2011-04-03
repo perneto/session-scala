@@ -1,15 +1,14 @@
 package buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.SharedChannel
-import SharedChannel._
+import uk.ac.ic.doc.sessionscala.PublicPort._
 
 object BuyerSellerSimpleAMQP {
   case class Title(title: String)
   case object Quit
 
   def main(args: Array[String]) {
-    withAMQPChannel("""protocol Test {
+    val proto = """protocol Test {
       role Buyer, Seller;
       Title(String) from Buyer to Seller;
       Quote(Int) from Seller to Buyer;
@@ -17,34 +16,35 @@ object BuyerSellerSimpleAMQP {
         String: Date(String) from Buyer to Seller;
         Quit():
       }
-    }""", port = 5672) { sharedChannel =>
+    }"""
+    val buyer = AMQPPort(proto, 'Buyer)
+    val seller = AMQPPort(proto, 'Seller) 
 
-      sharedChannel.invite('Buyer -> localhost, 'Seller -> localhost)
+    actor { startSession(buyer, seller) }
 
-      actor {
-        sharedChannel.accept('Seller) { s =>
-          val ('Title, item: String) = s('Buyer).??
-          s('Buyer) ! ('Quote, 2000)
-          s('Buyer).receive {
-            case address: String =>
-              val ('Date, deliveryDate: String) = s('Buyer).??
-            case 'Quit => println("received 'Quit")
-          }
-          println("*****************Seller: finished")
+    actor {
+      seller.bind { s =>
+        val item = s.?[String]('Buyer)
+        s ! 'Buyer -> 'Quote(2000)
+        s.receive('Buyer) {
+          case ('Buyer, address: String) =>
+            val deliveryDate = s.?[String]('Buyer, 'Date)
+          case ('Buyer, 'Quit) => println("received 'Quit")
         }
+        println("*****************Seller: finished")
       }
+    }
 
-      sharedChannel.accept('Buyer) { s =>
-        s('Seller) ! ('Title, "Widget A")
-        val ('Quote, quote: Int) = s('Seller).??
-        if (quote < 1000) {
-          s('Seller) ! "123 Penny Lane"
-          s('Seller) ! ('Date, "4/6/2011 10:00 UTC-7")
-        } else {
-          s('Seller) ! 'Quit
-        }
-        println("*****************Buyer: finished")
+    buyer.bind { s =>
+      s ! 'Seller -> 'Title("Widget A")
+      val quote = s.?[Int]('Seller)
+      if (quote < 1000) {
+        s ! 'Seller -> "123 Penny Lane"
+        s ! 'Seller -> 'Date("4/6/2011 10:00 UTC-7")
+      } else {
+        s ! 'Seller -> 'Quit
       }
-    }    
+      println("*****************Buyer: finished")
+    }
   }
 }

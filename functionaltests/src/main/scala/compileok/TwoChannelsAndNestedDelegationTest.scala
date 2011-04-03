@@ -1,6 +1,6 @@
 package compileok
 
-import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
+import uk.ac.ic.doc.sessionscala.{PublicPort, SessionChannel}, PublicPort._
 
 /**
  * Created by: omp08
@@ -8,37 +8,39 @@ import uk.ac.ic.doc.sessionscala.{SharedChannel, SessionChannel}
 
 object TwoChannelsAndNestedDelegationTest {
   def main(args: Array[String]) {
-    SharedChannel.withLocalChannel("""
+    val delegation1 = """
     protocol Delegation1 {
       role Alice, Bob;
       String from Alice to Bob;
       Int from Bob to Alice;
     }
-    """) { sharedChannel =>
-      SharedChannel.withLocalChannel("""
-      protocol Delegation2 {
-        role Foo, Bar;
-        String from Foo to Bar;
-        Boolean from Bar to Foo;
-      }
-      """) { sharedChannel2 =>
+    """
 
-        def sendStrings(s1: SessionChannel, s2: SessionChannel) = {
-          s1('Bob) ! "quux"
-          s2('Bar) ! "quux"
-          receiveAnswers(s2, s1)
-        }
+    val delegation2 = """
+    protocol Delegation2 {
+      role Foo, Bar;
+      String from Foo to Bar;
+      Boolean from Bar to Foo;
+    }
+    """
 
-        def receiveAnswers(s2: SessionChannel, s1: SessionChannel) = {
-          s2('Bar).?[Boolean]
-          s1('Bob).?[Int]
-        }
+    val alice = newLocalPort(delegation1, 'Alice)
+    val foo = newLocalPort(delegation2, 'Foo)
+    
+    def sendStrings(s1: SessionChannel, s2: SessionChannel) = {
+      s1 ! 'Bob -> "quux"
+      s2 ! 'Bar -> "quux"
+      receiveAnswers(s2, s1)
+    }
 
-        sharedChannel.join('Alice) { s =>
-          sharedChannel2.join('Foo) { s2 =>
-            sendStrings(s, s2)
-          }
-        }
+    def receiveAnswers(s2: SessionChannel, s1: SessionChannel) = {
+      s2.?[Boolean]('Bar)
+      s1.?[Int]('Bob)
+    }
+
+    alice.bind { s =>
+      foo.bind { s2 =>
+        sendStrings(s, s2)
       }
     }
   }

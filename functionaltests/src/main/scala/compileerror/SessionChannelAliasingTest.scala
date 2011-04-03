@@ -1,28 +1,26 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{ParticipantChannel, SharedChannel}
+import uk.ac.ic.doc.sessionscala.{SessionChannel, PublicPort}, PublicPort._
 
 /**
  * Created by: omp08
  */
 
 object SessionChannelAliasingTest {
-  def m {
+  def m() {
 
-    SharedChannel.withLocalChannel("../compileok/buyerseller/buyerseller.spr") {
-      sharedChan =>
-
-      actor {
-        sharedChan.join('Buyer) { s =>
-          val s1 = s // wrong
-        }
+    val buyer = newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Buyer)
+    val seller = newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Seller)
+    actor {
+      buyer.bind { s =>
+        val s1 = s // wrong
       }
+    }
 
-      sharedChan.join('Seller) { s =>
-        var s1: (Symbol => ParticipantChannel) = null
-        s1 = s // wrong
-      }
+    seller.bind { s =>
+      var s1: SessionChannel = null
+      s1 = s // wrong
     }
   }
 }

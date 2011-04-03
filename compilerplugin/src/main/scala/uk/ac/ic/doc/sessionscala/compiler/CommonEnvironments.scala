@@ -248,5 +248,5 @@ trait CommonEnvironments {
   }
 
   def illegalReturn() = throw new SessionTypeCheckingException(
-    "Return statements are not allowed inside session methods or accept/join blocks")
+    "Return statements are not allowed inside session methods or bind/join blocks")
 }
