@@ -2,7 +2,6 @@ package uk.ac.ic.doc.sessionscala
 
 import uk.ac.ic.doc.sessionscala.PublicPort._
 import org.scalatest.{BeforeAndAfterEach, FunSuite, Tag}
-import concurrent.ops.spawn
 import actors.Actor, Actor._
 
 class PublicPortSpec extends FunSuite with Timeouts {
@@ -63,7 +62,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
       val otherAlice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
       val otherBob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
       expectTimeout(1000) {
-        spawn { startSession(otherAlice, otherBob) }
+        actor { startSession(otherAlice, otherBob) }
 
         alice.bind { s => didRun = true }
       }
@@ -75,12 +74,12 @@ class PublicPortSpec extends FunSuite with Timeouts {
       var aliceStarted = false; var bobStarted = false;
       //println("starting test")
       withTimeoutAndWait {
-        spawn {
+        actor {
           //println("calling startSession")
           startSession(alice, bob)
         }
         //println("before alice spawn")
-        spawn {
+        actor {
           //println("calling bind on alice")
           alice.bind { s =>
             //println("in alice")
@@ -102,11 +101,11 @@ class PublicPortSpec extends FunSuite with Timeouts {
     test("invited participants can talk", Tag("talk")) {
       var aliceOk = false; var bobOk = false
       withTimeoutAndWait {
-        spawn { startSession(alice, bob) 
+        actor { startSession(alice, bob) 
           //println("done starting session")
         }
 
-        spawn { alice.bind { s =>
+        actor { alice.bind { s =>
           s ! 'Bob -> 42
           //println("Alice sent 42 to Bob")
           val recv = s.?[String]('Bob)
@@ -129,9 +128,9 @@ class PublicPortSpec extends FunSuite with Timeouts {
     test("syntax for labels using implicit conversion", Tag("labels")) {
       var aliceOk = false; var bobOk = false ; var bobOk2 = false
       withTimeoutAndWait {
-        spawn { startSession(alice, bob) }
+        actor { startSession(alice, bob) }
 
-        spawn { alice.bind { s =>
+        actor { alice.bind { s =>
           s ! 'Bob -> 'foo(42)
           val recv = s.?[(String,Int)]('Bob,'bar)
           aliceOk = recv == ("foo",43)
@@ -161,14 +160,14 @@ class PublicPortSpec extends FunSuite with Timeouts {
     test("allows encoding of race condition with 2 binds on same port", Tag("race")) {
       var didRun1 = false ; var didRun2 = false ; var didRunBar = true
       withTimeoutAndWait {
-        spawn { startSession(alice, bob) }
-        spawn {
+        actor { startSession(alice, bob) }
+        actor {
           alice.bind { _ => didRunBar = true}
         }
-        spawn {
+        actor {
           bob.bind { _ => didRun1 = true }
         }
-        spawn {
+        actor {
           bob.bind { _ => didRun2 = true }
         }
       }
@@ -182,7 +181,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
       var fooReceived = false ; var barReceived = false
       val single = freshPort("protocol P { role Single; }", 'Single)
       withTimeout(1000) {
-        spawn { startSession(single) }
+        actor { startSession(single) }
         val fooActor = actor {
           receive {
             case Foo => fooReceived = true
@@ -207,8 +206,8 @@ class PublicPortSpec extends FunSuite with Timeouts {
       val quux = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Quux)
       var fromBar: Any = null ; var fromQuux: Any = null
       withTimeout(1000) {
-        spawn { startSession(foo, bar, quux) }
-        spawn {
+        actor { startSession(foo, bar, quux) }
+        actor {
           foo.bind { s =>
             fromBar = s ? 'Bar
             println("got from bar")
@@ -216,12 +215,12 @@ class PublicPortSpec extends FunSuite with Timeouts {
           }
         }
 
-        spawn { bar.bind { s =>
+        actor { bar.bind { s =>
           sleep()
           s ! 'Foo -> 42
         }}
 
-        spawn { quux.bind { s =>
+        actor { quux.bind { s =>
           s ! 'Foo -> 'a'
         }}
       }
