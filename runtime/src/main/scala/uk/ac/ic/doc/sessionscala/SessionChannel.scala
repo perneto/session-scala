@@ -56,8 +56,8 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   
   def buildBody[T](roles: Set[Symbol], f: PartialFunction[(Symbol,Any), T]): PartialFunction[Any,T] = {
     val filtMap = map filterKeys(roles.contains _) 
-    val srcRoles = filtMap map { case (role,cp) => (cp.fromOther -> role) }
-    {
+    val srcRoles = for ((role,cp) <- filtMap) yield cp.fromOther -> role
+    return {
       case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) =>
         f((srcRoles(chan), msg))
     }

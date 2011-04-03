@@ -36,7 +36,9 @@ trait ScribbleModelFactories {
     val c = new Choice
     c.setFromRole(src)
     c.setToRole(dst)
-    c.getWhens().addAll((branches map {case (tref, block) => createWhen(tref,block)} asJava))
+    c.getWhens().addAll(
+      (for ((tref, block) <- branches) yield createWhen(tref,block)) asJava
+    )
     c
   }
   def createChoice(src: Role, msig: MessageSignature, block: LA): Choice = {
@@ -48,7 +50,7 @@ trait ScribbleModelFactories {
   def createChoice(dst: Role, branches: List[(MessageSignature, LA)]): Choice = {
     val c = new Choice
     c.setToRole(dst)
-    branches.foreach {case (label, block) => c.getWhens.add(createWhen(label, block))}
+    for ((label, block) <- branches) c.getWhens.add(createWhen(label, block))
     c
   }
   def createChoice(orig: Choice, branches: Seq[When]): Choice = {

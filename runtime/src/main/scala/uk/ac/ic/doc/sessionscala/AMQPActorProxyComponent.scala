@@ -29,20 +29,19 @@ trait AMQPActorProxyComponent {
     def setChanMap(_chanMap: Map[Symbol,ChannelPair]) {
       assert(!set); set = true
       chanMap = _chanMap
-      srcRoleChans = chanMap map { case (role, ChannelPair(toRole, fromRole)) =>
-        (role -> fromRole)  
-      }
-
+      srcRoleChans = for ((role, ChannelPair(toRole, fromRole)) <- chanMap)
+                     yield (role -> fromRole)  
+            
       outputChans = chanMap map { case (role, ChannelPair(toRole, fromRole)) =>
         val (queueToRole: String, otherBroker: String, otherPort: Int, 
              otherUser: String, otherPwd: String) = sessMap(role).address
         val chanForRole = 
-              if (!sameBroker(otherBroker, otherPort)) amqpChan
-              else {
-                val c = connect(createFactory(otherBroker, otherPort, otherUser, otherPwd))
-                openedChans += c
-                c              
-              }
+          if (!sameBroker(otherBroker, otherPort)) amqpChan
+          else {
+            val c = connect(createFactory(otherBroker, otherPort, otherUser, otherPwd))
+            openedChans += c
+            c              
+          }
         (toRole -> (role, queueToRole, chanForRole))
       }          
     }

@@ -87,7 +87,7 @@ object PublicPort {
   }
 
   def forwardInvite(map: (PublicPort, PublicPort)*) {
-    map foreach { case (from, to) =>
+    for ((from,to) <- map) {
       actor { to.send(from.receive()) }
     }
   }

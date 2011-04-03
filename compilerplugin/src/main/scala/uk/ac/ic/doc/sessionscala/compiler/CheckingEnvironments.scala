@@ -97,7 +97,7 @@ val scribbleJournal: Journal
       //println("leave join: " + joinAsRole + ", ste: " + ste + ", newSte: " + newSte)
       val newEnv = parent.updated(newSte)
 
-      scopedSessions foreach { case (chan, session) =>
+      for ((chan, session) <- scopedSessions) {
         if (!session.isComplete)
           throw new RecoverableTypeCheckingException("Session not completed on channel "
                 + chan + " for role " + joinAsRole + ", remaining activities: " + session.remaining,
@@ -146,15 +146,17 @@ val scribbleJournal: Journal
       def eval[P,R](f: PartialFunction[P,R], x: P): Option[R] =
         if (f.isDefinedAt(x)) Some(f(x)) else None
       val chansWithIndex = delegatedChans.zipWithIndex
-      val chansWithRetIndexOpt = chansWithIndex map { case (c,i) =>
-        (c, infEnv.returnRank(method, i))
-      }
-      val chansWithRetChanOpt = chansWithRetIndexOpt map { case (c, retIndexOpt) =>
-        (c, for (retIndex <- retIndexOpt; retChan <- eval(returnedChans, retIndex)) yield retChan)
-      }
-      (chansWithRetChanOpt.zipWithIndex) map { case ((chan, retChanOption), index) =>
-        (chan, index, infEnv.inferredSessionType(method, index), retChanOption)
-      }
+      val chansWithRetIndexOpt = for ((c,i) <- chansWithIndex)
+        yield (c, infEnv.returnRank(method, i))
+      
+      val chansWithRetChanOpt = for ((c, retIndexOpt) <- chansWithRetIndexOpt) 
+        yield (c, 
+               for (retIndex <- retIndexOpt; retChan <- eval(returnedChans, retIndex)) 
+                   yield retChan)
+      
+      for (((chan, retChanOption), index) <- chansWithRetChanOpt.zipWithIndex) 
+        yield (chan, index, infEnv.inferredSessionType(method, index), retChanOption)
+      
       // result: List[(chan, chanRank, recur, retChanOpt)] with retChanOpt the correct name
       // corresponding to chan. The remaining session type for chan will be transferred
       // to retChanOpt (if defined).
