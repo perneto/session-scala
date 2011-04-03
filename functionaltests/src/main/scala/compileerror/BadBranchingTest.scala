@@ -1,6 +1,6 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.{PublicPort}
+import uk.ac.ic.doc.sessionscala.{Port}
 import compileok.buyerseller.{NotOK, OK}
 import actors.Actor.actor
 
@@ -10,7 +10,7 @@ import actors.Actor.actor
 
 object BadBranchingTest {
   def m() {
-    val sharedChan = PublicPort.newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Buyer)
+    val sharedChan = Port.newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Buyer)
     actor {
       sharedChan.bind { s =>
         s.receive('Seller) {

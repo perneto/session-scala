@@ -4,11 +4,11 @@ import scala.actors.{Channel => _, _}, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties}
 
-case class AMQPPublicPort(protocol: String, role: Symbol,
+case class AMQPPort(protocol: String, role: Symbol,
                      queueName: String,
                      brokerHost: String, port: Int,
                      user: String, pwd: String)
-        extends PublicPort
+        extends Port
         with AMQPSimpleMessageFormats
         with AMQPActorProxyComponent {
 

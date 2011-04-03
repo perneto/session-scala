@@ -1,6 +1,6 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.{PublicPort}
+import uk.ac.ic.doc.sessionscala.{Port}
 
 /**
  * Created by: omp08
@@ -9,7 +9,7 @@ import uk.ac.ic.doc.sessionscala.{PublicPort}
 object SessionOperationsInLoopTest {
   def main(args: Array[String]) {
 
-    val sharedChannel = PublicPort.newLocalPort("""
+    val sharedChannel = Port.newLocalPort("""
     protocol Delegation {
       role Alice, Bob;
       String from Alice to Bob;

@@ -2,8 +2,8 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{Actor, Channel, OutputChannel}, Actor._
 
-class PublicPortSameVM(val protocol: String, val role: Symbol)
-        extends PublicPort {
+class LocalPort(val protocol: String, val role: Symbol)
+        extends Port {
   case object Take
   case class Msg(m: Any)
   // this lets us play nicer with the actors scheduler than a java BlockingQueue
@@ -34,7 +34,7 @@ class PublicPortSameVM(val protocol: String, val role: Symbol)
     queueActor ! Msg(msg)
   }
 
-  def derived(name: String) = new PublicPortSameVM(protocol, role)
+  def derived(name: String) = new LocalPort(protocol, role)
 
   def convert(mapping: Map[Symbol, PrivatePort]): Map[Symbol, Actor] = {
     //println("got map: "+mapping)

@@ -1,7 +1,7 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{PublicPort, SessionChannel}
+import uk.ac.ic.doc.sessionscala.{Port, SessionChannel}
 
 /**
  * Created by: omp08
@@ -16,8 +16,8 @@ object DelegationReturningOneChannelIncompleteSessionTest {
       Int from Bob to Alice;
     }
     """
-    val alice = PublicPort.newLocalPort(delegation, 'Alice)
-    val bob = PublicPort.newLocalPort(delegation, 'Bob)
+    val alice = Port.newLocalPort(delegation, 'Alice)
+    val bob = Port.newLocalPort(delegation, 'Bob)
                                       
     def myMethod(s: SessionChannel): SessionChannel = {
       s ! 'Bob -> "foo"

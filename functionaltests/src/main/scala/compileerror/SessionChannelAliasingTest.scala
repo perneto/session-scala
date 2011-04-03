@@ -1,7 +1,7 @@
 package compileerror
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{SessionChannel, PublicPort}, PublicPort._
+import uk.ac.ic.doc.sessionscala.{SessionChannel, Port}, Port._
 
 /**
  * Created by: omp08

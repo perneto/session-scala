@@ -1,8 +1,8 @@
 package buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.{PublicPort}
-import PublicPort._
+import uk.ac.ic.doc.sessionscala.{Port}
+import Port._
 
 object BuyerSellerAMQP {
   def main(args: Array[String]) {

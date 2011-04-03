@@ -5,7 +5,7 @@ import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
 import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
-case class Invite(replyPort: PublicPort, protocol: String, role: Symbol)
+case class Invite(replyPort: Port, protocol: String, role: Symbol)
 case class AcceptedInvite(role: Symbol, replyPort: PrivatePort, port: PrivatePort)
 
 trait PrivatePort {
@@ -14,12 +14,12 @@ trait PrivatePort {
 
 //case class -> [L,R](left: L, right: R)
 
-object PublicPort {
-  def newLocalPort(protocol: String, role: Symbol): PublicPort =
-    new PublicPortSameVM(protocol, role)
+object Port {
+  def newLocalPort(protocol: String, role: Symbol): Port =
+    new LocalPort(protocol, role)
 
   def AMQPPort(protocol: String, role: Symbol, queueAddr: String = "",
-               user: String = "guest", password: String = "guest"): PublicPort = {
+               user: String = "guest", password: String = "guest"): Port = {
 
     def splitAddr(queueAddr: String) = {
       def checkLength2(array: Array[String]) {
@@ -42,7 +42,7 @@ object PublicPort {
     }
 
     val (name, brokerHost, brokerPort) = splitAddr(queueAddr)
-    AMQPPublicPort(protocol, role, name, brokerHost, brokerPort, user, password)
+    AMQPPort(protocol, role, name, brokerHost, brokerPort, user, password)
   }
 
   /**
@@ -54,7 +54,7 @@ object PublicPort {
    * Finally, sends out the final locations of all roles
    * to each private port obtained in the replies.
    */
-  def startSession(ports: PublicPort*) {
+  def startSession(ports: Port*) {
     checkPorts(ports)
     val sessID = UUID.randomUUID().toString
     val sessIDPort = ports(0).derived(sessID)
@@ -80,23 +80,23 @@ object PublicPort {
     }
   }
 
-  def checkPorts(ports: Seq[PublicPort]) {
+  def checkPorts(ports: Seq[Port]) {
     assert(ports.length > 0)
     var first = ports(0)
     for (p <- ports) assert(first.getClass == p.getClass)
   }
 
-  def forwardInvite(map: (PublicPort, PublicPort)*) {
+  def forwardInvite(map: (Port, Port)*) {
     for ((from,to) <- map) {
       actor { to.send(from.receive()) }
     }
   }
 }
 
-trait PublicPort {
+trait Port {
   val protocol: String
   val role: Symbol
-  def derived(name: String): PublicPort
+  def derived(name: String): Port
 
   def send(msg: Any)
 

@@ -1,8 +1,8 @@
 package compileok
 
 import actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.{PublicPort, SessionChannel}
-import uk.ac.ic.doc.sessionscala.PublicPort._
+import uk.ac.ic.doc.sessionscala.{Port, SessionChannel}
+import uk.ac.ic.doc.sessionscala.Port._
 
 /**
  * Created by: omp08

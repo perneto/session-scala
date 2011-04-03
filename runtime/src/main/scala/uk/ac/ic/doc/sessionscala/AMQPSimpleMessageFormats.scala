@@ -11,7 +11,7 @@ trait AMQPSimpleMessageFormats {
   def serialize(msg: Any): Array[Byte] = {
     //println("serialize: "+msg)
     msg match {
-      case Invite(AMQPPublicPort(_, _, queueName, brokerHost, port, user, pwd), proto, role) =>
+      case Invite(AMQPPort(_, _, queueName, brokerHost, port, user, pwd), proto, role) =>
         ("INVITE%"+proto+"%"+role.name+"%"+queueName+"%"+brokerHost+"%"+port+"%"+user+"%"+pwd).getBytes
       case _ => javaSerializeObject(msg)
     }
@@ -34,7 +34,7 @@ trait AMQPSimpleMessageFormats {
       val port = next().toInt
       val user = next()
       val pwd = next()
-      Invite(AMQPPublicPort(proto, role, queueName, brokerHost, port, user, pwd), proto, role)
+      Invite(AMQPPort(proto, role, queueName, brokerHost, port, user, pwd), proto, role)
       
     } else javaDeserializeObject(bytes)
   }

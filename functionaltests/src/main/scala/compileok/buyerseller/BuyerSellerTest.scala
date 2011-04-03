@@ -1,7 +1,7 @@
 package compileok.buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.PublicPort._
+import uk.ac.ic.doc.sessionscala.Port._
 
 
 object BuyerSellerTest {
