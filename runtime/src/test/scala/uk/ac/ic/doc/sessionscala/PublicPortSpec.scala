@@ -126,34 +126,47 @@ class PublicPortSpec extends FunSuite with Timeouts {
     }
 
     test("syntax for labels using implicit conversion", Tag("labels")) {
-      var aliceOk = false; var bobOk = false ; var bobOk2 = false
+      var aliceOk = false; var aliceOk2 = false
+      var bobOk = false ; var bobOk2 = false ; var bobOk3 = false
       withTimeoutAndWait {
         actor { startSession(alice, bob) }
 
         actor { alice.bind { s =>
           s ! 'Bob -> 'foo(42)
+          s ! 'Bob -> 'foo
+          s ! 'Bob -> 'label
+          
           val recv = s.?[(String,Int)]('Bob,'bar)
           aliceOk = recv == ("foo",43)
           //println("Alice got foo, 43")
 
-          s ! 'Bob -> 'foo
+          s.receive('Bob) {
+            case ('bar, (s:String, i:Int)) => aliceOk2 = true
+          }          
         }}
 
         bob.bind { s =>
+          s ! 'Alice -> 'bar("foo",43)
+          s ! 'Alice -> 'bar("foo",43)
+                    
           val recv = s.?[Int]('Alice,'foo)
           bobOk = recv == 42
           //println("Bob got 42")
-          s ! 'Alice -> 'bar("foo",43)
-          
+                    
           s.receive('Alice) {
             // TODO: Static checking for errors like ('Alice, ...)
             case 'foo => bobOk2 = true
           }
+          
+          s.?[Unit]('Alice, 'label)
+          bobOk3 = true
         }
       }
-      assert(aliceOk, "Alice was not able to communicate")
-      assert(bobOk, "Bob was not able to communicate")
-      assert(bobOk2, "Bob was not able to receive label")
+      assert(aliceOk, "Alice was not able to receive labelled msg with 2 values using ?")
+      assert(aliceOk2, "Alice was not able to receive labelled msg with 2 values using receive")
+      assert(bobOk, "Bob was not able to receive labelled msg with 1 value using ?")
+      assert(bobOk2, "Bob was not able to receive label with no value using receive")
+      assert(bobOk3, "Bob was not able to receive label with no value using ?")    
     }
 
     def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
@@ -211,7 +224,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
         actor {
           foo.bind { s =>
             fromBar = s ? 'Bar
-            println("got from bar")
+            //println("got from bar")
             fromQuux = s ? 'Quux
           }
         }

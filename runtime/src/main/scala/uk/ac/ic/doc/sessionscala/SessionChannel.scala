@@ -25,9 +25,8 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
 
   def ?[T](role: Symbol, label: Symbol): T = {
     map(role).fromOther.receive {
-      case Labelled(`label`, msg: Any) =>
-        val seq = msg.asInstanceOf[Seq[Any]]
-        extractMsg(seq).asInstanceOf[T]
+      case Labelled(`label`, msgs) =>
+        extractMsg(msgs)
       case label: Symbol =>
         ().asInstanceOf[T]
       case msg: Any =>
@@ -63,13 +62,17 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
     val filtMap = map filterKeys(roles.contains _) 
     val srcRoles = filtMap map { case (role,cp) => (cp.fromOther -> role) }
     {
-      case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) => 
-        f((srcRoles(chan), msg))
+      case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) =>
+        val realMsg = msg match {
+          case Labelled(label, msg) => (label, extractMsg(msg))
+          case x => x
+        }
+        f((srcRoles(chan), realMsg))
     }
   }
 
-  def extractMsg(seq: Seq[Any]) = {
-    seq match {
+  def extractMsg[T](seq: Seq[Any]): T = {
+    val tuple = seq match {
       case Seq(a) => a
       case Seq(a,b) => (a,b)
       case Seq(a,b,c) => (a,b,c)
@@ -77,7 +80,12 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
       case Seq(a,b,c,d,e) => (a,b,c,d,e)  
       case Seq(a,b,c,d,e,f) => (a,b,c,d,e,f)  
       case Seq(a,b,c,d,e,f,g) => (a,b,c,d,e,f,g)  
+      case Seq(a,b,c,d,e,f,g,h) => (a,b,c,d,e,f,g,h)  
+      case Seq(a,b,c,d,e,f,g,h,i) => (a,b,c,d,e,f,g,h,i)
+      case Seq(a,b,c,d,e,f,g,h,i,j) => (a,b,c,d,e,f,g,h,i,j)
+      case Seq(a,b,c,d,e,f,g,h,i,j,k) => (a,b,c,d,e,f,g,h,i,j,k)
       // TODO extend to Tuple22
     }
+    tuple.asInstanceOf[T]
   }
 }

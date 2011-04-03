@@ -12,7 +12,7 @@ trait PrivatePort {
   def send(msg: Any)
 }
 
-case class Labelled(label: Symbol, msg: Any)
+case class Labelled(label: Symbol, msg: Seq[Any])
 
 //case class -> [L,R](left: L, right: R)
 
