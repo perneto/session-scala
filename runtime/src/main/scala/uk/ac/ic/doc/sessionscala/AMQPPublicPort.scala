@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import scala.actors.{Channel => _, _}, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
-import com.rabbitmq.client.{Channel, MessageProperties, ConnectionFactory}
+import com.rabbitmq.client.{Channel, MessageProperties}
 
 case class AMQPPublicPort(protocol: String, role: Symbol,
                      queueName: String,
@@ -96,11 +96,12 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
   def consumeOne(chan: Channel, queue: String): Any = {
     // auto-ack: true
     val consumerTag = chan.basicConsume(queue, true, new SendMsgConsumer(chan, Actor.self))
-    val msg = Actor.self.receive {
-      case bytes: Array[Byte] => deserialize(bytes)
+    self.receive {
+      case bytes: Array[Byte] => 
+        val msg = deserialize(bytes)
+        chan.basicCancel(consumerTag)
+        msg
     }
-    chan.basicCancel(consumerTag)
-    msg
   }
   
   def ensureQueueExists(chan: Channel) {
