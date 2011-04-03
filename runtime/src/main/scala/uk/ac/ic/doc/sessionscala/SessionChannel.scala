@@ -43,13 +43,14 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
     self.receive(buildBody(role, otherRoles, f))
   }
 
-  def buildBody[T](role: Symbol, otherRoles: Seq[Symbol], f: PartialFunction[(Symbol,Any), T]) = {
-    var body: PartialFunction[Any, T] = Map()
-    for (srcRole <- role +: otherRoles)
-      body = body orElse {
-        case chan ! msg if chan == map(srcRole).fromOther => f((srcRole, msg))
-      }
-    body
+  def buildBody[T](role: Symbol, otherRoles: Seq[Symbol], f: PartialFunction[(Symbol,Any), T]): PartialFunction[Any,T] = {
+    val roles = Set(role) ++ otherRoles
+    val filtMap = map filterKeys(roles.contains _) 
+    val srcRoles = filtMap map { case (role,cp) => (cp.fromOther -> role) }
+    {
+      case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) => 
+        f((srcRoles(chan), msg))
+    }
   }
 
   def extractMsg(seq: Seq[Any]) = {
@@ -58,6 +59,9 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
       case Seq(a,b) => (a,b)
       case Seq(a,b,c) => (a,b,c)
       case Seq(a,b,c,d) => (a,b,c,d)
+      case Seq(a,b,c,d,e) => (a,b,c,d,e)  
+      case Seq(a,b,c,d,e,f) => (a,b,c,d,e,f)  
+      case Seq(a,b,c,d,e,f,g) => (a,b,c,d,e,f,g)  
       // TODO extend to Tuple22
     }
   }
