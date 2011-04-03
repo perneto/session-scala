@@ -20,10 +20,8 @@ trait AMQPActorProxyComponent {
                        amqpChan: AMQPChannel, roleQueue: String, ourRole: Symbol) extends Actor {
     // self instead of this would give the actor for the thread creating this object.
     // self is only valid in the act method
-    amqpChan.basicConsume(roleQueue, true, new SendMsgConsumer(amqpChan, this))
-    // noAck = true, automatically sends acks todo: probably should be false here
-    println("Proxy for role "+ourRole+" is consuming messages on queue: "+roleQueue+"...")
-
+    var consumerTag: String = null 
+    
     var chanMap: Map[Symbol, ChannelPair] = null
     var outputChans: Map[Channel[Any], (Symbol, String, AMQPChannel)] = null
     var srcRoleChans: Map[Symbol, Channel[Any]] = null
@@ -49,35 +47,39 @@ trait AMQPActorProxyComponent {
       }          
     }
     var openedChans = Set[AMQPChannel]()
-    
+
+
+    override def start() = {
+      // noAck = true, automatically sends acks todo: probably should be false here
+      consumerTag = amqpChan.basicConsume(roleQueue, true, new SendMsgConsumer(amqpChan, this))
+      //println("Proxy for role "+ourRole+" is consuming messages on queue: "+roleQueue+"...")      
+      super.start()
+    }
+
     def act() = loop { 
       react {
         case (chan: Channel[Any]) ! msg if outputChans.contains(chan) =>
           val dstRole = outputChans(chan)._1
           val otherQueue = outputChans(chan)._2
           val chanForRole = outputChans(chan)._3
-          println("Got message for "+dstRole+", sending to: "+otherQueue+", msg: "+msg+", on chan: "+chan)
+          //println("Got message for "+dstRole+", sending to: "+otherQueue+", msg: "+msg+", on chan: "+chan)
           publish(chanForRole, otherQueue, (ourRole,msg))
           
         case rawMsg: Array[Byte] =>
           val pair = deserialize(rawMsg)
-          println(pair)
           val (senderRole:Symbol, msg) = pair
-          println("Proxy for "+ourRole+" received: "+(senderRole,msg))
+          //println("Proxy for "+ourRole+" received: "+pair)
           srcRoleChans(senderRole) ! msg
         
         case Quit =>
+          amqpChan.basicCancel(consumerTag)
           for (c <- openedChans) close(c)
-          //println("#############################Proxy for ourRole "+ourRole+" exiting")
+          //println("Proxy for role "+ourRole+" exiting")
+          reply(())
           exit()
       }
     }
 
-    override def !(msg: Any) {
-      println("! on "+this+", msg:"+msg)
-      super.!(msg)
-    }
-    
     def sameBroker(broker: String, port: Int): Boolean =
           broker != amqpChan.getConnection.getHost || 
           port != amqpChan.getConnection.getPort

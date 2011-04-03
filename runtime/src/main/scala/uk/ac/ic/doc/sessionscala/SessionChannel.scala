@@ -6,10 +6,10 @@ import actors.{Channel, !}
 case class ChannelPair(toOther: Channel[Any], fromOther: Channel[Any])
 
 class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
-  println("Creating SessionChannel: "+this+", mapping: "+map)
+  //println("Creating SessionChannel: "+this+", mapping: "+map)
   def !(msg: (Symbol, Any)) = msg match {
     case (role: Symbol, msg: Any) => 
-      println("send to role: "+role+" at: "+map(role).toOther)
+      //println("send to role: "+role+" at: "+map(role).toOther)
       map(role).toOther ! msg
   }
 

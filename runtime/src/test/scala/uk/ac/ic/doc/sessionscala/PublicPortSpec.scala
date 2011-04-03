@@ -16,8 +16,8 @@ class PublicPortSpec extends FunSuite with Timeouts {
   }
 
   override def nestedSuites = List(
-    new SessionPortSpecImpl("AMQP", {(proto,role) => AMQPPort(proto, role, randomName())})//,
-    //new SessionPortSpecImpl("Shared Mem", newLocalPort)
+    new SessionPortSpecImpl("AMQP", {(proto,role) => AMQPPort(proto, role, randomName())}),
+    new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
   class SessionPortSpecImpl(name: String,
@@ -38,11 +38,9 @@ class PublicPortSpec extends FunSuite with Timeouts {
       expectTimeout(500) {
         startSession(alice)
       }
-      println("finished testcase")
     }
 
     test("role not in protocol: error") {
-      println("started next")
       intercept[IllegalArgumentException] {
         freshPort("protocol Test { role Alice, Bob; }", 'Foo)
       }
@@ -67,9 +65,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
       expectTimeout(1000) {
         spawn { startSession(otherAlice, otherBob) }
 
-        alice.bind { s => didRun = true
-        println("didRun!!")
-        }
+        alice.bind { s => didRun = true }
       }
 
       assert(!didRun, "Alice should not have started as there was no invite for Alice on default test port")
@@ -77,27 +73,27 @@ class PublicPortSpec extends FunSuite with Timeouts {
 
     test("startSession/bind correctly starts session", Tag("init")) {
       var aliceStarted = false; var bobStarted = false;
-      println("starting test")
+      //println("starting test")
       withTimeoutAndWait {
         spawn {
-          println("calling startSession")
+          //println("calling startSession")
           startSession(alice, bob)
         }
-        println("before alice spawn")
+        //println("before alice spawn")
         spawn {
-          println("calling bind on alice")
+          //println("calling bind on alice")
           alice.bind { s =>
-            println("in alice")
+            //println("in alice")
             aliceStarted = true
           }
         }
 
-        println("calling bind on bob")
+        //println("calling bind on bob")
         bob.bind { s =>
-          println("in bob")
+          //println("in bob")
           bobStarted = true
         }
-        println("bob exited")
+        //println("bob exited")
       }
       assert(aliceStarted, "Alice did not start")
       assert(bobStarted, "Bob did not start")
@@ -107,23 +103,23 @@ class PublicPortSpec extends FunSuite with Timeouts {
       var aliceOk = false; var bobOk = false
       withTimeoutAndWait {
         spawn { startSession(alice, bob) 
-          println("done starting session")
+          //println("done starting session")
         }
 
         spawn { alice.bind { s =>
           s ! 'Bob -> 42
-          println("Alice sent 42 to Bob")
+          //println("Alice sent 42 to Bob")
           val recv = s.?[String]('Bob)
-          println("Alice received "+recv+" from Bob")
+          //println("Alice received "+recv+" from Bob")
           aliceOk = recv == "foo"
         }}
 
         bob.bind { s =>
           val recv = s.?[Int]('Alice)
-          println("Bob received "+recv+" from Alice")
+          //println("Bob received "+recv+" from Alice")
           bobOk = recv == 42
           s ! 'Alice -> "foo"
-          println("Bob sent foo to Alice")
+          //println("Bob sent foo to Alice")
         }
       }
       assert(aliceOk, "Alice was not able to communicate")
@@ -139,7 +135,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
           s ! 'Bob -> 'foo(42)
           val recv = s.?[(String,Int)]('Bob,'bar)
           aliceOk = recv == ("foo",43)
-          println("Alice got foo, 43")
+          //println("Alice got foo, 43")
 
           s ! 'Bob -> 'foo
         }}
@@ -147,7 +143,7 @@ class PublicPortSpec extends FunSuite with Timeouts {
         bob.bind { s =>
           val recv = s.?[Int]('Alice,'foo)
           bobOk = recv == 42
-          println("Bob got 42")
+          //println("Bob got 42")
           s ! 'Alice -> 'bar("foo",43)
           
           s.receive('Alice) {
@@ -176,13 +172,13 @@ class PublicPortSpec extends FunSuite with Timeouts {
           bob.bind { _ => didRun2 = true }
         }
       }
-      sleep()
+      Thread.sleep(1000)
       assert(didRunBar, "bar should have started")
       assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
     }
 
     case object Foo ; case object Bar
-    test("doesn't interfere with standard actor messaging") {
+    test("doesn't interfere with standard actor messaging", Tag("actors")) {
       var fooReceived = false ; var barReceived = false
       val single = freshPort("protocol P { role Single; }", 'Single)
       withTimeout(1000) {
@@ -209,13 +205,14 @@ class PublicPortSpec extends FunSuite with Timeouts {
       val foo = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Foo)
       val bar = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Bar)
       val quux = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Quux)
-      var barOk = false; var quuxOk = false
+      var fromBar: Any = null ; var fromQuux: Any = null
       withTimeout(1000) {
         spawn { startSession(foo, bar, quux) }
         spawn {
           foo.bind { s =>
-            barOk = (s ? 'Bar) == 42
-            quuxOk = (s ? 'Quux) == 'a'
+            fromBar = s ? 'Bar
+            println("got from bar")
+            fromQuux = s ? 'Quux
           }
         }
 
@@ -229,12 +226,12 @@ class PublicPortSpec extends FunSuite with Timeouts {
         }}
       }
 
-      Thread.sleep(800) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
-      assert(barOk)
-      assert(quuxOk)
+      sleep(2000) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
+      assert(fromBar == 42, "Foo should have received 42 from Bar, got: "+fromBar)
+      assert(fromQuux == 'a', "Foo should have received 'a' from Quux, got:"+fromQuux)
     }
 
-    // Too long for routine testing
+    // Too long/resource-intensive for routine testing
     ignore("many waiting binds don't blow the stack", Tag("slow")) {
       val manyWaiting = freshPort("protocol P { role One, Other; }", 'One)
       for (i <- List.range(1,1000000)) {

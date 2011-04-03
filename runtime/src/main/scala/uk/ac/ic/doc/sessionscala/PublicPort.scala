@@ -6,7 +6,7 @@ import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
 case class Invite(replyPort: PublicPort, protocol: String, role: Symbol)
-case class AcceptedInvite(role: Symbol, port: PrivatePort)
+case class AcceptedInvite(role: Symbol, replyPort: PrivatePort, port: PrivatePort)
 
 trait PrivatePort {
   def send(msg: Any)
@@ -51,29 +51,30 @@ object PublicPort {
    * Blocks until all session ports have replied with the definitive
    * location of the process that accepted the invitation
    * (can be different because of forwarding).
+   * Finally, sends out the final locations of all roles
+   * to each private port obtained in the replies.
    */
   def startSession(ports: PublicPort*) {
     checkPorts(ports)
     val sessID = UUID.randomUUID().toString
     val sessIDPort = ports(0).derived(sessID)
-    println("sending invites")
+    //println("sending invites")
     ports foreach { p =>
       p.send(Invite(sessIDPort, p.protocol, p.role))
     }
-    println("Finished sending invites")
+    //println("Finished sending invites")
     val replies = for (i <- 1 to ports.length)
-      yield sessIDPort.receive() match {
-        case acc: AcceptedInvite => acc
-      }
+      yield sessIDPort.receive().asInstanceOf[AcceptedInvite]
     val mapping = finalLocationsMapping(replies)
-    mapping.values foreach { pp =>
-      println("send mapping to: "+pp)
-      pp.send(mapping)
+    val privPorts = mapping.values
+    for (rp <- replies map (_.replyPort)) {
+      //println("send mapping to: "+rp)
+      rp.send(mapping)
     }
   }
 
   def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivatePort] = {
-    (replies foldLeft Map[Symbol, PrivatePort]()) { case (result, AcceptedInvite(role, pp)) =>
+    (replies foldLeft Map[Symbol, PrivatePort]()) { case (result, AcceptedInvite(role, _, pp)) =>
       result + (role -> pp)
     }
   }

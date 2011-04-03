@@ -29,6 +29,7 @@ object AMQPUtils {
   }
   
   def close(chan: Channel) {
+    //println("closing: "+chan)
     chan.getConnection.close()
   }
   
@@ -36,9 +37,6 @@ object AMQPUtils {
     val chan = connect(fact)
     try {
       f(chan)
-    } catch {
-      case e => e.printStackTrace
-      throw e
     } finally {
       close(chan)
     }

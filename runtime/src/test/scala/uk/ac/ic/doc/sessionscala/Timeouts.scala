@@ -41,7 +41,8 @@ trait Timeouts extends FunSuite {
   }
 
   def withTimeoutAndWait[T](block: => T): T = withTimeoutAndWait(5000,300)(block)
-  def sleep() = Thread.sleep(300)
+  def sleep() = Thread.sleep(250)
+  def sleep(millis: Int) = Thread.sleep(millis)
   
   def expectTimeout(timeout: Int)(block: => Any): Unit = 
     callWithTimeout(timeout)(block) match {

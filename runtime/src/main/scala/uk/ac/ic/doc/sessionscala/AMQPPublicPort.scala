@@ -1,7 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import messageformats.AMQPMessageFormats
-import scala.actors.{Channel => _, _}
+import scala.actors.{Channel => _, _}, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties, ConnectionFactory}
 
@@ -17,14 +16,14 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
   def fact = createFactory(brokerHost, port, user, pwd)  
   
   def send(msg: Any) = withChan(fact) { chan =>
-    println("Port for "+role+": send msg: "+msg+" to queue: "+queueName)
+    //println("Port for "+role+": send msg: "+msg+" to queue: "+queueName)
     ensureQueueExists(chan)
-    println("declared queue "+queueName)
+    //println("declared queue "+queueName)
     publish(chan, queueName, msg)
   }
 
   def receive(): Any = withChan(fact) { chan =>
-    println("Port for "+role+": receive from: "+queueName)
+    //println("Port for "+role+": receive from: "+queueName)
     ensureQueueExists(chan)
     consumeOne(chan, queueName)
   }
@@ -32,12 +31,12 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
   def derived(name: String) = copy(queueName = name)
 
   def bind[T](act: SessionChannel => T): T = {
-    println("bind: " + role + ", waiting for invite on: " + queueName)
+    //println("bind: " + role + ", waiting for invite on: " + queueName)
     withChan(fact) { chan =>
       ensureQueueExists(chan)
-      println("bind "+role+" consuming invite on: "+queueName)
+      //println("bind "+role+" consuming invite on: "+queueName)
       val Invite(sessIDPort, invProtocol, invRole) = consumeOne(chan, queueName)
-      println("got invite: " + invRole)
+      //println("got invite: " + invRole)
       
       if (role != invRole) {
         println("WARNING: Got invite for another role: "+invRole+
@@ -52,17 +51,21 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
         // server-named, non-durable, exclusive, non-autodelete
         // non-autodelete because there is a short consume interruption between mapping receive and ActorProxy start
         val declareOK = chan.queueDeclare("",false,true,false,null)
-        val privateQueue = declareOK.getQueue
+        val sessionQueue = declareOK.getQueue
         
+        val declareOk2 = chan.queueDeclare()
+        val replyQueue = declareOk2.getQueue
         sessIDPort.send(
-          AcceptedInvite(invRole, 
-                         AMQPPrivatePort(privateQueue, brokerHost, port, user, pwd))
+          AcceptedInvite(invRole,
+                         AMQPPrivatePort(replyQueue, brokerHost, port, user, pwd),
+                         AMQPPrivatePort(sessionQueue, brokerHost, port, user, pwd))
         )
-        val mapping = consumeOne(chan, privateQueue).asInstanceOf[Map[Symbol,AMQPPrivatePort]]
-        //FIXME: Could lose messages here if consumer already received the first session message
-        println("Got mapping from inviter: "+mapping)
+        val mapping = consumeOne(chan, replyQueue).asInstanceOf[Map[Symbol,AMQPPrivatePort]]
+        // autodelete replyQueue is deleted here (after consumer exits)
         
-        val proxy = new AMQPActorProxy(mapping, chan, privateQueue, role)
+        //println("Got mapping from inviter: "+mapping)
+        
+        val proxy = new AMQPActorProxy(mapping, chan, sessionQueue, role)
         val chanMap = (protocolRoles foldLeft Map[Symbol, ChannelPair]()) { case (result, otherRole) =>
           // binds the channel to the current actor (Actor.self). 
           // self is the only actor that can receive on the channel
@@ -72,23 +75,24 @@ case class AMQPPublicPort(protocol: String, role: Symbol,
         }
             
         proxy.setChanMap(chanMap)      
-        println(role+": Mapping: "+chanMap)
+        //println(role+": Mapping: "+chanMap)
         
         proxy.start()      
         val res = act(new SessionChannel(role, chanMap))
         //println("!!!!!!!!!!!!!!!!bind: call to act finished")
-        proxy ! Quit
+        proxy !? Quit
         res
       }
     }
   }
 
   def publish(chan: Channel, queue: String, msg: Any) {
-    println("publishing: "+msg+"to queue: "+queue)
+    //println("publishing: "+msg+" to queue: "+queue)
     chan.basicPublish("", queue, MessageProperties.BASIC, serialize(msg))
-    println("done: "+msg+" to "+queue)
+    //println("done: "+msg+" to "+queue)
   }
 
+  // Only use when there's a single message in the queue max guaranteed
   def consumeOne(chan: Channel, queue: String): Any = {
     // auto-ack: true
     val consumerTag = chan.basicConsume(queue, true, new SendMsgConsumer(chan, Actor.self))
