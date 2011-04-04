@@ -2,15 +2,14 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.Actor.self
 import actors.{Channel, !}
+import uk.ac.ic.doc.sessionscala.Port.->
 
 class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   //println("Creating SessionChannel: "+this+", mapping: "+map)
-  def !(msg: (Symbol, Any)) = msg match {
-    case (role: Symbol, msg: Any) => 
+  def !(msg: (Symbol,Any)) =  
       //println("send to role: "+role+" at: "+map(role).toOther)
-      map(role).toOther ! msg
-  }
-
+      map(msg._1).toOther ! msg._2
+  
   def ?[T](role: Symbol): T = {
     map(role).fromOther.receive {
       case label: Symbol =>
@@ -29,7 +28,7 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   }
 
   def react(role1: Symbol, role2: Symbol, otherRoles: Symbol*)
-           (f: PartialFunction[(Symbol,Any), Unit]): Nothing = {
+           (f: PartialFunction[->, Unit]): Nothing = {
     self.react(buildBody(Set(role1,role2) ++ otherRoles, f))
   }
   
@@ -42,22 +41,22 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   }
   
   def receive[T](role1: Symbol, role2: Symbol, otherRoles: Symbol*)
-                (f: PartialFunction[(Symbol,Any), T]): T = {
+                (f: PartialFunction[->, T]): T = {
     self.receive(buildBody(Set(role1,role2) ++ otherRoles, f))
   }
 
-  def addRole[T](role: Symbol, f: PartialFunction[Any,T]): PartialFunction[(Symbol,Any),T] = 
-    new PartialFunction[(Symbol,Any),T] {
-      def isDefinedAt(x: (Symbol, Any)) = x._1 == role && f.isDefinedAt(x._2)
-      def apply(x: (Symbol, Any)) = f.apply(x._2)
+  def addRole[T](role: Symbol, f: PartialFunction[Any,T]): PartialFunction[->,T] = 
+    new PartialFunction[->,T] {
+      def isDefinedAt(x: ->) = x.role == role && f.isDefinedAt(x.contents)
+      def apply(x: ->) = f.apply(x.contents)
     }
   
-  def buildBody[T](roles: Set[Symbol], f: PartialFunction[(Symbol,Any), T]): PartialFunction[Any,T] = {
+  def buildBody[T](roles: Set[Symbol], f: PartialFunction[->, T]): PartialFunction[Any,T] = {
     val filtMap = map filterKeys(roles.contains _) 
     val srcRoles = for ((role,cp) <- filtMap) yield cp.fromOther -> role
     return {
       case (chan: Channel[Any]) ! msg if srcRoles.contains(chan) =>
-        f((srcRoles(chan), msg))
+        f(->(srcRoles(chan),msg))
     }
   }
   

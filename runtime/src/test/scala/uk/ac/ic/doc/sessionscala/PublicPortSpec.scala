@@ -186,6 +186,32 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       assert(bobOk3, "Bob was not able to receive label with no value using ?")    
     }
 
+    test("Receive from multiple roles", Tag("rcvmulti")) {
+      var rcvOk = false
+      val proto = """
+        protocol P { role A, B; }
+      """
+      val a = freshPort(proto, 'A)
+      val b = freshPort(proto, 'B)
+      
+      withTimeoutAndWait {
+        actor { startSession(a,b) }
+        actor {
+          a.bind { s => 
+            s ! 'B -> ('label, 42, "foo")
+          }
+        }
+        b.bind { s =>
+          s.receive('A,'B) {
+            case 'A -> (('label, i, str)) => rcvOk = true
+            case 'B -> (i:Int) =>
+          }
+        } 
+      }
+      
+      assert(rcvOk, "B should have received message using multi-source receive")
+    }
+
     def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
 
     test("allows encoding of race condition with 2 binds on same port", Tag("race")) {

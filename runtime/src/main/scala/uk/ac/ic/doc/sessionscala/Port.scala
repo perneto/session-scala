@@ -37,6 +37,8 @@ object Port {
     val (name, brokerHost, brokerPort) = splitAddr(queueAddr)
     AMQPPortImpl(protocol, role, name, brokerHost, brokerPort, user, password)
   }
+  
+  case class ->(role: Symbol, contents: Any)
 
   /**
    * Sends out invites for a new session to all session ports,
