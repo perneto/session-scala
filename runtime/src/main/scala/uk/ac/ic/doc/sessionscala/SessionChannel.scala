@@ -3,8 +3,6 @@ package uk.ac.ic.doc.sessionscala
 import actors.Actor.self
 import actors.{Channel, !}
 
-case class ChannelPair(toOther: Channel[Any], fromOther: Channel[Any])
-
 class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
   //println("Creating SessionChannel: "+this+", mapping: "+map)
   def !(msg: (Symbol, Any)) = msg match {

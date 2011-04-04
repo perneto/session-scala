@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import actors.{Actor, Channel, OutputChannel}, Actor._
+import actors.{DaemonActor, Actor, Channel, OutputChannel}, Actor._
 
 class LocalPort(val protocol: String, val role: Symbol)
         extends Port {
@@ -121,5 +121,11 @@ class LocalPort(val protocol: String, val role: Symbol)
       //println("sending "+msg+" to "+a)
       a ! msg
     }
+  }
+  
+  def daemonactor(_act: => Unit) = {
+    val da = new DaemonActor { def act() = _act}
+    da.start()
+    da
   }
 }

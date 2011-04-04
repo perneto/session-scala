@@ -4,7 +4,7 @@ import scala.actors.{Channel => _, _}, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties}
 
-case class AMQPPort(protocol: String, role: Symbol,
+case class AMQPPortImpl(protocol: String, role: Symbol,
                      queueName: String,
                      brokerHost: String, port: Int,
                      user: String, pwd: String)

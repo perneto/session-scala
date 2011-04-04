@@ -5,13 +5,6 @@ import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
 import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
-case class Invite(replyPort: Port, protocol: String, role: Symbol)
-case class AcceptedInvite(role: Symbol, replyPort: PrivatePort, port: PrivatePort)
-
-trait PrivatePort {
-  def send(msg: Any)
-}
-
 //case class -> [L,R](left: L, right: R)
 
 object Port {
@@ -42,7 +35,7 @@ object Port {
     }
 
     val (name, brokerHost, brokerPort) = splitAddr(queueAddr)
-    AMQPPort(protocol, role, name, brokerHost, brokerPort, user, password)
+    AMQPPortImpl(protocol, role, name, brokerHost, brokerPort, user, password)
   }
 
   /**

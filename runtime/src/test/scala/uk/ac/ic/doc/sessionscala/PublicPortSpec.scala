@@ -29,6 +29,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       chan.queueDeclare(q,false,false,false,null)
       chan.queueDelete(q)
     }
+    AMQPUtils.close(chan)
   }
 
   override def nestedSuites = List(
@@ -201,7 +202,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           bob.bind { _ => didRun2 = true }
         }
       }
-      Thread.sleep(1000)
+      sleep(600)
       assert(didRunBar, "bar should have started")
       assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
     }
@@ -255,7 +256,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
         }}
       }
 
-      sleep(2000) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
+      sleep(1000) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
       assert(fromBar == 42, "Foo should have received 42 from Bar, got: "+fromBar)
       assert(fromQuux == 'a', "Foo should have received 'a' from Quux, got:"+fromQuux)
     }

@@ -9,7 +9,7 @@ import AMQPUtils._
  */
 
 trait AMQPActorProxyComponent {
-  this: AMQPPort => 
+  this: AMQPPortImpl => 
 
   case class NewDestinationRole(role: Symbol, chan: actors.Channel[Any], 
                                 address: (String, String, Int, String, String))
