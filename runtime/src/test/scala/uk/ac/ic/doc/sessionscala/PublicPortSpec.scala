@@ -187,7 +187,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     }
 
     test("Receive from multiple roles", Tag("rcvmulti")) {
-      var rcvOk = false
+      var rcvOk = false ; var rcvOk2 = false
       val proto = """
         protocol P { role A, B; }
       """
@@ -199,6 +199,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
         actor {
           a.bind { s => 
             s ! 'B -> ('label, 42, "foo")
+            s ! 'B -> 'label2
           }
         }
         b.bind { s =>
@@ -206,10 +207,14 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
             case 'A -> (('label, i, str)) => rcvOk = true
             case 'B -> (i:Int) =>
           }
+          s.receive('A,'B) {
+            case 'A -> 'label2 => rcvOk2 = true
+          }
         } 
       }
       
-      assert(rcvOk, "B should have received message using multi-source receive")
+      assert(rcvOk, "B should have received labelled message using multi-source receive")
+      assert(rcvOk2, "B should have received label using multi-source receive")    
     }
 
     def xor(a: Boolean, b: Boolean) = (a && !b)||(!a && b)
