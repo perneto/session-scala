@@ -1,8 +1,8 @@
 package uk.ac.ic.doc.sessionscala
 
-import actors.{Actor, Channel, !}
 import com.rabbitmq.client.{Channel => AMQPChannel}
-import AMQPUtils._
+import AMQPUtils._, Port.->
+import actors.Actor, Actor._
 
 /**
  * Created by: omp08
@@ -11,78 +11,67 @@ import AMQPUtils._
 trait AMQPActorProxyComponent {
   this: AMQPPortImpl => 
 
-  case class NewDestinationRole(role: Symbol, chan: actors.Channel[Any], 
-                                address: (String, String, Int, String, String))
-  case class NewSourceRole(role: Symbol, chan: actors.Channel[Any])
-  case class DeserializedMsgReceive(fromRole: Symbol, label: Symbol, body: Option[Any])
-
-  class AMQPActorProxy(sessMap: Map[Symbol,AMQPPrivatePort],
-                       amqpChan: AMQPChannel, roleQueue: String, ourRole: Symbol) extends Actor {
-    // self instead of this would give the actor for the thread creating this object.
-    // self is only valid in the act method
+  class AMQPActorReceiverForRole(roleActor: Actor, amqpChan: AMQPChannel, queueForRole: String) extends Actor {
     var consumerTag: String = null 
-    
-    var chanMap: Map[Symbol, ChannelPair] = null
-    var outputChans: Map[Channel[Any], (Symbol, String, AMQPChannel)] = null
-    var srcRoleChans: Map[Symbol, Channel[Any]] = null
-    var set = false
-    def setChanMap(_chanMap: Map[Symbol,ChannelPair]) {
-      assert(!set); set = true
-      chanMap = _chanMap
-      srcRoleChans = for ((role, ChannelPair(toRole, fromRole)) <- chanMap)
-                     yield (role -> fromRole)  
-            
-      outputChans = chanMap map { case (role, ChannelPair(toRole, fromRole)) =>
-        val (queueToRole: String, otherBroker: String, otherPort: Int, 
-             otherUser: String, otherPwd: String) = sessMap(role).address
-        val chanForRole = 
-          if (!sameBroker(otherBroker, otherPort)) amqpChan
-          else {
-            val c = connect(createFactory(otherBroker, otherPort, otherUser, otherPwd))
-            openedChans += c
-            c              
-          }
-        (toRole -> (role, queueToRole, chanForRole))
-      }          
-    }
-    var openedChans = Set[AMQPChannel]()
-
-
+        
     override def start() = {
       // noAck = true, automatically sends acks todo: probably should be false here
-      consumerTag = amqpChan.basicConsume(roleQueue, true, new SendMsgConsumer(amqpChan, this))
-      //println("Proxy for role "+ourRole+" is consuming messages on queue: "+roleQueue+"...")      
+      consumerTag = amqpChan.basicConsume(queueForRole, true, new SendMsgConsumer(amqpChan, this))
+      println("Receiver is consuming messages for "+roleActor+" on queue: "+queueForRole+"...")      
       super.start()
     }
 
-    def act() = loop { 
+    def act() = loop {
       react {
-        case (chan: Channel[Any]) ! msg if outputChans.contains(chan) =>
-          val dstRole = outputChans(chan)._1
-          val otherQueue = outputChans(chan)._2
-          val chanForRole = outputChans(chan)._3
-          //println("Got message for "+dstRole+", sending to: "+otherQueue+", msg: "+msg+", on chan: "+chan)
-          publish(chanForRole, otherQueue, (ourRole,msg))
-          
         case rawMsg: Array[Byte] =>
-          val pair = deserialize(rawMsg)
-          val (senderRole:Symbol, msg) = pair
-          //println("Proxy for "+ourRole+" received: "+pair)
-          srcRoleChans(senderRole) ! msg
-        
+          val msgWithSender = deserialize(rawMsg).asInstanceOf[->]
+          println("AMQP receiver for "+roleActor+" received: "+msgWithSender)
+          roleActor ! msgWithSender
+      
         case Quit =>
           amqpChan.basicCancel(consumerTag)
-          for (c <- openedChans) AMQPUtils.close(c)
           //println("Proxy for role "+ourRole+" exiting")
           reply(())
           exit()
       }
     }
 
+    override def toString = "AMQPActorReceiverForRole(roleActor:"+roleActor+
+        " amqpChan:"+amqpChan+" queueForRole:"+queueForRole+")"
+  }
+  
+  class AMQPActorProxyToRole(dstRole: Symbol,
+                             dstAddr: AMQPPrivateAddress,
+                             existingAmqpChan: AMQPChannel) extends Actor {
+    
+    val AMQPPrivateAddress(
+        queueToRole: String, otherBroker: String, otherPort: Int, 
+        otherUser: String, otherPwd: String) = dstAddr
+          
+    val (chanToRole, chanCreated) = {
+      if (!sameBroker(otherBroker, otherPort)) 
+        (existingAmqpChan, false)
+      else
+        (connect(createFactory(otherBroker, otherPort, otherUser, otherPwd)), true)
+    }
+
+    def act() = loop { 
+      react {
+        case m@(srcRole -> msg) =>
+          println("Got message for "+dstRole+", sending to: "+queueToRole+", msg: "+msg)
+          publish(chanToRole, queueToRole, m)
+        case Quit =>
+          if (chanCreated) AMQPUtils.close(chanToRole)
+          reply(())
+          exit()
+      }
+    }
+
     def sameBroker(broker: String, port: Int): Boolean =
-          broker != amqpChan.getConnection.getHost || 
-          port != amqpChan.getConnection.getPort
+        broker != existingAmqpChan.getConnection.getHost || 
+        port != existingAmqpChan.getConnection.getPort
         
-    override def toString = "AMQPActorProxy(roleQueue=" + roleQueue + ", ourRole=" + ourRole + ")"
+    override def toString = "AMQPActorProxyToRole(dstRole="+dstRole+
+        ", dstAddr:"+dstAddr+", existingAmqpChan:"+existingAmqpChan+")"
   }
 }

@@ -3,6 +3,7 @@ package uk.ac.ic.doc.sessionscala
 import uk.ac.ic.doc.sessionscala.Port._
 import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FunSuite, Tag}
 import actors.Actor, Actor._
+import org.scalatest.matchers.ShouldMatchers._
 
 class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
@@ -33,8 +34,8 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
   }
 
   override def nestedSuites = List(
-    new SessionPortSpecImpl("AMQP", createQueue),
-    new SessionPortSpecImpl("Shared Mem", newLocalPort)
+    new SessionPortSpecImpl("AMQP", createQueue)//,
+    //new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
   class SessionPortSpecImpl(name: String,
@@ -118,13 +119,14 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     test("invited participants can talk", Tag("talk")) {
       var aliceOk = false; var bobOk = false
       withTimeoutAndWait {
-        actor { startSession(alice, bob) 
-          //println("done starting session")
+        actor { 
+          startSession(alice, bob) 
+          println("done starting session")
         }
 
         actor { alice.bind { s =>
           s ! 'Bob -> 42
-          //println("Alice sent 42 to Bob")
+          println("Alice sent 42 to Bob")
           val recv = s.?[String]('Bob)
           //println("Alice received "+recv+" from Bob")
           aliceOk = recv == "foo"
@@ -135,7 +137,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           //println("Bob received "+recv+" from Alice")
           bobOk = recv == 42
           s ! 'Alice -> "foo"
-          //println("Bob sent foo to Alice")
+          println("Bob sent foo to Alice")
         }
       }
       assert(aliceOk, "Alice was not able to communicate")
@@ -203,11 +205,11 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           }
         }
         b.bind { s =>
-          s.receive('A,'B) {
+          s.mreceive {
             case 'A -> (('label, i, str)) => rcvOk = true
             case 'B -> (i:Int) =>
           }
-          s.receive('A,'B) {
+          s.mreceive {
             case 'A -> 'label2 => rcvOk2 = true
           }
         } 
@@ -262,13 +264,16 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       assert(fooReceived && barReceived)
     }
 
-    test("sequence of two message receives out of order works") {
-      val foo = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Foo)
-      val bar = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Bar)
-      val quux = newLocalPort("protocol P { role Foo, Bar, Quux; }", 'Quux)
+    test("sequence of two message receives out of order works", Tag("ooo")) {
+      val foo = freshPort("protocol P { role Foo, Bar, Quux; }", 'Foo)
+      val bar = freshPort("protocol P { role Foo, Bar, Quux; }", 'Bar)
+      val quux = freshPort("protocol P { role Foo, Bar, Quux; }", 'Quux)
       var fromBar: Any = null ; var fromQuux: Any = null
       withTimeout(1000) {
-        actor { startSession(foo, bar, quux) }
+        actor { 
+          startSession(foo, bar, quux)
+          //println("finished starting session")
+        }
         actor {
           foo.bind { s =>
             fromBar = s ? 'Bar
@@ -277,17 +282,21 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           }
         }
 
-        actor { bar.bind { s =>
-          sleep()
-          s ! 'Foo -> 42
-        }}
+        actor { 
+          bar.bind { s =>
+            sleep()
+            s ! 'Foo -> 42
+          }
+        }
 
-        actor { quux.bind { s =>
-          s ! 'Foo -> 'a'
-        }}
+        actor { 
+          quux.bind { s =>
+            s ! 'Foo -> 'a'
+          }
+        }
       }
 
-      sleep(1000) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
+      sleep(600) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
       assert(fromBar == 42, "Foo should have received 42 from Bar, got: "+fromBar)
       assert(fromQuux == 'a', "Foo should have received 'a' from Quux, got:"+fromQuux)
     }

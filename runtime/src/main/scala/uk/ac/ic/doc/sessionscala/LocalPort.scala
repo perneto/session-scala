@@ -111,7 +111,8 @@ class LocalPort(val protocol: String, val role: Symbol)
             val actorMap = convert(mapping)
             val sessMap = buildSessionMapping(actorMap, role)
             //println("before act for "+role+", sessChan: " + sessMap)
-            act(new SessionChannel(role, sessMap))
+            //act(new SessionChannel(role, sessMap))
+            null.asInstanceOf[T]
         }
     }
   }

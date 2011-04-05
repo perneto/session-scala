@@ -57,37 +57,39 @@ case class AMQPPortImpl(protocol: String, role: Symbol,
         val replyQueue = declareOk2.getQueue
         sessIDPort.send(
           AcceptedInvite(invRole,
-                         AMQPPrivatePort(replyQueue, brokerHost, port, user, pwd),
-                         AMQPPrivatePort(sessionQueue, brokerHost, port, user, pwd))
+                         AMQPPrivateAddress(replyQueue, this),
+                         AMQPPrivateAddress(sessionQueue, this))
         )
-        val mapping = consumeOne(chan, replyQueue).asInstanceOf[Map[Symbol,AMQPPrivatePort]]
+        val roleAddresses = consumeOne(chan, replyQueue).asInstanceOf[Map[Symbol,AMQPPrivateAddress]]
         // autodelete replyQueue is deleted here (after consumer exits)
+        // autodelete sessionQueue has not been consumed from yet, so still valid
         
-        //println("Got mapping from inviter: "+mapping)
+        val participantsMap = protocolRoles map { otherRole =>
+            val proxy = 
+              new AMQPActorProxyToRole(otherRole, roleAddresses(otherRole), chan)
+            proxy.start()          
+            (otherRole -> proxy)          
+        } toMap
         
-        val proxy = new AMQPActorProxy(mapping, chan, sessionQueue, role)
-        val chanMap = (protocolRoles foldLeft Map[Symbol, ChannelPair]()) { case (result, otherRole) =>
-          // binds the channel to the current actor (Actor.self). 
-          // self is the only actor that can receive on the channel
-          val chanFrom = new actors.Channel[Any]() 
-          val chanTo = new actors.Channel[Any](proxy)
-          result + (otherRole -> new ChannelPair(chanTo, chanFrom))
-        }
-            
-        proxy.setChanMap(chanMap)      
-        //println(role+": Mapping: "+chanMap)
+        // receiver actor starts consuming on sessionQueue
+        val receiverActor = new AMQPActorReceiverForRole(self, chan, sessionQueue)
+        receiverActor.start()
         
-        proxy.start()      
-        val res = act(new SessionChannel(role, chanMap))
+        try {
+          act(new SessionChannel(role, participantsMap))
         //println("!!!!!!!!!!!!!!!!bind: call to act finished")
-        proxy !? Quit
-        res
+        } finally {
+          receiverActor !? Quit
+          // sessionQueue autodeleted here, after receiverActor stops consuming.
+          for (a <- participantsMap.values) a !? Quit
+          println("Sent Quit and got replies from: "+receiverActor+", "+participantsMap.values)
+        }
       }
     }
   }
 
   def publish(chan: Channel, queue: String, msg: Any) {
-    //println("publishing: "+msg+" to queue: "+queue)
+    println("publishing: "+msg+" to queue: "+queue)
     chan.basicPublish("", queue, MessageProperties.BASIC, serialize(msg))
     //println("done: "+msg+" to "+queue)
   }
@@ -95,11 +97,13 @@ case class AMQPPortImpl(protocol: String, role: Symbol,
   // Only use when there's a single message in the queue max guaranteed
   def consumeOne(chan: Channel, queue: String): Any = {
     // auto-ack: true
+    println("consumeOne")
     val consumerTag = chan.basicConsume(queue, true, new SendMsgConsumer(chan, Actor.self))
     self.receive {
       case bytes: Array[Byte] => 
         val msg = deserialize(bytes)
         chan.basicCancel(consumerTag)
+        println("consumeOne cancelling consume")
         msg
     }
   }
@@ -126,15 +130,17 @@ case class AMQPPortImpl(protocol: String, role: Symbol,
     chan.queueDeclare(queueName, false, false, false, null)
   }
   
-  case class AMQPPrivatePort(privateQueue: String, brokerHost: String, port: Int,
+  object AMQPPrivateAddress {
+    def apply(privQ: String, parent: AMQPPortImpl): AMQPPrivateAddress =
+      AMQPPrivateAddress(privQ, parent.brokerHost, parent.port, parent.user, parent.pwd)
+  }
+  case class AMQPPrivateAddress(privateQueue: String, brokerHost: String, port: Int,
                              user: String, pwd: String) extends PrivatePort {
     // not serializable, so recreate always
     def fact = createFactory(brokerHost, port, user, pwd)  
     def send(msg: Any) = withChan(fact) { chan =>      
       publish(chan, privateQueue, msg)
     }
-    
-    def address = (privateQueue, brokerHost, port, user, pwd)
   }
 
   override def close() = withChan(fact) { chan =>
