@@ -11,8 +11,8 @@ object ExtraInviteTest {
       Int from Bob to Alice;
     }
     """
-    val alice = newLocalPort(proto, 'Alice)
-    val bob = newLocalPort(proto, 'Bob)
+    val alice = newLocalAddress(proto, 'Alice)
+    val bob = newLocalAddress(proto, 'Bob)
     startSession(alice, bob, bob)
   }
 }

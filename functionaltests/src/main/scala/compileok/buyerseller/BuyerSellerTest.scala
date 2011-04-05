@@ -6,8 +6,8 @@ import uk.ac.ic.doc.sessionscala.Address._
 
 object BuyerSellerTest {
   def main(args: Array[String]) {
-    val buyer = newLocalPort("buyerseller.spr", 'Buyer)
-    val seller = newLocalPort("buyerseller.spr", 'Seller)
+    val buyer = newLocalAddress("buyerseller.spr", 'Buyer)
+    val seller = newLocalAddress("buyerseller.spr", 'Seller)
     
     println("running...")
 

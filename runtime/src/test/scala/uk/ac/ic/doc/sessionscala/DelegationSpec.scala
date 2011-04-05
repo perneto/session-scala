@@ -12,10 +12,10 @@ import concurrent.ops.spawn
 class DelegationSpec extends Timeouts {
 
   test("Session interleaving") {
-    val alice = newLocalPort("protocol P { role Alice, Bob; }", 'Alice)
-    val bobQ = newLocalPort("protocol Q { role Bob, Carol; }", 'Bob)
-    val bobP = newLocalPort("protocol P { role Alice, Bob; }", 'Bob)
-    val carol = newLocalPort("protocol Q { role Bob, Carol; }", 'Carol)
+    val alice = newLocalAddress("protocol P { role Alice, Bob; }", 'Alice)
+    val bobQ = newLocalAddress("protocol Q { role Bob, Carol; }", 'Bob)
+    val bobP = newLocalAddress("protocol P { role Alice, Bob; }", 'Bob)
+    val carol = newLocalAddress("protocol Q { role Bob, Carol; }", 'Carol)
     var bothAccepted = false ; var aliceOK = false ; var carolOK = false
     var bobOK1 = false; var bobOK2 = false ; var bobOK3 = false 
 

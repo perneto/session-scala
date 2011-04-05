@@ -6,9 +6,9 @@ import Address._
 
 object BuyerSellerAMQP {
   def main(args: Array[String]) {
-    val buyer = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Buyer)
-    val seller = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Seller)
-    val otherbuyer = AMQPPort("protocol Test { role Buyer, Seller; } ", 'Buyer, "otherbuyer")
+    val buyer = AMQPAddress("protocol Test { role Buyer, Seller; } ", 'Buyer)
+    val seller = AMQPAddress("protocol Test { role Buyer, Seller; } ", 'Seller)
+    val otherbuyer = AMQPAddress("protocol Test { role Buyer, Seller; } ", 'Buyer, "otherbuyer")
     
     actor { startSession(buyer, seller) }
 

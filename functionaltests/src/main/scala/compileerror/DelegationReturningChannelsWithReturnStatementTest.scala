@@ -13,7 +13,7 @@ object DelegationReturningChannelsWithReturnStatementTest {
       else s1
     }
 
-    val shared = Address.newLocalPort("""
+    val shared = Address.newLocalAddress("""
     protocol Foo {
       role Alice, Bob;
       String from Alice to Bob;

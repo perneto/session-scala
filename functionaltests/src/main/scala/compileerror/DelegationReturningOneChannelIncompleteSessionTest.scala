@@ -16,8 +16,8 @@ object DelegationReturningOneChannelIncompleteSessionTest {
       Int from Bob to Alice;
     }
     """
-    val alice = Address.newLocalPort(delegation, 'Alice)
-    val bob = Address.newLocalPort(delegation, 'Bob)
+    val alice = Address.newLocalAddress(delegation, 'Alice)
+    val bob = Address.newLocalAddress(delegation, 'Bob)
                                       
     def myMethod(s: SessionChannel): SessionChannel = {
       s ! 'Bob -> "foo"

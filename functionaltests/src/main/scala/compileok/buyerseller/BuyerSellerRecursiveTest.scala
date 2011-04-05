@@ -7,8 +7,8 @@ import uk.ac.ic.doc.sessionscala.SessionChannel
 
 object BuyerSellerRecursiveTest {
   def main(args: Array[String]) {
-    val buyer = newLocalPort("buyersellerrec.spr", 'Buyer)
-    val seller = newLocalPort("buyersellerrec.spr", 'Seller)
+    val buyer = newLocalAddress("buyersellerrec.spr", 'Buyer)
+    val seller = newLocalAddress("buyersellerrec.spr", 'Seller)
     actor {
       seller.bind { s =>
         println("Seller: started")

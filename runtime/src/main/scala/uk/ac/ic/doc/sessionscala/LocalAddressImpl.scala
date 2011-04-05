@@ -2,8 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{DaemonActor, Actor, Channel, OutputChannel}, Actor._
 
-class LocalAddressImpl(val protocol: String, val role: Symbol)
-        extends Address {
+case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
   case object Take
   case class Msg(m: Any)
   // this lets us play nicer with the actors scheduler than a java BlockingQueue
@@ -41,6 +40,7 @@ class LocalAddressImpl(val protocol: String, val role: Symbol)
     mapping map {
       // Using pattern matching to deconstruct ActorPrivateAddress fails (gives a MatchError)
       // probably compiler bug, try again next release of Scala
+      // pp: ActorPrivateAddress gives MatchError as well
       case (role: Symbol, pp: PrivateAddress) => 
         (role, pp.asInstanceOf[ActorPrivateAddress].a.asInstanceOf[Actor])
     }

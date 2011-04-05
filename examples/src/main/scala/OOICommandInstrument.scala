@@ -42,11 +42,11 @@ object OOICommandInstrument {
         role User, CI_Authority, Instrument, Instrument_Registry, Instrument_Agent;
       }
     """
-    val user = AMQPPort(protocol, 'User, "user")
-    val authority = AMQPPort(protocol, 'CI_Authority, "authority")
-    val instrument = AMQPPort(protocol, 'Instrument, "instrument")
-    val reg = AMQPPort(protocol, 'Instrument_Registry, "reg")
-    val agent = AMQPPort(protocol, 'Instrument_Agent, "agent")
+    val user = AMQPAddress(protocol, 'User, "user")
+    val authority = AMQPAddress(protocol, 'CI_Authority, "authority")
+    val instrument = AMQPAddress(protocol, 'Instrument, "instrument")
+    val reg = AMQPAddress(protocol, 'Instrument_Registry, "reg")
+    val agent = AMQPAddress(protocol, 'Instrument_Agent, "agent")
 
     actor { startSession(user, authority, instrument, reg, agent) }
     

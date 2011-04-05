@@ -10,7 +10,7 @@ import actors.Actor.actor
 
 object BadBranchingTest {
   def m() {
-    val sharedChan = Address.newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Buyer)
+    val sharedChan = Address.newLocalAddress("../compileok/buyerseller/buyerseller.spr", 'Buyer)
     actor {
       sharedChan.bind { s =>
         s.receive('Seller) {

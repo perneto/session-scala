@@ -4,7 +4,7 @@ import uk.ac.ic.doc.sessionscala.{Address}
 
 object MoreChoiceReceiveBranchesThanSpecTest {
   def main(args: Array[String]) {
-    val sharedChannel = Address.newLocalPort("""
+    val sharedChannel = Address.newLocalAddress("""
     protocol Branches {
       role Alice, Bob;
       choice from Bob to Alice {

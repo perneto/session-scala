@@ -22,8 +22,8 @@ object BuyerSellerLabelsTest {
         }
       }
     """
-    val buyer = newLocalPort(buyerseller, 'Buyer)
-    val seller = newLocalPort(buyerseller, 'Buyer)
+    val buyer = newLocalAddress(buyerseller, 'Buyer)
+    val seller = newLocalAddress(buyerseller, 'Buyer)
     
     actor {
       seller.bind { s =>

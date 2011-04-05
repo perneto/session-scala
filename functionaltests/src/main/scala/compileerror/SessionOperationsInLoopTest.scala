@@ -9,7 +9,7 @@ import uk.ac.ic.doc.sessionscala.{Address}
 object SessionOperationsInLoopTest {
   def main(args: Array[String]) {
 
-    val sharedChannel = Address.newLocalPort("""
+    val sharedChannel = Address.newLocalAddress("""
     protocol Delegation {
       role Alice, Bob;
       String from Alice to Bob;

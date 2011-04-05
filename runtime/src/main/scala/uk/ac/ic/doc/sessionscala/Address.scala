@@ -6,10 +6,10 @@ import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
 object Address {
-  def newLocalPort(protocol: String, role: Symbol): Address =
+  def newLocalAddress(protocol: String, role: Symbol): Address =
     new LocalAddressImpl(protocol, role)
 
-  def AMQPPort(protocol: String, role: Symbol, queueAddr: String = "",
+  def AMQPAddress(protocol: String, role: Symbol, queueAddr: String = "",
                user: String = "guest", password: String = "guest"): Address = {
 
     def splitAddr(queueAddr: String) = {

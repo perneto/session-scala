@@ -10,8 +10,8 @@ import uk.ac.ic.doc.sessionscala.{SessionChannel, Address}, Address._
 object SessionChannelAliasingTest {
   def m() {
 
-    val buyer = newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Buyer)
-    val seller = newLocalPort("../compileok/buyerseller/buyerseller.spr", 'Seller)
+    val buyer = newLocalAddress("../compileok/buyerseller/buyerseller.spr", 'Buyer)
+    val seller = newLocalAddress("../compileok/buyerseller/buyerseller.spr", 'Seller)
     actor {
       buyer.bind { s =>
         val s1 = s // wrong

@@ -4,7 +4,7 @@ import uk.ac.ic.doc.sessionscala.{Address}
 
 object SessionOperationsInClosureTest {
   def main(args: Array[String]) {
-    val sharedChannel = Address.newLocalPort(
+    val sharedChannel = Address.newLocalAddress(
     """
     protocol Delegation {
       role Alice, Bob;

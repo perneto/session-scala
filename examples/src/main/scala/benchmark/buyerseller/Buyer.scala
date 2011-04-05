@@ -11,7 +11,7 @@ import Address._
 object Buyer {
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    val buyer = AMQPPort("../../buyerseller/buyerseller.spr", 'Buyer, "buyer", brokerHost)
+    val buyer = AMQPAddress("../../buyerseller/buyerseller.spr", 'Buyer, "buyer", brokerHost)
     buyer.bind { s =>
       //println("Buyer accepted")
       s ! 'Seller -> ('title, "Widget A")

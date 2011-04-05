@@ -17,8 +17,8 @@ object BuyerSellerSimpleAMQP {
         Quit():
       }
     }"""
-    val buyer = AMQPPort(proto, 'Buyer)
-    val seller = AMQPPort(proto, 'Seller) 
+    val buyer = AMQPAddress(proto, 'Buyer)
+    val seller = AMQPAddress(proto, 'Seller) 
 
     actor { startSession(buyer, seller) }
 

@@ -12,7 +12,7 @@ object Seller {
 
   def main(args: Array[String]) {
     val brokerHost = args(0)
-    val seller = AMQPPort("../../buyerseller/buyerseller.spr", 'Seller, "seller", brokerHost)
+    val seller = AMQPAddress("../../buyerseller/buyerseller.spr", 'Seller, "seller", brokerHost)
     println("Seller: before bind")
     seller.bind { s =>
       println("Seller accepted")

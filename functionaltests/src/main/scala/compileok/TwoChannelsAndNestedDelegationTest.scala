@@ -24,8 +24,8 @@ object TwoChannelsAndNestedDelegationTest {
     }
     """
 
-    val alice = newLocalPort(delegation1, 'Alice)
-    val foo = newLocalPort(delegation2, 'Foo)
+    val alice = newLocalAddress(delegation1, 'Alice)
+    val foo = newLocalAddress(delegation2, 'Foo)
     
     def sendStrings(s1: SessionChannel, s2: SessionChannel) = {
       s1 ! 'Bob -> "quux"

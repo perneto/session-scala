@@ -19,14 +19,14 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
   def createQueue(proto: String, role: Symbol) = {
     val name = randomName()
     queuesInTest += name
-    AMQPPort(proto, role, name)
+    AMQPAddress(proto, role, name)
   }
   
   override def afterAll() {
     val chan = AMQPUtils.connectDefaults()
     for (q <- queuesInTest) {
       // need to ensure it's there first, as some tests don't really create the queue
-      // (randomName is called for every call to AMQPPort, but not all ports get bound/invited)
+      // (randomName is called for every call to AMQPAddress, but not all ports get bound/invited)
       chan.queueDeclare(q,false,false,false,null)
       chan.queueDelete(q)
     }
@@ -35,7 +35,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
   override def nestedSuites = List(
     new SessionPortSpecImpl("AMQP", createQueue),
-    new SessionPortSpecImpl("Shared Mem", newLocalPort)
+    new SessionPortSpecImpl("Shared Mem", newLocalAddress)
   )
 
   class SessionPortSpecImpl(name: String,

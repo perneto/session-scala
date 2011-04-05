@@ -25,10 +25,10 @@ object DelegationReturningChannelsAndValuesTest {
     }
     """
     
-    val alice = newLocalPort(delegation1, 'Alice)
-    val bob = newLocalPort(delegation1, 'Bob)
-    val foo = newLocalPort(delegation2, 'Foo)
-    val bar = newLocalPort(delegation2, 'Bar)
+    val alice = newLocalAddress(delegation1, 'Alice)
+    val bob = newLocalAddress(delegation1, 'Bob)
+    val foo = newLocalAddress(delegation2, 'Foo)
+    val bar = newLocalAddress(delegation2, 'Bar)
     
     def myMethod(s1: SessionChannel, s2: SessionChannel) = {
       s1 ! 'Bob -> "quux"
