@@ -34,7 +34,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
   }
 
   override def nestedSuites = List(
-    //new SessionPortSpecImpl("AMQP", createQueue),
+    new SessionPortSpecImpl("AMQP", createQueue),
     new SessionPortSpecImpl("Shared Mem", newLocalPort)
   )
 
