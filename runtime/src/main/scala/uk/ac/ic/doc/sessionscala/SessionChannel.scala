@@ -70,6 +70,9 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, ChannelPair]) {
       case (`label`,a,b,c,d,e,f) => (a,b,c,d,e,f)
       case (`label`,a,b,c,d,e,f,g) => (a,b,c,d,e,f,g)
       case (`label`,a,b,c,d,e,f,g,h) => (a,b,c,d,e,f,g,h)
+      case (`label`,a,b,c,d,e,f,g,h,i) => (a,b,c,d,e,f,g,h,i)
+      case (`label`,a,b,c,d,e,f,g,h,i,j) => (a,b,c,d,e,f,g,h,i,j)
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k) => (a,b,c,d,e,f,g,h,i,j,k)             
       // TODO extend to Tuple22
     }
     f.andThen(_.asInstanceOf[T])
