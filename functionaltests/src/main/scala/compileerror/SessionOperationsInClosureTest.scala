@@ -1,10 +1,10 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.{Port}
+import uk.ac.ic.doc.sessionscala.{Address}
 
 object SessionOperationsInClosureTest {
   def main(args: Array[String]) {
-    val sharedChannel = Port.newLocalPort(
+    val sharedChannel = Address.newLocalPort(
     """
     protocol Delegation {
       role Alice, Bob;

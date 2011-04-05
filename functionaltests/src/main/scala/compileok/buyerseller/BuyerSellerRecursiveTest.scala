@@ -1,7 +1,7 @@
 package compileok.buyerseller
 
 import scala.actors.Actor.actor
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 import uk.ac.ic.doc.sessionscala.SessionChannel
 
 

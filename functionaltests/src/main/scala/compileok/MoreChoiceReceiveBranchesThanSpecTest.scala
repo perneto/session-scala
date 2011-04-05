@@ -1,10 +1,10 @@
 package compileok
 
-import uk.ac.ic.doc.sessionscala.{Port}
+import uk.ac.ic.doc.sessionscala.{Address}
 
 object MoreChoiceReceiveBranchesThanSpecTest {
   def main(args: Array[String]) {
-    val sharedChannel = Port.newLocalPort("""
+    val sharedChannel = Address.newLocalPort("""
     protocol Branches {
       role Alice, Bob;
       choice from Bob to Alice {

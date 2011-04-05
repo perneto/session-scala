@@ -7,12 +7,12 @@ import java.util.UUID
 
 //case class -> [L,R](left: L, right: R)
 
-object Port {
-  def newLocalPort(protocol: String, role: Symbol): Port =
-    new LocalPort(protocol, role)
+object Address {
+  def newLocalPort(protocol: String, role: Symbol): Address =
+    new LocalAddress(protocol, role)
 
   def AMQPPort(protocol: String, role: Symbol, queueAddr: String = "",
-               user: String = "guest", password: String = "guest"): Port = {
+               user: String = "guest", password: String = "guest"): Address = {
 
     def splitAddr(queueAddr: String) = {
       def checkLength2(array: Array[String]) {
@@ -35,7 +35,7 @@ object Port {
     }
 
     val (name, brokerHost, brokerPort) = splitAddr(queueAddr)
-    AMQPPortImpl(protocol, role, name, brokerHost, brokerPort, user, password)
+    AMQPAddressImpl(protocol, role, name, brokerHost, brokerPort, user, password)
   }
   
   case class ->(role: Symbol, contents: Any)
@@ -49,7 +49,7 @@ object Port {
    * Finally, sends out the final locations of all roles
    * to each private port obtained in the replies.
    */
-  def startSession(ports: Port*) {
+  def startSession(ports: Address*) {
     checkPorts(ports)
     val sessID = UUID.randomUUID().toString
     val sessIDPort = ports(0).derived(sessID)
@@ -69,29 +69,29 @@ object Port {
     sessIDPort.close()
   }
 
-  def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivatePort] = {
-    (replies foldLeft Map[Symbol, PrivatePort]()) { case (result, AcceptedInvite(role, _, pp)) =>
+  def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivateAddress] = {
+    (replies foldLeft Map[Symbol, PrivateAddress]()) { case (result, AcceptedInvite(role, _, pp)) =>
       result + (role -> pp)
     }
   }
 
-  def checkPorts(ports: Seq[Port]) {
+  def checkPorts(ports: Seq[Address]) {
     assert(ports.length > 0)
     var first = ports(0)
     for (p <- ports) assert(first.getClass == p.getClass)
   }
 
-  def forwardInvite(map: (Port, Port)*) {
+  def forwardInvite(map: (Address, Address)*) {
     for ((from,to) <- map) {
       actor { to.send(from.receive()) }
     }
   }
 }
 
-trait Port {
+trait Address {
   val protocol: String
   val role: Symbol
-  def derived(name: String): Port
+  def derived(name: String): Address
 
   def send(msg: Any)
 

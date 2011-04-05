@@ -1,6 +1,6 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.{SessionChannel, Port}
+import uk.ac.ic.doc.sessionscala.{SessionChannel, Address}
 
 /**
  * Created by: omp08
@@ -13,7 +13,7 @@ object DelegationReturningChannelsWithReturnStatementTest {
       else s1
     }
 
-    val shared = Port.newLocalPort("""
+    val shared = Address.newLocalPort("""
     protocol Foo {
       role Alice, Bob;
       String from Alice to Bob;

@@ -1,6 +1,6 @@
 package compileok
 
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 import actors.Actor.actor
 
 object BasicAMQPChannelTest {

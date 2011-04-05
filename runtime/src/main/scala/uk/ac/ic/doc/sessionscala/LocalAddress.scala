@@ -2,8 +2,8 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{DaemonActor, Actor, Channel, OutputChannel}, Actor._
 
-class LocalPort(val protocol: String, val role: Symbol)
-        extends Port {
+class LocalAddress(val protocol: String, val role: Symbol)
+        extends Address {
   case object Take
   case class Msg(m: Any)
   // this lets us play nicer with the actors scheduler than a java BlockingQueue
@@ -34,15 +34,15 @@ class LocalPort(val protocol: String, val role: Symbol)
     queueActor ! Msg(msg)
   }
 
-  def derived(name: String) = new LocalPort(protocol, role)
+  def derived(name: String) = new LocalAddress(protocol, role)
 
-  def convert(mapping: Map[Symbol, PrivatePort]): Map[Symbol, Actor] = {
+  def convert(mapping: Map[Symbol, PrivateAddress]): Map[Symbol, Actor] = {
     //println("got map: "+mapping)
     mapping map {
-      // Using pattern matching to deconstruct ActorPrivatePort fails (gives a MatchError)
+      // Using pattern matching to deconstruct ActorPrivateAddress fails (gives a MatchError)
       // probably compiler bug, try again next release of Scala
-      case (role: Symbol, pp: PrivatePort) => 
-        (role, pp.asInstanceOf[ActorPrivatePort].a.asInstanceOf[Actor])
+      case (role: Symbol, pp: PrivateAddress) => 
+        (role, pp.asInstanceOf[ActorPrivateAddress].a.asInstanceOf[Actor])
     }
   }
 
@@ -104,10 +104,10 @@ class LocalPort(val protocol: String, val role: Symbol)
       case Invite(inviterPort, protocol, role) =>
         assert(role == this.role)
         val c = new Channel[Any]()
-        val replyPort = ActorPrivatePort(c)
-        inviterPort.send(AcceptedInvite(role, replyPort, ActorPrivatePort(self)))
+        val replyPort = ActorPrivateAddress(c)
+        inviterPort.send(AcceptedInvite(role, replyPort, ActorPrivateAddress(self)))
         c.receive {
-          case mapping: Map[Symbol, PrivatePort] =>
+          case mapping: Map[Symbol, PrivateAddress] =>
             val actorMap = convert(mapping)
             val sessMap = buildSessionMapping(actorMap, role)
             //println("before act for "+role+", sessChan: " + sessMap)
@@ -117,7 +117,7 @@ class LocalPort(val protocol: String, val role: Symbol)
     }
   }
 
-  case class ActorPrivatePort(a: OutputChannel[Any]) extends PrivatePort {
+  case class ActorPrivateAddress(a: OutputChannel[Any]) extends PrivateAddress {
     def send(msg: Any) {
       //println("sending "+msg+" to "+a)
       a ! msg

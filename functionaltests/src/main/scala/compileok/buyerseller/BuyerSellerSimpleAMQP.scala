@@ -1,7 +1,7 @@
 package buyerseller
 
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 
 object BuyerSellerSimpleAMQP {
   case class Title(title: String)

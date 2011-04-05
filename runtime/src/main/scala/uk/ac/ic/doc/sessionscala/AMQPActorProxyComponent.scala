@@ -1,7 +1,7 @@
 package uk.ac.ic.doc.sessionscala
 
 import com.rabbitmq.client.{Channel => AMQPChannel}
-import AMQPUtils._, Port.->
+import AMQPUtils._, Address.->
 import actors.Actor, Actor._
 
 /**
@@ -9,7 +9,7 @@ import actors.Actor, Actor._
  */
 
 trait AMQPActorProxyComponent {
-  this: AMQPPortImpl => 
+  this: AMQPAddressImpl => 
 
   class AMQPActorReceiverForRole(roleActor: Actor, amqpChan: AMQPChannel, queueForRole: String) extends Actor {
     var consumerTag: String = null 

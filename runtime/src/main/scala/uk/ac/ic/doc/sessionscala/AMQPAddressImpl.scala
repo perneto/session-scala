@@ -4,11 +4,11 @@ import scala.actors.{Channel => _, _}, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties}
 
-case class AMQPPortImpl(protocol: String, role: Symbol,
+case class AMQPAddressImpl(protocol: String, role: Symbol,
                      queueName: String,
                      brokerHost: String, port: Int,
                      user: String, pwd: String)
-        extends Port
+        extends Address
         with AMQPSimpleMessageFormats
         with AMQPActorProxyComponent {
 
@@ -16,14 +16,14 @@ case class AMQPPortImpl(protocol: String, role: Symbol,
   def fact = createFactory(brokerHost, port, user, pwd)  
   
   def send(msg: Any) = withChan(fact) { chan =>
-    //println("Port for "+role+": send msg: "+msg+" to queue: "+queueName)
+    //println("Address for "+role+": send msg: "+msg+" to queue: "+queueName)
     ensureQueueExists(chan)
     //println("declared queue "+queueName)
     publish(chan, queueName, msg)
   }
 
   def receive(): Any = withChan(fact) { chan =>
-    //println("Port for "+role+": receive from: "+queueName)
+    //println("Address for "+role+": receive from: "+queueName)
     ensureQueueExists(chan)
     consumeOne(chan, queueName)
   }
@@ -131,11 +131,11 @@ case class AMQPPortImpl(protocol: String, role: Symbol,
   }
   
   object AMQPPrivateAddress {
-    def apply(privQ: String, parent: AMQPPortImpl): AMQPPrivateAddress =
+    def apply(privQ: String, parent: AMQPAddressImpl): AMQPPrivateAddress =
       AMQPPrivateAddress(privQ, parent.brokerHost, parent.port, parent.user, parent.pwd)
   }
   case class AMQPPrivateAddress(privateQueue: String, brokerHost: String, port: Int,
-                             user: String, pwd: String) extends PrivatePort {
+                             user: String, pwd: String) extends PrivateAddress {
     // not serializable, so recreate always
     def fact = createFactory(brokerHost, port, user, pwd)  
     def send(msg: Any) = withChan(fact) { chan =>      

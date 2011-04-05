@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FunSuite, Tag}
 import actors.Actor, Actor._
 import org.scalatest.matchers.ShouldMatchers._
@@ -39,10 +39,10 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
   )
 
   class SessionPortSpecImpl(name: String,
-                            freshPort: (String, Symbol) => Port)
+                            freshPort: (String, Symbol) => Address)
           extends FunSuite with BeforeAndAfterEach {
-    var alice: Port = null
-    var bob: Port = null
+    var alice: Address = null
+    var bob: Address = null
 
     override def suiteName = "SessionPortSpec: "+name+" implementation"
 

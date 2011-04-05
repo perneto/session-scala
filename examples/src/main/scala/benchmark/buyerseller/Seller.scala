@@ -1,7 +1,7 @@
 package benchmark.buyerseller
 
-import uk.ac.ic.doc.sessionscala.Port
-import Port._
+import uk.ac.ic.doc.sessionscala.Address
+import Address._
 
 
 /**

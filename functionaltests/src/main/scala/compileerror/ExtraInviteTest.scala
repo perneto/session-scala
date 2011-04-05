@@ -1,6 +1,6 @@
 package compileerror
 
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 
 object ExtraInviteTest {
   def main(args: Array[String]) {

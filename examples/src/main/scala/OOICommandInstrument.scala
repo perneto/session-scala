@@ -1,6 +1,6 @@
 import scala.actors.Actor, Actor._
-import uk.ac.ic.doc.sessionscala.Port
-import Port._
+import uk.ac.ic.doc.sessionscala.Address
+import Address._
 
 /*
 2 protocol OOI_Command_Instrument {

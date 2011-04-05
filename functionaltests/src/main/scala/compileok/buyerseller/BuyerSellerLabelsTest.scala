@@ -1,7 +1,7 @@
 package compileok.buyerseller
 
 import scala.actors.Actor._
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 
 object BuyerSellerLabelsTest {
   case class Title(title: String)

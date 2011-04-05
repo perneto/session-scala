@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import uk.ac.ic.doc.sessionscala.Port._
+import uk.ac.ic.doc.sessionscala.Address._
 import actors.Actor
 import Actor._
 import concurrent.ops.spawn
