@@ -5,8 +5,6 @@ import org.scribble.protocol.parser.antlr.ANTLRProtocolParser
 import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
-//case class -> [L,R](left: L, right: R)
-
 object Address {
   def newLocalPort(protocol: String, role: Symbol): Address =
     new LocalAddress(protocol, role)
