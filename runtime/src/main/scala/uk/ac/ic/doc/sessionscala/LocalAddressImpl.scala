@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala
 
 import actors.{DaemonActor, Actor, Channel, OutputChannel}, Actor._
 
-class LocalAddress(val protocol: String, val role: Symbol)
+class LocalAddressImpl(val protocol: String, val role: Symbol)
         extends Address {
   case object Take
   case class Msg(m: Any)
@@ -34,7 +34,7 @@ class LocalAddress(val protocol: String, val role: Symbol)
     queueActor ! Msg(msg)
   }
 
-  def derived(name: String) = new LocalAddress(protocol, role)
+  def derived(name: String) = new LocalAddressImpl(protocol, role)
 
   def convert(mapping: Map[Symbol, PrivateAddress]): Map[Symbol, Actor] = {
     //println("got map: "+mapping)

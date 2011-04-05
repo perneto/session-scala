@@ -7,7 +7,7 @@ import java.util.UUID
 
 object Address {
   def newLocalPort(protocol: String, role: Symbol): Address =
-    new LocalAddress(protocol, role)
+    new LocalAddressImpl(protocol, role)
 
   def AMQPPort(protocol: String, role: Symbol, queueAddr: String = "",
                user: String = "guest", password: String = "guest"): Address = {
