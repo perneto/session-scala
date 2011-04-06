@@ -94,10 +94,10 @@ object Address {
     replies map { case AcceptedInvite(role, _, pa) => role -> pa } toMap
   }
 
-  def checkAddr(ports: Seq[Address]) {
-    assert(ports.length > 0)
-    var first = ports(0)
-    for (p <- ports) assert(first.getClass == p.getClass)
+  def checkAddr(addresses: Seq[Address]) {
+    assert(addresses.length > 0)
+    var first = addresses(0)
+    for (a <- addresses) assert(first.getClass == a.getClass)
   }
 
   def forwardInvite(map: (Address, Address)*) {
