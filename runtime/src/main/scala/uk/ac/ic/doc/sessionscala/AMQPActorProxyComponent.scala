@@ -1,8 +1,8 @@
 package uk.ac.ic.doc.sessionscala
 
-import com.rabbitmq.client.{Channel => AMQPChannel}
+import com.rabbitmq.client.Channel
 import AMQPUtils._, Address.->
-import actors.Actor, Actor._
+import actors.Actor
 
 /**
  * Created by: omp08
@@ -11,7 +11,7 @@ import actors.Actor, Actor._
 trait AMQPActorProxyComponent {
   this: AMQPAddressImpl => 
 
-  class AMQPActorReceiverForRole(roleActor: Actor, amqpChan: AMQPChannel, queueForRole: String) extends Actor {
+  class AMQPActorReceiverForRole(roleActor: Actor, amqpChan: Channel, queueForRole: String) extends Actor {
     var consumerTag: String = null 
         
     override def start() = {
@@ -42,7 +42,7 @@ trait AMQPActorProxyComponent {
   
   class AMQPActorProxyToRole(dstRole: Symbol,
                              dstAddr: AMQPPrivateAddress,
-                             existingAmqpChan: AMQPChannel) extends Actor {
+                             existingAmqpChan: Channel) extends Actor {
     
     val AMQPPrivateAddress(
         queueToRole: String, otherBroker: String, otherPort: Int, 

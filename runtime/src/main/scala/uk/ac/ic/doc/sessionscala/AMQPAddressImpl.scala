@@ -1,6 +1,6 @@
 package uk.ac.ic.doc.sessionscala
 
-import scala.actors.{Channel => _, _}, Actor._
+import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties}
 
