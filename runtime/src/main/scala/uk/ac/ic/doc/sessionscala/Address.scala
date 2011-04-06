@@ -39,25 +39,32 @@ object Address {
   case class ->(role: Symbol, contents: Any)
 
   /**
-   * Sends out invites for a new session to all session ports,
+   * Sends out invites for a new session to all addresses,
    * for their respective assigned roles.
-   * Blocks until all session ports have replied with the definitive
+   * Blocks until all invitees have replied with the definitive
    * location of the process that accepted the invitation
    * (can be different because of forwarding).
    * Finally, sends out the final locations of all roles
    * to each private port obtained in the replies.
    */
-  def startSession(ports: Address*) {
-    checkPorts(ports)
+  def startSession(addresses: Address*) {
+    startSessionImpl(_.receive(), addresses)
+  }
+  def startSessionWithin(msec: Int, addresses: Address*) {
+    startSessionImpl(_.receiveWithin(msec), addresses)  
+  }
+  
+  def startSessionImpl(receive: Address => Any, addresses: Seq[Address]) {
+    checkPorts(addresses)
     val sessID = UUID.randomUUID().toString
-    val sessIDPort = ports(0).derived(sessID)
+    val sessIDPort = addresses(0).derived(sessID)
     //println("sending invites")
-    ports foreach { p =>
+    addresses foreach { p =>
       p.send(Invite(sessIDPort, p.protocol, p.role))
     }
     //println("Finished sending invites")
-    val replies = for (i <- 1 to ports.length)
-      yield sessIDPort.receive().asInstanceOf[AcceptedInvite]
+    val replies = for (i <- 1 to addresses.length)
+      yield receive(sessIDPort).asInstanceOf[AcceptedInvite]
     val mapping = finalLocationsMapping(replies)
     val privPorts = mapping.values
     for (rp <- replies map (_.replyPort)) {
@@ -94,7 +101,8 @@ trait Address {
   def send(msg: Any)
 
   def receive(): Any
-
+  def receiveWithin(msec: Int): Any
+  
   def close() {}
   
   /** Accept to play a given role. Waits for an invite, creates
@@ -102,7 +110,8 @@ trait Address {
    *  with the name of the session channel before proceeding.
    */
   def bind[T](act: SessionChannel => T): T
-
+  def bindWithin[T](timeout: Int)(act: SessionChannel => T): T
+  
   def protocolsCompatible(proto1: String, proto2: String): Boolean = {
     // TODO later: check two Scribble protocols are compatible (for invite receive)
     true

@@ -4,6 +4,7 @@ import uk.ac.ic.doc.sessionscala.Address._
 import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FunSuite, Tag}
 import actors.Actor, Actor._
 import org.scalatest.matchers.ShouldMatchers._
+import java.util.concurrent.TimeoutException
 
 class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
@@ -25,12 +26,29 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       bob = freshAddr("protocol Test { role Alice, Bob; }", 'Bob)
     }
 
-    test("non-exhaustive invite: no runtime error (should be checked by compiler). Timeouts since no bound process", Tag("timeouts"), Tag("leftoverq")) {
-      expectTimeout(500) {
-        startSession(alice)
+    test("non-exhaustive invite: no runtime error (should be checked by compiler). " +
+            "Timeouts since no bound process", Tag("timeouts"), Tag("startTimeout")) {
+      intercept[TimeoutException] {
+        startSessionWithin(500, alice)
       }
     }
 
+    test("bind when not invited: timeouts", Tag("timeouts")) {
+      var didRun = false
+      val otherAlice = freshAddr("protocol Test { role Alice, Bob; }", 'Alice)
+      val otherBob = freshAddr("protocol Test { role Alice, Bob; }", 'Bob)
+      actor { 
+        intercept[TimeoutException] {
+          startSessionWithin(300, otherAlice, otherBob) 
+        }
+      }
+
+      intercept[TimeoutException] {
+        alice.bindWithin(300) { s => didRun = true }
+      }
+      assert(!didRun, "Alice should not have started as there was no invite for Alice on default test port")
+    }
+    
     test("role not in protocol: error") {
       intercept[IllegalArgumentException] {
         freshAddr("protocol Test { role Alice, Bob; }", 'Foo)
@@ -47,19 +65,6 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       intercept[IllegalArgumentException] {
         freshAddr("protocol P {}", 'Foo)
       }
-    }
-
-    test("bind when not invited: timeouts", Tag("timeouts"), Tag("leftoverq")) {
-      var didRun = false
-      val otherAlice = freshAddr("protocol Test { role Alice, Bob; }", 'Alice)
-      val otherBob = freshAddr("protocol Test { role Alice, Bob; }", 'Bob)
-      expectTimeout(1000) {
-        actor { startSession(otherAlice, otherBob) }
-
-        alice.bind { s => didRun = true }
-      }
-
-      assert(!didRun, "Alice should not have started as there was no invite for Alice on default test port")
     }
 
     test("startSession/bind correctly starts session", Tag("init")) {
@@ -203,13 +208,21 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           alice.bind { _ => didRunBar = true}
         }
         actor {
-          bob.bind { _ => didRun1 = true }
+          try {
+            bob.bindWithin(300) { _ => didRun1 = true }
+          } catch {
+            case _:TimeoutException =>
+          }
         }
         actor {
-          bob.bind { _ => didRun2 = true }
+          try {
+            bob.bindWithin(300) { _ => didRun2 = true }
+          } catch {
+            case _:TimeoutException =>
+          }
         }
       }
-      sleep(600)
+      sleep(500)
       assert(didRunBar, "bar should have started")
       assert(xor(didRun1,didRun2), "should run either. ran 1: " + didRun1 + ", ran 2: " + didRun2)
     }
@@ -365,7 +378,7 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     val chan = AMQPUtils.connectDefaults()
     for (q <- queuesInTest) {
       // need to ensure it's there first, as some tests don't really create the queue
-      // (randomName is called for every call to AMQPAddress, but not all ports get bound/invited)
+      // (randomName is called for every call to AMQPAddress, but not all addresses get bound/invited)
       chan.queueDeclare(q,false,false,false,null)
       chan.queueDelete(q)
     }

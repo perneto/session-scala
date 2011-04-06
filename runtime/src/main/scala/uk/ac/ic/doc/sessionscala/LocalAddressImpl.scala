@@ -1,6 +1,7 @@
 package uk.ac.ic.doc.sessionscala
 
-import actors.{DaemonActor, Actor, Channel, OutputChannel}, Actor._
+import actors._, Actor._
+import java.util.concurrent.TimeoutException
 
 case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
   case object Take
@@ -27,6 +28,11 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
     //println("receive on: " + this)
     queueActor !? Take
   }
+  
+  def receiveWithin(msec: Int): Any = {
+    val res = queueActor !? (msec, Take)
+    res.getOrElse(throw new TimeoutException)
+  }
 
   def send(msg: Any) {
     //println("send msg: "+msg+" to: "+this)
@@ -46,9 +52,15 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
     }
   }
 
+  def bindWithin[T](msec: Int)(act: (SessionChannel) => T) = {
+    bind(receiveWithin(msec), act)
+  }
   def bind[T](act: SessionChannel => T): T = {
+    bind(receive, act)
+  }
+  def bind[T](rcvInvite: => Any, act: SessionChannel => T): T = {
     //println("bind: "+this+", role: "+role)
-    receive() match {
+    rcvInvite match {
       case Invite(inviterPort, protocol, role) =>
         assert(role == this.role)
         val c = new Channel[Any]()
@@ -63,7 +75,7 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
     }
   }
 
-  case class ActorPrivateAddress(a: OutputChannel[Any]) extends PrivateAddress {
+  case class ActorPrivateAddress(a: OutputChannel[Any] with InputChannel[Any]) extends PrivateAddress {
     def send(msg: Any) {
       //println("sending "+msg+" to "+a)
       a ! msg

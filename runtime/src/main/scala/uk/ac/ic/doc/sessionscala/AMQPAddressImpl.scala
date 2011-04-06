@@ -1,8 +1,10 @@
 package uk.ac.ic.doc.sessionscala
 
-import scala.actors.Actor, Actor._
 import uk.ac.ic.doc.sessionscala.AMQPUtils._
 import com.rabbitmq.client.{Channel, MessageProperties}
+import actors.{TIMEOUT, Actor}, Actor._
+import java.util.concurrent.TimeoutException
+
 
 case class AMQPAddressImpl(protocol: String, role: Symbol,
                      queueName: String,
@@ -22,20 +24,26 @@ case class AMQPAddressImpl(protocol: String, role: Symbol,
     publish(chan, queueName, msg)
   }
 
-  def receive(): Any = withChan(fact) { chan =>
-    //println("Address for "+role+": receive from: "+queueName)
+  def receive(): Any = receiveImpl(consumeOne)
+  def receiveWithin(msec: Int) = receiveImpl(consumeOneWithin(msec))
+
+  def receiveImpl(_consOne: (Channel, String) => Any) = withChan(fact) { chan =>
     ensureQueueExists(chan)
-    consumeOne(chan, queueName)
+    _consOne(chan, queueName)
   }
 
   def derived(name: String) = copy(queueName = name)
 
-  def bind[T](act: SessionChannel => T): T = {
+  def bindWithin[T](msec: Int)(act: (SessionChannel) => T) = 
+    bind(consumeOneWithin(msec), act)
+  def bind[T](act: SessionChannel => T): T =
+    bind(consumeOne, act)
+  def bind[T](_consumeOne: (Channel, String) => Any, act: SessionChannel => T): T = {
     //println("bind: " + role + ", waiting for invite on: " + queueName)
     withChan(fact) { chan =>
       ensureQueueExists(chan)
       //println("bind "+role+" consuming invite on: "+queueName)
-      val Invite(sessIDPort, invProtocol, invRole) = consumeOne(chan, queueName)
+      val Invite(sessIDPort, invProtocol, invRole) = _consumeOne(chan, queueName)
       //println("got invite: " + invRole)
       
       if (role != invRole) {
@@ -60,7 +68,7 @@ case class AMQPAddressImpl(protocol: String, role: Symbol,
                          AMQPPrivateAddress(replyQueue, this),
                          AMQPPrivateAddress(sessionQueue, this))
         )
-        val roleAddresses = consumeOne(chan, replyQueue).asInstanceOf[Map[Symbol,AMQPPrivateAddress]]
+        val roleAddresses = _consumeOne(chan, replyQueue).asInstanceOf[Map[Symbol,AMQPPrivateAddress]]
         // autodelete replyQueue is deleted here (after consumer exits)
         // autodelete sessionQueue has not been consumed from yet, so still valid
         
@@ -94,17 +102,28 @@ case class AMQPAddressImpl(protocol: String, role: Symbol,
     //println("done: "+msg+" to "+queue)
   }
 
-  // Only use when there's a single message in the queue max guaranteed
-  def consumeOne(chan: Channel, queue: String): Any = {
+  // Only use when there's a single message in the queue max guaranteed, otherwise reorderings can happen
+  def consumeOne(chan: Channel, queue: String) = 
+    consumeOneImpl(chan, queue, self.receive)
+    
+  def consumeOneWithin(msec: Int)(chan: Channel, queue: String) = {
+    //println("calling consumeOneWithin: "+msec)
+    consumeOneImpl(chan, queue, self.receiveWithin(msec))
+  }
+  
+  def consumeOneImpl(chan: Channel, queue: String, receive: (PartialFunction[Any,Any]) => Any): Any = {
     // auto-ack: true
-    //println("consumeOne")
+    //println("consumeOneImpl")
     val consumerTag = chan.basicConsume(queue, true, new SendMsgConsumer(chan, Actor.self))
-    self.receive {
-      case bytes: Array[Byte] => 
-        val msg = deserialize(bytes)
-        chan.basicCancel(consumerTag)
-        //println("consumeOne cancelling consume")
-        msg
+    try {
+      receive {
+        case bytes: Array[Byte] => 
+          deserialize(bytes)
+        case TIMEOUT => throw new TimeoutException
+      }
+    } finally {
+      //println("consumeOneImpl cancelling consume")
+      chan.basicCancel(consumerTag)
     }
   }
   
