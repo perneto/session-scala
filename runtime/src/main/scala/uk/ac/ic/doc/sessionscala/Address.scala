@@ -55,7 +55,7 @@ object Address {
   }
   
   def startSessionImpl(receive: Address => Any, addresses: Seq[Address]) {
-    checkPorts(addresses)
+    checkAddr(addresses)
     val sessID = UUID.randomUUID().toString
     val sessIDPort = addresses(0).derived(sessID)
     //println("sending invites")
@@ -80,7 +80,7 @@ object Address {
     }
   }
 
-  def checkPorts(ports: Seq[Address]) {
+  def checkAddr(ports: Seq[Address]) {
     assert(ports.length > 0)
     var first = ports(0)
     for (p <- ports) assert(first.getClass == p.getClass)
