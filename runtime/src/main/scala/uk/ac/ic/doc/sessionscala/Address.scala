@@ -6,8 +6,23 @@ import java.io.{File, ByteArrayInputStream}
 import java.util.UUID
 
 object Address {
+  def loadProtocolFile(rawProto: String): String = {
+    val source =
+      if (new File(rawProto).canRead) io.Source.fromFile(rawProto)
+      else if (rawProto == "") null
+      else try {
+        io.Source.fromURL(rawProto)
+      } catch {
+        case _ => null
+      }
+    if (source != null) source.foldLeft("")(_ + _)
+    else if (rawProto == "") "<no protocol given>"
+    else rawProto
+  }
+  
+  
   def newLocalAddress(protocol: String, role: Symbol): Address =
-    new LocalAddressImpl(protocol, role)
+    new LocalAddressImpl(loadProtocolFile(protocol), role)
 
   def AMQPAddress(protocol: String, role: Symbol, queueAddr: String = "",
                user: String = "guest", password: String = "guest"): Address = {
@@ -33,7 +48,8 @@ object Address {
     }
 
     val (name, brokerHost, brokerPort) = splitAddr(queueAddr)
-    AMQPAddressImpl(protocol, role, name, brokerHost, brokerPort, user, password)
+    AMQPAddressImpl(loadProtocolFile(protocol), 
+      role, name, brokerHost, brokerPort, user, password)
   }
   
   case class ->(role: Symbol, contents: Any)
@@ -75,9 +91,7 @@ object Address {
   }
 
   def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivateAddress] = {
-    (replies foldLeft Map[Symbol, PrivateAddress]()) { case (result, AcceptedInvite(role, _, pp)) =>
-      result + (role -> pp)
-    }
+    replies map { case AcceptedInvite(role, _, pp) => role -> pp } toMap
   }
 
   def checkAddr(ports: Seq[Address]) {
@@ -117,7 +131,7 @@ trait Address {
     true
   }
 
-  def retrieveRolesSet: Set[Symbol] = {
+  def loadProtocolRoles: Set[Symbol] = {
     val scribbleParser = new ANTLRProtocolParser
     val errorsJournal = new ExceptionsJournal
     val model = scribbleParser.parse( // Scribble doesn't use any chars outside ascii, so any charset is fine
@@ -127,25 +141,9 @@ trait Address {
     ScribbleUtils.roleSymbols(model)
   }
 
-  def loadProtocolFile: String = {
-    val source =
-      if (new File(protocol).canRead) io.Source.fromFile(protocol)
-      else if (protocol == "") null
-      else try {
-        io.Source.fromURL(protocol)
-      } catch {
-        case _ => null
-      }
-    if (source != null) source.foldLeft("")(_ + _)
-    else if (protocol == "") "<no protocol given>"
-    else protocol
-  }
-
-  val protocolRoles: Set[Symbol] = retrieveRolesSet
+  val protocolRoles: Set[Symbol] = loadProtocolRoles
   if (protocolRoles.size == 0) throw new IllegalArgumentException
     ("The protocol should have at least one role")
   if (!protocolRoles.contains(role)) throw new IllegalArgumentException(
      "Role:" + role + " not defined on channel, awaiting: " + protocolRoles)
-
-  val scribbleType: String = loadProtocolFile
 }
