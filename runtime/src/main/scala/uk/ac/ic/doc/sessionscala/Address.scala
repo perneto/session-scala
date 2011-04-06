@@ -75,8 +75,8 @@ object Address {
     val sessID = UUID.randomUUID().toString
     val sessIDPort = addresses(0).derived(sessID)
     //println("sending invites")
-    addresses foreach { p =>
-      p.send(Invite(sessIDPort, p.protocol, p.role))
+    addresses foreach { a =>
+      a.send(Invite(sessIDPort, a.protocol, a.role))
     }
     //println("Finished sending invites")
     val replies = for (i <- 1 to addresses.length)
@@ -91,7 +91,7 @@ object Address {
   }
 
   def finalLocationsMapping(replies: Seq[AcceptedInvite]): Map[Symbol, PrivateAddress] = {
-    replies map { case AcceptedInvite(role, _, pp) => role -> pp } toMap
+    replies map { case AcceptedInvite(role, _, pa) => role -> pa } toMap
   }
 
   def checkAddr(ports: Seq[Address]) {
@@ -101,8 +101,8 @@ object Address {
   }
 
   def forwardInvite(map: (Address, Address)*) {
-    for ((from,to) <- map) {
-      actor { to.send(from.receive()) }
+    for ((from,to) <- map) actor { 
+      to.send(from.receive()) 
     }
   }
 }
