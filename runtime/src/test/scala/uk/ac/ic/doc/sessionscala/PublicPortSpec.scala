@@ -39,7 +39,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
   )
 
   class SessionPortSpecImpl(name: String,
-                            freshPort: (String, Symbol) => Address)
+                            freshAddr: (String, Symbol) => Address)
           extends FunSuite with BeforeAndAfterEach {
     var alice: Address = null
     var bob: Address = null
@@ -47,8 +47,8 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     override def suiteName = "SessionPortSpec: "+name+" implementation"
 
     override def beforeEach() {
-      alice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
-      bob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
+      alice = freshAddr("protocol Test { role Alice, Bob; }", 'Alice)
+      bob = freshAddr("protocol Test { role Alice, Bob; }", 'Bob)
     }
 
     test("non-exhaustive invite: no runtime error (should be checked by compiler). Timeouts since no bound process", Tag("timeouts"), Tag("leftoverq")) {
@@ -59,26 +59,26 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
     test("role not in protocol: error") {
       intercept[IllegalArgumentException] {
-        freshPort("protocol Test { role Alice, Bob; }", 'Foo)
+        freshAddr("protocol Test { role Alice, Bob; }", 'Foo)
       }
     }
 
     test("complains if protocol is not valid Scribble") {
       intercept[IllegalArgumentException] {
-        freshPort("foobar", 'Foo)
+        freshAddr("foobar", 'Foo)
       }
     }
 
     test("complains if protocol does not have at least 1 role") {
       intercept[IllegalArgumentException] {
-        freshPort("protocol P {}", 'Foo)
+        freshAddr("protocol P {}", 'Foo)
       }
     }
 
     test("bind when not invited: timeouts", Tag("timeouts"), Tag("leftoverq")) {
       var didRun = false
-      val otherAlice = freshPort("protocol Test { role Alice, Bob; }", 'Alice)
-      val otherBob = freshPort("protocol Test { role Alice, Bob; }", 'Bob)
+      val otherAlice = freshAddr("protocol Test { role Alice, Bob; }", 'Alice)
+      val otherBob = freshAddr("protocol Test { role Alice, Bob; }", 'Bob)
       expectTimeout(1000) {
         actor { startSession(otherAlice, otherBob) }
 
@@ -193,8 +193,8 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       val proto = """
         protocol P { role A, B; }
       """
-      val a = freshPort(proto, 'A)
-      val b = freshPort(proto, 'B)
+      val a = freshAddr(proto, 'A)
+      val b = freshAddr(proto, 'B)
       
       withTimeoutAndWait {
         actor { startSession(a,b) }
@@ -243,7 +243,7 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     case object Foo ; case object Bar
     test("doesn't interfere with standard actor messaging", Tag("actors")) {
       var fooReceived = false ; var barReceived = false
-      val single = freshPort("protocol P { role Single; }", 'Single)
+      val single = freshAddr("protocol P { role Single; }", 'Single)
       withTimeout(1000) {
         actor { startSession(single) }
         val fooActor = actor {
@@ -265,9 +265,9 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
     }
 
     test("sequence of two message receives out of order works", Tag("ooo")) {
-      val foo = freshPort("protocol P { role Foo, Bar, Quux; }", 'Foo)
-      val bar = freshPort("protocol P { role Foo, Bar, Quux; }", 'Bar)
-      val quux = freshPort("protocol P { role Foo, Bar, Quux; }", 'Quux)
+      val foo = freshAddr("protocol P { role Foo, Bar, Quux; }", 'Foo)
+      val bar = freshAddr("protocol P { role Foo, Bar, Quux; }", 'Bar)
+      val quux = freshAddr("protocol P { role Foo, Bar, Quux; }", 'Quux)
       var fromBar: Any = null ; var fromQuux: Any = null
       withTimeout(1000) {
         actor { 
@@ -296,17 +296,79 @@ class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
         }
       }
 
-      sleep(600) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
+      sleep(1000) // needs to be longer than the sleep in Bar otherwise message will not have arrived yet
       assert(fromBar == 42, "Foo should have received 42 from Bar, got: "+fromBar)
       assert(fromQuux == 'a', "Foo should have received 'a' from Quux, got:"+fromQuux)
     }
 
     // Too long/resource-intensive for routine testing
     ignore("many waiting binds don't blow the stack", Tag("slow")) {
-      val manyWaiting = freshPort("protocol P { role One, Other; }", 'One)
+      val manyWaiting = freshAddr("protocol P { role One, Other; }", 'One)
       for (i <- List.range(1,1000000)) {
         actor { manyWaiting.bind { _ => } }
       }
     }
+    
+  test("Session interleaving") {
+      val alice = freshAddr("protocol P { role Alice, Bob; }", 'Alice)
+      val bobQ = freshAddr("protocol Q { role Bob, Carol; }", 'Bob)
+      val bobP = freshAddr("protocol P { role Alice, Bob; }", 'Bob)
+      val carol = freshAddr("protocol Q { role Bob, Carol; }", 'Carol)
+      var bothAccepted = false ; var aliceOK = false ; var carolOK = false
+      var bobOK1 = false; var bobOK2 = false ; var bobOK3 = false 
+  
+      actor { startSession(alice, bobP) }
+      actor { startSession(bobQ, carol) }
+  
+      actor {
+        alice.bind { sA =>
+          sA ! 'Bob -> "Hello from Alice"
+          //println("Hello (1) from Alice sent to: " + sA('Bob))
+          aliceOK = sA.?('Bob) == "Hello from Bob"
+          sA ! 'Bob -> "Hello from Alice"
+          //println("Hello (2) from Alice sent to: " + sA('Bob))
+        }
+      }
+  
+      actor {
+        bobP.bind { sA =>
+          // println("before first receive on: " + sA)
+          bobOK1 = sA.?('Alice) == "Hello from Alice"
+  
+          bobQ.bind { sB =>
+            bothAccepted = true
+            //println("before send to Alice")
+            sA ! 'Alice -> "Hello from Bob"
+            //println("sA: " + sA)
+            //println("sB: " + sB)
+            //println(this)
+            //println("before second receive on: " + sA)
+            bobOK2 = sA.?('Alice) == "Hello from Alice"
+            //println("before receive on: " + sB)
+            bobOK3 = sB.?('Carol) == "Hello from Carol"
+            //println("after sB receive")
+            sB ! 'Carol -> "Hello from Bob"
+  
+          }
+        }
+      }
+  
+      actor {
+        carol.bind { sB =>
+          sB ! 'Bob -> "Hello from Carol"
+          //println("Hello from Carol sent to: " + sB('Bob))
+          carolOK = sB.?('Bob) == "Hello from Bob"
+        }
+      }
+  
+      sleep(500)
+      assert(bothAccepted, "Both sessions should be started")
+  
+      assert(aliceOK, "The message to Alice (sA) should be received")
+      assert(bobOK1, "The message from Alice (sA) should be received in the outer scope")
+      assert(bobOK2, "The message from Alice (sA) should be received in the inner scope")
+      assert(bobOK3, "The message from Carol (sB) should be received")
+      assert(carolOK, "The message to Carol (sB) should be received")
+    }    
   }
 }
