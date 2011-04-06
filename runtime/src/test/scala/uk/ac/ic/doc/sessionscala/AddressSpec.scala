@@ -5,7 +5,7 @@ import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FunSuite, Tag}
 import actors.Actor, Actor._
 import org.scalatest.matchers.ShouldMatchers._
 
-class PublicPortSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
+class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
   val rng = new java.util.Random
   def randomName(): String = {
