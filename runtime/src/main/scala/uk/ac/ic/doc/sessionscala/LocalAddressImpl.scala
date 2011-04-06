@@ -53,12 +53,12 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
   }
 
   def bindWithin[T](msec: Int)(act: (SessionChannel) => T) = {
-    bind(receiveWithin(msec), act)
+    bind(receiveWithin(msec), _.receiveWithin(msec), act)
   }
   def bind[T](act: SessionChannel => T): T = {
-    bind(receive, act)
+    bind(receive, _.receive, act)
   }
-  def bind[T](rcvInvite: => Any, act: SessionChannel => T): T = {
+  def bind[T](rcvInvite: => Any, rcvMapping: Channel[Any] => PartialFunction[Any,T] => T, act: SessionChannel => T): T = {
     //println("bind: "+this+", role: "+role)
     rcvInvite match {
       case Invite(inviterPort, protocol, role) =>
@@ -66,7 +66,7 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
         val c = new Channel[Any]()
         val replyPort = ActorPrivateAddress(c)
         inviterPort.send(AcceptedInvite(role, replyPort, ActorPrivateAddress(self)))
-        c.receive {
+        rcvMapping(c) {
           case mapping: Map[Symbol, PrivateAddress] =>
             val actorMap = convert(mapping)
             //println("before act for "+role+", sessMap: " + sessMap)
