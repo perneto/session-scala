@@ -82,14 +82,14 @@ case class AMQPAddressImpl(protocol: String, role: Symbol,
           receiverActor !? Quit
           // sessionQueue autodeleted here, after receiverActor stops consuming.
           for (a <- participantsMap.values) a !? Quit
-          println("Sent Quit and got replies from: "+receiverActor+", "+participantsMap.values)
+          //println("Sent Quit and got replies from: "+receiverActor+", "+participantsMap.values)
         }
       }
     }
   }
 
   def publish(chan: Channel, queue: String, msg: Any) {
-    println("publishing: "+msg+" to queue: "+queue)
+    //println("publishing: "+msg+" to queue: "+queue)
     chan.basicPublish("", queue, MessageProperties.BASIC, serialize(msg))
     //println("done: "+msg+" to "+queue)
   }
@@ -97,13 +97,13 @@ case class AMQPAddressImpl(protocol: String, role: Symbol,
   // Only use when there's a single message in the queue max guaranteed
   def consumeOne(chan: Channel, queue: String): Any = {
     // auto-ack: true
-    println("consumeOne")
+    //println("consumeOne")
     val consumerTag = chan.basicConsume(queue, true, new SendMsgConsumer(chan, Actor.self))
     self.receive {
       case bytes: Array[Byte] => 
         val msg = deserialize(bytes)
         chan.basicCancel(consumerTag)
-        println("consumeOne cancelling consume")
+        //println("consumeOne cancelling consume")
         msg
     }
   }

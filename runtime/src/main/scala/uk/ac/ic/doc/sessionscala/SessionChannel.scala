@@ -5,9 +5,10 @@ import actors.Actor, Actor._
 import PartialFunction.cond
 
 class SessionChannel(ourRole: Symbol, map: Map[Symbol, Actor]) {
-  println("Creating SessionChannel: "+this+", map: "+map)
+  //println("Creating SessionChannel: "+this+", map: "+map)
+  
   def !(msg: (Symbol,Any)) = { 
-    println("!: send to role: "+msg._1+" at: "+map(msg._1)+", msg:"+msg._2)
+    //println("!: send to role: "+msg._1+" at: "+map(msg._1)+", msg:"+msg._2)
     map(msg._1) ! ->(ourRole, msg._2)
   }
   
@@ -16,7 +17,7 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, Actor]) {
       case `role` -> (label: Symbol) => throw new IllegalStateException(
         "Trying to receive an unlabelled message, but got label")
       case `role` -> msg => 
-        println(ourRole+" received msg:"+msg+" from:"+role)
+        //println(ourRole+" received msg:"+msg+" from:"+role)
         msg.asInstanceOf[T]
     }
   }
@@ -24,10 +25,10 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, Actor]) {
   def ?[T](role: Symbol, label: Symbol): T = {
     self.receive {
       case `role` -> (label: Symbol) => 
-        println(ourRole+" received label:"+label+" from:"+role)
+        //println(ourRole+" received label:"+label+" from:"+role)
         ().asInstanceOf[T]
       case `role` -> msg => 
-        println(ourRole+" received msg:"+msg+" from:"+role)
+        //println(ourRole+" received msg:"+msg+" from:"+role)
         dropLabel(label, msg)  
     }
   }
@@ -66,6 +67,12 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, Actor]) {
       case (`label`,a,b,c,d,e,f,g,h,i) => (a,b,c,d,e,f,g,h,i)
       case (`label`,a,b,c,d,e,f,g,h,i,j) => (a,b,c,d,e,f,g,h,i,j)
       case (`label`,a,b,c,d,e,f,g,h,i,j,k) => (a,b,c,d,e,f,g,h,i,j,k)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l) => (a,b,c,d,e,f,g,h,i,j,k,l)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m) => (a,b,c,d,e,f,g,h,i,j,k,l,m)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)             
+                                    
       // TODO extend to Tuple22
       case _ =>  throw new IllegalStateException(
         "Trying to receive a labelled message, but got unlabelled message")

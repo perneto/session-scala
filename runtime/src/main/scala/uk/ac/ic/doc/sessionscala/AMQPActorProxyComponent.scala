@@ -17,7 +17,7 @@ trait AMQPActorProxyComponent {
     override def start() = {
       // noAck = true, automatically sends acks todo: probably should be false here
       consumerTag = amqpChan.basicConsume(queueForRole, true, new SendMsgConsumer(amqpChan, this))
-      println("Receiver is consuming messages for "+roleActor+" on queue: "+queueForRole+"...")      
+      //println("Receiver is consuming messages for "+roleActor+" on queue: "+queueForRole+"...")      
       super.start()
     }
 
@@ -25,7 +25,7 @@ trait AMQPActorProxyComponent {
       react {
         case rawMsg: Array[Byte] =>
           val msgWithSender = deserialize(rawMsg).asInstanceOf[->]
-          println("AMQP receiver for "+roleActor+" received: "+msgWithSender)
+          //println("AMQP receiver for "+roleActor+" received: "+msgWithSender)
           roleActor ! msgWithSender
       
         case Quit =>
@@ -58,7 +58,7 @@ trait AMQPActorProxyComponent {
     def act() = loop { 
       react {
         case m@(srcRole -> msg) =>
-          println("Got message for "+dstRole+", sending to: "+queueToRole+", msg: "+msg)
+          //println("Got message for "+dstRole+", sending to: "+queueToRole+", msg: "+msg)
           publish(chanToRole, queueToRole, m)
         case Quit =>
           if (chanCreated) AMQPUtils.close(chanToRole)

@@ -7,32 +7,6 @@ import org.scalatest.matchers.ShouldMatchers._
 
 class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
 
-  val rng = new java.util.Random
-  def randomName(): String = {
-    val rand = rng.nextInt(1000000000)
-    var name = rand.toString
-    while (name.length < 9) name = "0" + name
-    "q"+name
-  }
-  
-  val queuesInTest = collection.mutable.Set[String]()
-  def createQueue(proto: String, role: Symbol) = {
-    val name = randomName()
-    queuesInTest += name
-    AMQPAddress(proto, role, name)
-  }
-  
-  override def afterAll() {
-    val chan = AMQPUtils.connectDefaults()
-    for (q <- queuesInTest) {
-      // need to ensure it's there first, as some tests don't really create the queue
-      // (randomName is called for every call to AMQPAddress, but not all ports get bound/invited)
-      chan.queueDeclare(q,false,false,false,null)
-      chan.queueDelete(q)
-    }
-    AMQPUtils.close(chan)
-  }
-
   override def nestedSuites = List(
     new SessionPortSpecImpl("AMQP", createQueue),
     new SessionPortSpecImpl("Shared Mem", newLocalAddress)
@@ -121,12 +95,12 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       withTimeoutAndWait {
         actor { 
           startSession(alice, bob) 
-          println("done starting session")
+          //println("done starting session")
         }
 
         actor { alice.bind { s =>
           s ! 'Bob -> 42
-          println("Alice sent 42 to Bob")
+          //println("Alice sent 42 to Bob")
           val recv = s.?[String]('Bob)
           //println("Alice received "+recv+" from Bob")
           aliceOk = recv == "foo"
@@ -137,7 +111,7 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
           //println("Bob received "+recv+" from Alice")
           bobOk = recv == 42
           s ! 'Alice -> "foo"
-          println("Bob sent foo to Alice")
+          //println("Bob sent foo to Alice")
         }
       }
       assert(aliceOk, "Alice was not able to communicate")
@@ -371,4 +345,30 @@ class AddressSpec extends FunSuite with Timeouts with BeforeAndAfterAll {
       assert(carolOK, "The message to Carol (sB) should be received")
     }    
   }
+  
+  val rng = new java.util.Random
+  def randomName(): String = {
+    val rand = rng.nextInt(1000000000)
+    var name = rand.toString
+    while (name.length < 9) name = "0" + name
+    "q"+name
+  }
+  
+  val queuesInTest = collection.mutable.Set[String]()
+  def createQueue(proto: String, role: Symbol) = {
+    val name = randomName()
+    queuesInTest += name
+    AMQPAddress(proto, role, name)
+  }
+  
+  override def afterAll() {
+    val chan = AMQPUtils.connectDefaults()
+    for (q <- queuesInTest) {
+      // need to ensure it's there first, as some tests don't really create the queue
+      // (randomName is called for every call to AMQPAddress, but not all ports get bound/invited)
+      chan.queueDeclare(q,false,false,false,null)
+      chan.queueDelete(q)
+    }
+    AMQPUtils.close(chan)
+  }  
 }

@@ -51,17 +51,17 @@ object Address {
     checkPorts(ports)
     val sessID = UUID.randomUUID().toString
     val sessIDPort = ports(0).derived(sessID)
-    println("sending invites")
+    //println("sending invites")
     ports foreach { p =>
       p.send(Invite(sessIDPort, p.protocol, p.role))
     }
-    println("Finished sending invites")
+    //println("Finished sending invites")
     val replies = for (i <- 1 to ports.length)
       yield sessIDPort.receive().asInstanceOf[AcceptedInvite]
     val mapping = finalLocationsMapping(replies)
     val privPorts = mapping.values
     for (rp <- replies map (_.replyPort)) {
-      println("send mapping to: "+rp)
+      //println("send mapping to: "+rp)
       rp.send(mapping)
     }
     sessIDPort.close()
