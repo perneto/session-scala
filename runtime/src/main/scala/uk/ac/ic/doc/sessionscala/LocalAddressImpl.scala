@@ -53,10 +53,10 @@ case class LocalAddressImpl(protocol: String, role: Symbol) extends Address {
   }
 
   def bindWithin[T](msec: Int)(act: (SessionChannel) => T) = {
-    bind(receiveWithin(msec), _.receiveWithin(msec), act)
+    bind(receiveWithin(msec), _.receiveWithin(msec):(PartialFunction[Any,T] => T), act)
   }
   def bind[T](act: SessionChannel => T): T = {
-    bind(receive, _.receive, act)
+    bind(receive, _.receive:(PartialFunction[Any,T] => T), act)
   }
   def bind[T](rcvInvite: => Any, rcvMapping: Channel[Any] => PartialFunction[Any,T] => T, act: SessionChannel => T): T = {
     //println("bind: "+this+", role: "+role)
