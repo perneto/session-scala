@@ -47,9 +47,13 @@ class SessionScalaProject(info: ProjectInfo) extends ParentProject(info)
   }
 
   class FunctionalTests(info: ProjectInfo) extends ForkingProject(info) {
-    override def testAction = super.testAction dependsOn(compilerplugin.`proguard`, runtime.`proguard`)
-    override def testOnlyAction = task { args =>
+    lazy val `ptest` = testAction dependsOn(compilerplugin.`proguard`, runtime.`proguard`)
+    lazy val `ptest-only` = task { args =>
       super.testOnlyAction(args) dependsOn(compilerplugin.`proguard`, runtime.`proguard`)
+    }
+    override def testAction = super.testAction dependsOn(compilerplugin.`package`)
+    override def testOnlyAction = task { args =>
+      super.testOnlyAction(args) dependsOn(compilerplugin.`package`)
     }
   }
 
