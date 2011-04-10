@@ -3,7 +3,7 @@ package uk.ac.ic.doc.sessionscala.compiler
 import tools.nsc.plugins.PluginComponent
 import tools.nsc.{Global, Phase}
 
-abstract class DefDefPass extends PluginComponent
+abstract class SessionMethodDefPass extends PluginComponent
                              with SessionTypingEnvironments
                              with SessionDefinitions
                              with SessionTypeCheckingTraversers {
@@ -67,7 +67,7 @@ abstract class DefDefPass extends PluginComponent
 
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
-      //println("   DefDefPass starting")
+      //println("   SessionMethodDefPass starting")
 
       //treeBrowsers.create().browse(unit.body)
       val inferenceTraverser = new SessionMethodDefTraverser
@@ -80,5 +80,5 @@ abstract class DefDefPass extends PluginComponent
     }
   }
 
-  val nextPass: JoinBlocksPass
+  val nextPass: BindBlocksPass
 }

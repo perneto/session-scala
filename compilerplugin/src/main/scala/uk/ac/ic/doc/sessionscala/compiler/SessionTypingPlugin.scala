@@ -11,7 +11,7 @@ class SessionTypingPlugin(val global: Global) extends Plugin {
   val description = "Multiparty Session Type checking for actors using the session-scala library"
   val _journal = new ConsoleJournal
 
-  val joinBlockPass = new JoinBlocksPass {
+  val bindBlocksPass = new BindBlocksPass {
     val global = SessionTypingPlugin.this.global
     val runsAfter = List[String]("sessiontyping_methoddefs")
     val phaseName = "sessiontyping_acceptblocks"
@@ -19,14 +19,14 @@ class SessionTypingPlugin(val global: Global) extends Plugin {
     val scribbleJournal = _journal
   }
 
-  val methodDefPass = new DefDefPass {
+  val methodDefPass = new SessionMethodDefPass {
     val global = SessionTypingPlugin.this.global
     val runsAfter = List[String]("refchecks")
     val phaseName = "sessiontyping_methoddefs"
 
     val scribbleJournal = _journal
-    val nextPass = joinBlockPass
+    val nextPass = bindBlocksPass
   }
 
-  val components = List[PluginComponent](joinBlockPass, methodDefPass)
+  val components = List[PluginComponent](bindBlocksPass, methodDefPass)
 }

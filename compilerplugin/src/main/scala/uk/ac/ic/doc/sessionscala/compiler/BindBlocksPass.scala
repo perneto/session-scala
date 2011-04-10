@@ -8,7 +8,7 @@ import java.io._
 import tools.nsc.Phase
 
 
-abstract class JoinBlocksPass extends PluginComponent
+abstract class BindBlocksPass extends PluginComponent
                                  with SessionTypingEnvironments
                                  with SessionDefinitions
                                  with SessionTypeCheckingTraversers {
@@ -18,7 +18,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
   class AbortException extends ControlThrowable
 
-  class JoinBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
+  class BindBlocksTraverser(unitPath: String) extends SessionTypeCheckingTraverser {
 
     val scribbleParser = new ANTLRProtocolParser
     def initEnvironment = new ProcessBlocksPassTopLevelEnv(inferred)
@@ -50,7 +50,7 @@ abstract class JoinBlocksPass extends PluginComponent
     lazy val stringType = definitions.StringClass.tpe
     lazy val function1 = definitions.FunctionClass(1)
     def isSharedChannelFunction(tpe: Type): Boolean = tpe match {
-      case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< sharedChannelTrait.tpe =>
+      case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< addressTrait.tpe =>
         true
       case x =>
         //println("Not shared channel function: " + x)
@@ -143,7 +143,7 @@ abstract class JoinBlocksPass extends PluginComponent
 
         case Apply(Apply(SelectIdent(chanIdent), ApplyArg(StringLit(role))::Nil),
                    Function1(sessChan, block)::Nil)
-        if sym == joinMethod || sym == acceptMethod =>
+        if sym == joinMethod || sym == bindMethod =>
           //println("join: " + role + ", sessChan: " + sessChan)
           try {
             env = env.enterJoin(chanIdent, role, sessChan)
@@ -160,7 +160,7 @@ abstract class JoinBlocksPass extends PluginComponent
               //e.printStackTrace()
           }
 
-        case Apply(SelectIdent(sharedChan), args) if sym == inviteMethod =>
+        case Apply(SelectIdent(sharedChan), args) if sym == startSessionMethod =>
           env = env.invite(sharedChan, getRoles(args))
 
         case _ =>
@@ -173,7 +173,7 @@ abstract class JoinBlocksPass extends PluginComponent
     def apply(unit: global.CompilationUnit): Unit = {
       //println("   JoinBlockPass starting")
       val unitPath = new File(unit.source.path).getParent()
-      val typeChecker = new JoinBlocksTraverser(unitPath)
+      val typeChecker = new BindBlocksTraverser(unitPath)
       try {
         typeChecker(unit.body)
       } catch {
