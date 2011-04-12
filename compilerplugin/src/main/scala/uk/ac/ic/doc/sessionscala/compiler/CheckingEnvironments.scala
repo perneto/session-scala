@@ -1,7 +1,6 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scribble.common.logging.Journal
-import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
 import scalaj.collection.Imports._
 import uk.ac.ic.doc.sessionscala.ScribbleRuntimeUtils
@@ -25,21 +24,32 @@ val scribbleJournal: Journal
 
     override def isSharedChannel(c: Name) = ste.addresses.contains(c)
 
-    override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
-      //println("invite: " + this + ", delegator: " + delegator + ", delegator.ste: " + delegator.ste)
-//      val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
-//        val caps = currentSte.currentInviteCapabilities(sharedChan)
-//        if (!caps.contains(new Role(role)))
-//          throw new SessionTypeCheckingException("Cannot invite role: " + role + ", another participant was already invited for this role")
-//        currentSte.consumeInviteCapability(sharedChan, role)
-//      }
-//      delegator.updated(newSte)
+    override def invite(addresses: List[Name], delegator: SessionTypingEnvironment) = {
+      //println("invite: "+this+", delegator: "+delegator+", delegator.ste: "+delegator.ste)
+      if (addresses.length == 0)
+        throw new SessionTypeCheckingException("startSession should have at least one argument")
+      
+      var fstProto: ProtocolModel = null
+      var roles: Set[Role] = null
+      addresses foreach { addr =>
+        val (proto, role) = delegator.ste.addresses(addr)
+        if (fstProto == null)
+          fstProto = proto
+        // TODO: check protocols are same, implement equals on ProtocolModel
+        if (roles == null)
+          roles = ScribbleRuntimeUtils.roles(proto)
+        if (!roles.contains(role))
+          throw new SessionTypeCheckingException("Role "+role+
+                  " was already invited for this session") // role in protocol already checked in registerAddress
+        else roles -= role
+      }
       delegator
     }
 
     override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name): SessionTypingEnvironment = {
       //println("enterJoin: " + ste)
-      val (projectedModel, role) = delegator.getLocalTypeForChannel(sharedChannel)
+      val (globalModel, role) = delegator.getGlobalTypeForChannel(sharedChannel)
+      val projectedModel = project(globalModel, role)
       new InProcessEnv(
         delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)), 
         delegator, role, sessChan, infEnv

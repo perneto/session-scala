@@ -17,63 +17,6 @@ trait SessionTypedElementsComponent {
   type LAA = List[(Activity, Activity)]
   type Inferred = Map[Symbol, InferredMethod]
 
-
-  def contained[V](seq1: Iterable[V], seq2: Iterable[V]): Boolean = {
-    val seq2_ = Nil ++ seq2
-    (seq1 foldLeft true) { case (result, value) =>
-      seq2_.contains(value)
-    }
-  }
-
-  def equal[V](seq1: Iterable[V], seq2: Iterable[V]) = contained(seq1, seq2) && contained(seq2, seq1)
-
-  def valuesEq[K1, K2, V](map1: Map[K1, V], map2: Map[K2, V]): Boolean =
-    equal(map1.values, map2.values) && equal(map2.values, map1.values)
-
-
-  object InferredMethod {
-    def apply() = new InferredMethod(Map(), Map(), Map(), Map())
-  }
-  case class InferredMethod(rankToInferred: Map[Int, LA], chansToInferred: Map[Name, LA],
-                            chanToRank: Map[Name, Int], rankToReturned: Map[Int, Int])
-  {
-    assert(valuesEq(rankToInferred, chansToInferred)
-            && chanToRank.keys == chansToInferred.keys
-            && equal(chanToRank.values, rankToInferred.keys),
-      "Inconsistent InferredMethod: " + rankToInferred + ", " + chansToInferred + ", " + chanToRank)
-    def get(rank: Int) = rankToInferred.get(rank)
-    def get(chan: Name) = chansToInferred.get(chan)
-    def getOrElse(chan: Name, default: LA): LA = chansToInferred.getOrElse(chan, default)
-    def add(chan: Name, index: Int) = {
-      InferredMethod(rankToInferred + (index -> Nil), chansToInferred + (chan -> Nil),
-                     chanToRank + (chan -> index), rankToReturned)
-    }
-    def addWithInferred(chan: Name, index: Int, inf: LA) = add(chan, index).updated(chan, inf)
-    def updated(chan: Name, inf: LA): InferredMethod = {
-      copy(rankToInferred = rankToInferred + (chanToRank(chan) -> inf),
-           chansToInferred = chansToInferred + (chan -> inf))
-    }
-    def channels = chansToInferred.keys
-    def mapValues(f: LA => LA) = {
-      val newRTI = rankToInferred.map { case (rank, l) => (rank, f(l)) }
-      val newCTI = chansToInferred.map { case (chan, l) => (chan, newRTI(chanToRank(chan))) }
-      copy(rankToInferred = newRTI, chansToInferred = newCTI)
-    }
-    def returnRank(paramRank: Int) = rankToReturned.get(paramRank)
-    def recordChanReturnOrder(returnedChans: List[Name]): InferredMethod = {
-      var retWithIndex = returnedChans zipWithIndex
-      val map = (retWithIndex foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
-        result + (chanToRank(retChan) -> index)
-      }
-      copy(rankToReturned = map)
-    }
-    def setAllToEmptyList = {
-      def empty(x: LA): LA = Nil
-      copy(rankToInferred = rankToInferred mapValues empty,
-           chansToInferred = chansToInferred mapValues empty)
-    }
-  }
-
   // todo: refactor inferred into one subclass and sessions into the other. STE should be a trait
   val EmptySTE = new SessionTypedElements
   case class SessionTypedElements(addresses: Addresses,
@@ -168,4 +111,61 @@ trait SessionTypedElementsComponent {
 
   def setAllToEmptyList(inferred: Inferred): Inferred =
     inferred mapValues (infMethod => infMethod.setAllToEmptyList)
+  
+
+  def contained[V](seq1: Iterable[V], seq2: Iterable[V]): Boolean = {
+    val seq2_ = Nil ++ seq2
+    (seq1 foldLeft true) { case (result, value) =>
+      seq2_.contains(value)
+    }
+  }
+
+  def equal[V](seq1: Iterable[V], seq2: Iterable[V]) = contained(seq1, seq2) && contained(seq2, seq1)
+
+  def valuesEq[K1, K2, V](map1: Map[K1, V], map2: Map[K2, V]): Boolean =
+    equal(map1.values, map2.values) && equal(map2.values, map1.values)
+
+
+  object InferredMethod {
+    def apply() = new InferredMethod(Map(), Map(), Map(), Map())
+  }
+  case class InferredMethod(rankToInferred: Map[Int, LA], chansToInferred: Map[Name, LA],
+                            chanToRank: Map[Name, Int], rankToReturned: Map[Int, Int])
+  {
+    assert(valuesEq(rankToInferred, chansToInferred)
+            && chanToRank.keys == chansToInferred.keys
+            && equal(chanToRank.values, rankToInferred.keys),
+      "Inconsistent InferredMethod: " + rankToInferred + ", " + chansToInferred + ", " + chanToRank)
+    def get(rank: Int) = rankToInferred.get(rank)
+    def get(chan: Name) = chansToInferred.get(chan)
+    def getOrElse(chan: Name, default: LA): LA = chansToInferred.getOrElse(chan, default)
+    def add(chan: Name, index: Int) = {
+      InferredMethod(rankToInferred + (index -> Nil), chansToInferred + (chan -> Nil),
+                     chanToRank + (chan -> index), rankToReturned)
+    }
+    def addWithInferred(chan: Name, index: Int, inf: LA) = add(chan, index).updated(chan, inf)
+    def updated(chan: Name, inf: LA): InferredMethod = {
+      copy(rankToInferred = rankToInferred + (chanToRank(chan) -> inf),
+           chansToInferred = chansToInferred + (chan -> inf))
+    }
+    def channels = chansToInferred.keys
+    def mapValues(f: LA => LA) = {
+      val newRTI = rankToInferred.map { case (rank, l) => (rank, f(l)) }
+      val newCTI = chansToInferred.map { case (chan, l) => (chan, newRTI(chanToRank(chan))) }
+      copy(rankToInferred = newRTI, chansToInferred = newCTI)
+    }
+    def returnRank(paramRank: Int) = rankToReturned.get(paramRank)
+    def recordChanReturnOrder(returnedChans: List[Name]): InferredMethod = {
+      var retWithIndex = returnedChans zipWithIndex
+      val map = (retWithIndex foldLeft Map[Int, Int]()) { case (result, (retChan, index)) =>
+        result + (chanToRank(retChan) -> index)
+      }
+      copy(rankToReturned = map)
+    }
+    def setAllToEmptyList = {
+      def empty(x: LA): LA = Nil
+      copy(rankToInferred = rankToInferred mapValues empty,
+           chansToInferred = chansToInferred mapValues empty)
+    }
+  }  
 }

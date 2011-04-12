@@ -11,6 +11,9 @@ object ScribbleRuntimeUtils {
   def roleNames(model: ProtocolModel): Set[String] =
     roles(model).map(r => r.getName)
   
-  def roles(model: ProtocolModel): Set[Role] =
-    Set(model.getRoles.asScala:_*)
+  def roles(model: ProtocolModel): Set[Role] = {
+    val res = Set(model.getRoles.asScala:_*)
+    //println("roles: "+model+", result: "+res)
+    res
+  }
 }

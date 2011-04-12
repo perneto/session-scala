@@ -54,18 +54,8 @@ abstract class BindBlocksPass extends PluginComponent
       env = env.leaveSessionMethod(Nil)
     }
 
-    def getRoles(args: List[Tree]): List[String] = {
-      val result = args map {
-        case Apply(
-          TypeApply(
-            Select(
-              ApplyArg(SymbolMatcher(role)),
-              _minusgt)
-            ,_)
-          ,_) => role
-      }
-      //println("getRoles: " + result)
-      result
+    def getAddresses(args: List[Tree]): List[Name] = args map {
+      case Ident(name) => name
     }
 
     def parseProtocol(proto: Tree, pos: Position): ProtocolModel = proto match {
@@ -116,9 +106,9 @@ abstract class BindBlocksPass extends PluginComponent
               //e.printStackTrace()
           }
 
-        case Apply(SelectIdent(sharedChan), args) if sym == startSessionMethod =>
-          println("startSession: "+args)
-          env = env.invite(sharedChan, getRoles(args))
+        case Apply(_, args) if sym == startSessionMethod =>
+          //println("startSession: "+args)
+          env = env.invite(getAddresses(args))
 
         case _ =>
           super.traverse(tree)

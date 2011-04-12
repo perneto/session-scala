@@ -45,20 +45,20 @@ trait CommonEnvironments {
     }
     def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment
 
-    def invite(sharedChan: Name, roles: List[String]): SessionTypingEnvironment = invite(this, sharedChan, roles)
-    def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]): SessionTypingEnvironment = delegator
+    def invite(sharedChans: List[Name]): SessionTypingEnvironment = invite(sharedChans, this)
+    def invite(sharedChans: List[Name], delegator: SessionTypingEnvironment): SessionTypingEnvironment = delegator
 
     def enterJoin(sharedChannel: Name, sessChan: Name): SessionTypingEnvironment =
       enterJoin(this, sharedChannel, sessChan)
     def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name): SessionTypingEnvironment = delegator
     def leaveJoin: SessionTypingEnvironment = this
 
-    def getLocalTypeForChannel(name: Name): (ProtocolModel, Role) =
+    def getGlobalTypeForChannel(name: Name): (ProtocolModel, Role) =
       ste.addressOfName(name).getOrElse(
         if (parent == null)
           throw new SessionTypeCheckingException("Channel: " + name + " is not in scope")
         else
-          parent.getLocalTypeForChannel(name))
+          parent.getGlobalTypeForChannel(name))
 
     def send(sessChan: Name, role: String, msgSig: MsgSig): SessionTypingEnvironment =
       send(sessChan, role, msgSig, this)
@@ -128,8 +128,8 @@ trait CommonEnvironments {
     def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       parent.registerAddress(name, globalType, roleName, delegator)
 
-    override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) =
-      parent.invite(delegator, sharedChan, roles)
+    override def invite(sharedChans: List[Name], delegator: SessionTypingEnvironment) =
+      parent.invite(sharedChans, delegator)
 
     override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name) =
       parent.enterJoin(delegator, sharedChannel, sessChan)
@@ -172,8 +172,8 @@ trait CommonEnvironments {
       val roles = ScribbleRuntimeUtils.roles(globalType)
       if (!roles.contains(role))
         throw new SessionTypeCheckingException("Protocol does not contain role "+roleName)
-      val localType = project(globalType, role)
-      delegator.updated(delegator.ste.withAddress(name, localType, role))
+      // TODO: Validate protocol here, including projectability checks
+      delegator.updated(delegator.ste.withAddress(name, globalType, role))
     }
 
     protected def notYet(what: String) =
@@ -203,6 +203,7 @@ trait CommonEnvironments {
       new ElseBlockEnv(newSte, parent, steThenBranch)
   }
 
+  /** TODO: Investigate use/non-use of delegator variants here, looks buggy */
   class FrozenChannelsEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment,
                           frozenSessionChannels: Iterator[Name],
                           frozenSharedChannels: Iterator[Name], location: String) extends AbstractDelegatingEnv(parent)
@@ -210,9 +211,9 @@ trait CommonEnvironments {
     def updated(newSte: SessionTypedElements) = new FrozenChannelsEnv(
       newSte, parent, frozenSessionChannels, frozenSharedChannels, location)
 
-    override def invite(sharedChan: Name, roles: List[String]) = {
-      checkSharedFrozen(sharedChan)
-      parent.invite(this, sharedChan, roles)
+    override def invite(sharedChans: List[Name]) = {
+      sharedChans foreach checkSharedFrozen
+      parent.invite(sharedChans, this)
     }
 
     override def send(sessChan: Name, role: String, msgSig: MsgSig) = {
