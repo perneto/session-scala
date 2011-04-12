@@ -71,8 +71,12 @@ class SessionChannel(ourRole: Symbol, map: Map[Symbol, Actor]) {
       case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m) => (a,b,c,d,e,f,g,h,i,j,k,l,m)             
       case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n)             
       case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)             
-      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)             
-                                    
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q)             
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)         
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)         
+      case (`label`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t) => (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)             
+                                                
       // TODO extend to Tuple22
       case _ =>  throw new IllegalStateException(
         "Trying to receive a labelled message, but got unlabelled message")

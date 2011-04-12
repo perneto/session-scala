@@ -2,7 +2,7 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 trait SessionTypingEnvironments
         extends SessionTypedElementsComponent
-        with ScribbleModelFactories
+        with ScribbleCompilerUtils
         with ScalaTypeSystemComponent
         with CommonEnvironments
         with InferenceEnvironments

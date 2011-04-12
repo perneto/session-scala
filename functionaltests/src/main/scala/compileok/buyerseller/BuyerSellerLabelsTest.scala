@@ -23,7 +23,7 @@ object BuyerSellerLabelsTest {
       }
     """
     val buyer = newLocalAddress(buyerseller, 'Buyer)
-    val seller = newLocalAddress(buyerseller, 'Buyer)
+    val seller = newLocalAddress(buyerseller, 'Seller)
     
     actor {
       seller.bind { s =>

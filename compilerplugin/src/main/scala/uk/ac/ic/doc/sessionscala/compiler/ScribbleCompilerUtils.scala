@@ -2,12 +2,15 @@ package uk.ac.ic.doc.sessionscala.compiler
 
 import org.scribble.protocol.model._
 import scalaj.collection.Imports._
+import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
+import org.scribble.common.logging.Journal
 
 /**
  * Created by: omp08
  */
 
-trait ScribbleModelFactories {
+trait ScribbleCompilerUtils {
+  val scribbleJournal: Journal
   type LA = List[Activity]
 
   def createInteraction(src: Role, dst: Role, msgSig: MessageSignature) =
@@ -94,4 +97,8 @@ trait ScribbleModelFactories {
 
   def isChoiceReceive(c: Choice) = !Session.isSendChoice(c)
 
+  def project(model: ProtocolModel, role: Role) = {
+    val projector = new ProtocolProjectorImpl
+    projector.project(model, role, scribbleJournal, null)
+  } 
 }

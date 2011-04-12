@@ -138,7 +138,7 @@ trait Address {
       new ByteArrayInputStream(protocol.getBytes), errorsJournal, null)
     if (errorsJournal.hasError) throw new IllegalArgumentException(
       "Could not parse Scribble protocol: " + protocol)
-    ScribbleUtils.roleSymbols(model)
+    ScribbleRuntimeUtils.roleSymbols(model)
   }
 
   val protocolRoles: Set[Symbol] = loadProtocolRoles

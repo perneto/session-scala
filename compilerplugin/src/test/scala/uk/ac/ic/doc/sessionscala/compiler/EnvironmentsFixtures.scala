@@ -30,9 +30,13 @@ trait EnvironmentsFixtures {
   def createInteraction(src: Role, dst: Role, msgType: TypeReference) =
       new Interaction(src, dst, new MessageSignature(msgType))
 
-  def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = {
-    val env = topEnv.registerSharedChannel(sharedChan, model)
-    env.enterJoin(sharedChan, joinAs, sessChan)
+  def join(model: ProtocolModel, joinAs: String): SessionTypingEnvironment = 
+    join(topEnv, sharedChan, model, joinAs, sessChan)
+  def join(env: SessionTypingEnvironment, model: ProtocolModel, joinAs: String): SessionTypingEnvironment =
+    join(env, sharedChan, model, joinAs, sessChan)
+  def join(env: SessionTypingEnvironment, addr: Name, model: ProtocolModel, joinAs: String, sessChan: Name): SessionTypingEnvironment = {
+    val newEnv = env.registerAddress(addr, model, joinAs)
+    newEnv.enterJoin(addr, sessChan)
   }
 
   val empty = definitions.EmptyPackage

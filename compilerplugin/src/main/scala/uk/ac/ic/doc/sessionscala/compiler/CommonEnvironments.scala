@@ -1,15 +1,17 @@
 package uk.ac.ic.doc.sessionscala.compiler
 
 import tools.nsc.Global
-import org.scribble.protocol.model.{RecBlock, ProtocolModel}
-import uk.ac.ic.doc.sessionscala.ScribbleUtils
+import uk.ac.ic.doc.sessionscala.ScribbleRuntimeUtils
+import org.scribble.protocol.model.{Role, RecBlock, ProtocolModel}
 
 /**
  * Created by: omp08
  */
 
 trait CommonEnvironments {
-  self: SessionTypedElementsComponent with ScalaTypeSystemComponent =>
+  self: SessionTypedElementsComponent 
+          with ScalaTypeSystemComponent
+          with ScribbleCompilerUtils =>
 
   val global: Global
   import global._
@@ -37,26 +39,26 @@ trait CommonEnvironments {
     def isSessionChannel(c: Name): Boolean
     def isSharedChannel(c: Name): Boolean
 
-    def registerSharedChannel(name: Name, globalType: ProtocolModel): SessionTypingEnvironment = {
-      //println("regisiterSharedChannel: " + this)
-      registerSharedChannel(name, globalType, this)
+    def registerAddress(name: Name, globalType: ProtocolModel, roleName: String): SessionTypingEnvironment = {
+      //println("registerAddress: " + this)
+      registerAddress(name, globalType, roleName, this)
     }
-    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment
+    def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment
 
     def invite(sharedChan: Name, roles: List[String]): SessionTypingEnvironment = invite(this, sharedChan, roles)
     def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]): SessionTypingEnvironment = delegator
 
-    def enterJoin(sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
-      enterJoin(this, sharedChannel, roleName, sessChan)
-    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = delegator
+    def enterJoin(sharedChannel: Name, sessChan: Name): SessionTypingEnvironment =
+      enterJoin(this, sharedChannel, sessChan)
+    def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name): SessionTypingEnvironment = delegator
     def leaveJoin: SessionTypingEnvironment = this
 
-    def getGlobalTypeForChannel(name: Name): ProtocolModel =
-      ste.getSharedChan(name).getOrElse(
+    def getLocalTypeForChannel(name: Name): (ProtocolModel, Role) =
+      ste.addressOfName(name).getOrElse(
         if (parent == null)
           throw new SessionTypeCheckingException("Channel: " + name + " is not in scope")
         else
-          parent.getGlobalTypeForChannel(name))
+          parent.getLocalTypeForChannel(name))
 
     def send(sessChan: Name, role: String, msgSig: MsgSig): SessionTypingEnvironment =
       send(sessChan, role, msgSig, this)
@@ -89,13 +91,13 @@ trait CommonEnvironments {
       delegator
     }
 
-    def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, ste.sharedChannels.keysIterator, "loop")
+    def enterLoop: SessionTypingEnvironment = new FrozenChannelsEnv(ste, this, ste.sessions.keysIterator, ste.addresses.keysIterator, "loop")
     def leaveLoop: SessionTypingEnvironment = parent.updated(ste)
 
     def enterClosure(params: List[Name]): SessionTypingEnvironment = {
       //println("enter closure: " + this + ", params: " + params + ", frozen: " + (ste.sessions.keySet -- params))
       new FrozenChannelsEnv(
-      ste, this, (ste.sessions.keySet -- params).iterator, (ste.sharedChannels.keySet -- params).iterator, "closure")
+      ste, this, (ste.sessions.keySet -- params).iterator, (ste.addresses.keySet -- params).iterator, "closure")
     }
     def leaveClosure: SessionTypingEnvironment = {
       //println("leave closure: " + this + ", parent: " + parent + ", ste: " + ste)
@@ -123,14 +125,14 @@ trait CommonEnvironments {
     def isSessionChannel(c: Name) = parent.isSessionChannel(c)
     def isSharedChannel(c: Name) = parent.isSharedChannel(c)
 
-    def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
-      parent.registerSharedChannel(name, globalType, delegator)
+    def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
+      parent.registerAddress(name, globalType, roleName, delegator)
 
     override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) =
       parent.invite(delegator, sharedChan, roles)
 
-    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name) =
-      parent.enterJoin(delegator, sharedChannel, roleName, sessChan)
+    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name) =
+      parent.enterJoin(delegator, sharedChannel, sessChan)
     override def leaveJoin = parent.leaveJoin
 
     override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
@@ -165,9 +167,13 @@ trait CommonEnvironments {
     override def isSessionChannel(c: Name) = false
     override def isSharedChannel(c: Name) = false
 
-    override def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
-      val roles = ScribbleUtils.roles(globalType)
-      delegator.updated(delegator.ste.updated(name, globalType, roles))
+    override def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
+      val role = new Role(roleName)
+      val roles = ScribbleRuntimeUtils.roles(globalType)
+      if (!roles.contains(role))
+        throw new SessionTypeCheckingException("Protocol does not contain role "+roleName)
+      val localType = project(globalType, role)
+      delegator.updated(delegator.ste.withAddress(name, localType, role))
     }
 
     protected def notYet(what: String) =

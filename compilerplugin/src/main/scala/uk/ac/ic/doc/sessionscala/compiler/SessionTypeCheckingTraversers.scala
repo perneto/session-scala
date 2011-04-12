@@ -75,7 +75,7 @@ trait SessionTypeCheckingTraversers {
 
     object SymbolMatcher {
       def unapply(t: Tree) = condOpt(t) {
-        case a@Apply(_, StringLit(role)::Nil) if a.symbol == symbolApplyMethod => role
+        case Apply1(_, StringLit(role)) if t.symbol == symbolApplyMethod => role
       }
     }
 
@@ -122,7 +122,7 @@ trait SessionTypeCheckingTraversers {
         case arg =>
           // This is the best way I've found as a workaround to a bug in the Scala compiler:
           // http://lampsvn.epfl.ch/trac/scala/ticket/1697
-          // https://lampsvn.epfl.ch/trac/scala/ticket/2337
+          // http://lampsvn.epfl.ch/trac/scala/ticket/2337
           // Explanations about the bug:
           // http://permalink.gmane.org/gmane.comp.lang.scala.internals/2752
           // http://scala-programming-language.1934581.n4.nabble.com/Possible-scala-partial-function-pattern-matching-bug-td3029632.html#none
@@ -154,78 +154,62 @@ trait SessionTypeCheckingTraversers {
     private var sessionMethodSym: Symbol = null
     private var sessionMethodArgs: List[Tree] = Nil
 
+    object RoleArrow {
+      def unapply(t: Tree): Option[(String,Tree)] = condOpt(t) {
+        //case Apply1(TypeApply(Select(Apply(_,Apply1(_,StringLit(role))), _), _), arg) => 
+        case Apply1(TypeApply(Select(Apply(_,Apply1(_,StringLit(role))::_),_), _), arg) => 
+          (role, arg)
+      }
+    }
+    
     override def traverse(tree: Tree) {
       val sym = tree.symbol
       pos = tree.pos
 
       try {
         tree match {
-          // message send. Without label: s('Alice) ! 42
-          // with label: s('Alice) ! ('mylabel, 42)
-          // or: s('Alice) ! 'quit
-          case Apply1(Select(SessionRole(session, role),_), arg)
+          // message send. Without label: s ! 'Buyer -> 2000
+          // with label: s ! 'Buyer -> ('Quote, 2000)
+          // or: s ! 'Buyer -> 'Quote
+          case Apply1(SelectIdent(session), RoleArrow(role, arg))
           if sym == bangMethod && env.isSessionChannel(session) =>
             //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
             env = env.send(session, role, MsgSig(lbl, tpe))
             traverse(arg)
-
-          // message receive, no label: s('Alice).?[Int]
-          case TypeApply(
-                 qmark@Select(
-                   SessionRole(session, role),
-                   _),
-               _)
-          if sym == qmarkMethod && env.isSessionChannel(session) =>
+          
+          // message receive, no label: s.?[Int]('Alice)
+          case Apply1(TypeApply(SelectIdent(session), _), SymbolMatcher(role))
+          if qmarkMethods.alternatives.contains(sym) && env.isSessionChannel(session) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
-            //println("????? qmarkMethod, tree.tpe:" + tree.tpe + ", session: " + session + ", role: " + role)
-            pos = qmark.pos
+            //println("????? qmarkMethod, tree.tpe:"+tree.tpe+", session: "+session+", role: "+role)
             env = env.receive(session, role, sig(tree.tpe))
             super.traverse(tree)
 
-          // message receive, with label: val ('quote, quoteVal: Int) = s('Seller).??
-          // at the time of plugin execution (after refchecks), transformed into:
-          // val quoteVal: Int = (s.apply(scala.Symbol.apply("Seller")).??: Any @unchecked) match {
-          //   case (scala.Symbol.unapply("quote"), (quoteVal @ (_: Int))) => quoteVal
-          // }
-          case ValDef(_, valName, tpt, Match(
-            Typed(
-              qqMark@Apply(
-                Select(
-                  SessionRole(session, role),
-                  _
-                ),
-                Nil
-              ),
-              _
-            ),
-            CaseDef(
-              app@ApplyArgs(
-                UnApply1(_, StringLit(label))::_
-                ),
-              _,
-              _)::Nil
-            )) if qqMark.symbol == qqMarkMethod && env.isSessionChannel(session) =>
-            //println("?????????? message receive, session: " + session + ", role: "
-            //        + role+", msg type: " + tpt.tpe + ", label: " + label)
-            pos = app.pos
+          // message receive, with label: s.?[Int]('Alice, 'label)
+          case Apply(TypeApply(SelectIdent(session), _), SymbolMatcher(role)::SymbolMatcher(label)::Nil)
+          if qmarkMethods.alternatives.contains(sym) && env.isSessionChannel(session) =>
+            println("?????????? message receive, session: " + session + ", role: "
+                    + role+", msg type: " + sym.tpe + ", label: " + label)
             val unitSymbol = definitions.getClass("scala.Unit")
-            val tpe = if (tpt.tpe == unitSymbol.tpe) None
-            else Some(tpt.tpe)
+            val tpe = 
+              if (tree.tpe == unitSymbol.tpe) None
+              else Some(tree.tpe)
             env = env.receive(session, role, MsgSig(Some(label), tpe))
 
-          // receive/react
-          case Apply(
-                 TypeApply(
-                   Select(
-                     SessionRole(session, role), _
-                   ), _
-                 ),
-                 (f@Function(_,Match(_,cases)))::Nil
-               )
-          if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
-              //println("receiveMethod, session: " + session + ", role: " + role
+          // split match into 2 to work around bug #1133
+          // https://lampsvn.epfl.ch/trac/scala/ticket/1133
+          case x => x match {
+              
+            // receive/react: single role
+            // s.receive('Alice) { case ... }  
+            case Apply1(
+                   Apply1(TypeApply(SelectIdent(session), _),
+                          SymbolMatcher(role)),
+                   f@Function(_,Match(_,cases)))
+            if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
+              //println("receive/react, session: " + session + ", role: " + role
               //        + ", cases: " + cases)
               env = env.enterChoiceReceiveBlock(session, role)
               cases foreach { c: CaseDef =>
@@ -262,96 +246,97 @@ trait SessionTypeCheckingTraversers {
               pos = f.pos
               env = env.leaveChoiceReceiveBlock
 
-          // delegation, more than 1 session channel. Desugars into match + assignments to each channel val
-          // 1. actual method call and match statement
-          case ValDef(mods, synValName, tpt, Match(Typed(app@Apply(_,args),_),
-            CaseDef(_, _, Apply(tupleConstructor, listArgs))::Nil))
-          if sym.isSynthetic && hasSessionChannels(args) =>
-            syntheticValName = synValName
-            sessionMethodSym = app.symbol
-            sessionMethodArgs = args
-            //println("@@@@@@@@@ found synthetic valdef: " + synValName)
-
-          // 2. valdef of each returned channel
-          case ValDef(_, valName, tpt, sel@Select(Ident(selName), tupleAccessor))
-          if syntheticValName != null && selName == syntheticValName && isSessionChannelType(sym.tpe) =>
-            //println("$$$$$$$$$ found valdef for returned channel " + valName)
-            collectedRetVals = valName :: collectedRetVals
-            // test whether this is the last accessor - then we have seen all generated valdefs
-            if (tupleArity(sel.symbol.owner) == indexAccessor(tupleAccessor)) {
-              env = env.delegation(sessionMethodSym, getSessionChannels(sessionMethodArgs), collectedRetVals.reverse)
-              syntheticValName = null
-              collectedRetVals = Nil
-            }
-
-          // delegation returning 1 session channel
-          case ValDef(_, valName, tpt, app@Apply(fun, args)) if hasSessionChannels(args) =>
-            //println("delegation returning channel: " + valName + ", method call: " + app)
-            env = env.delegation(fun.symbol, getSessionChannels(args), List(valName))
-            super.traverse(app)
-
-          // delegation, no returned channels (order of cases is important, will match if moved before previous case)
-          case Apply(fun,args) if hasSessionChannels(args)
-                  // tuples are used to return session channels from inside session methods
-                  && !definitions.isTupleType(sym.owner.tpe) =>
-            //println("delegation of session channel: " + tree)
-            env = env.delegation(fun.symbol, getSessionChannels(args), Nil)
-            super.traverse(tree)
-
-          // todo: support pattern matching on standard receives, checking that all
-          // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
-
-          case Assign(lhs,rhs@Channel(_)) => linearityError(lhs,rhs)
-          // ValDef actually covers both val and var definitions
-          case ValDef(_,name,_,rhs@Channel(_)) => linearityError(name,rhs)
-
-          case If(cond,thenp,elsep) =>
-            pos = thenp.pos
-            //println("enterThen")
-            env = env.enterThen
-            //println("after enterThen, traversing body")
-            traverse(thenp)
-            pos = elsep.pos
-            //println("enterElse")
-            env = env.enterElse
-            //println("after enterElse, traversing body")
-            traverse(elsep)
-            //println("leaveIf")
-            env = env.leaveIf
-            //println("after leaveIf")
-
-          case DefDef(_,name,tparams,_,_,rhs) =>
-            //println("method def: " + name + ", symbol: " + tree.symbol)
-            val chanNames = sessionChannelNames(tree.symbol.tpe)
-            val sharedChanNames = sharedChannelNames(tree.symbol.tpe)
-            if (!sharedChanNames.isEmpty) {
-              throw new SessionTypeCheckingException(
-                "Shared channels cannot be used as method parameters")
-            } else if (!chanNames.isEmpty) {
-              if (!tparams.isEmpty) reporter.error(tree.pos,
-                "Type parameters not supported for session methods")
-              visitSessionMethod(tree.symbol, rhs, chanNames)
-            } else {
+            // delegation, more than 1 session channel. Desugars into match + assignments to each channel val
+            // 1. actual method call and match statement
+            case ValDef(mods, synValName, tpt, Match(Typed(app@Apply(_,args),_),
+              CaseDef(_, _, Apply(tupleConstructor, listArgs))::Nil))
+            if sym.isSynthetic && hasSessionChannels(args) =>
+              syntheticValName = synValName
+              sessionMethodSym = app.symbol
+              sessionMethodArgs = args
+              //println("@@@@@@@@@ found synthetic valdef: " + synValName)
+  
+            // 2. valdef of each returned channel
+            case ValDef(_, valName, tpt, sel@Select(Ident(selName), tupleAccessor))
+            if syntheticValName != null && selName == syntheticValName && isSessionChannelType(sym.tpe) =>
+              //println("$$$$$$$$$ found valdef for returned channel " + valName)
+              collectedRetVals = valName :: collectedRetVals
+              // test whether this is the last accessor - then we have seen all generated valdefs
+              if (tupleArity(sel.symbol.owner) == indexAccessor(tupleAccessor)) {
+                env = env.delegation(sessionMethodSym, getSessionChannels(sessionMethodArgs), collectedRetVals.reverse)
+                syntheticValName = null
+                collectedRetVals = Nil
+              }
+  
+            // delegation returning 1 session channel
+            case ValDef(_, valName, tpt, app@Apply(fun, args)) if hasSessionChannels(args) =>
+              //println("delegation returning channel: " + valName + ", method call: " + app)
+              env = env.delegation(fun.symbol, getSessionChannels(args), List(valName))
+              super.traverse(app)
+  
+            // delegation, no returned channels (order of cases is important, will match if moved before previous case)
+            case Apply(fun,args) if hasSessionChannels(args)
+                    // tuples are used to return session channels from inside session methods
+                    && !definitions.isTupleType(sym.owner.tpe) =>
+              //println("delegation of session channel: " + tree)
+              env = env.delegation(fun.symbol, getSessionChannels(args), Nil)
               super.traverse(tree)
-            }
-
-          case LabelDef(_,_,block) =>
-            env = env.enterLoop
-            traverse(block)
-            env = env.leaveLoop
-
-          case Function(valdefs, body) =>
-            env = env.enterClosure(getDefNames(valdefs))
-            traverse(body)
-            env = env.leaveClosure
-
-          // return statements are forbidden inside join blocks / session methods
-          // this could be relaxed in some cases, but added complexity doesn't seem to be worth it for now
-          case Return(_) =>
-            env = env.returnStatement
-
-          case _ =>
-            super.traverse(tree)
+  
+            // todo: support pattern matching on standard receives, checking that all
+            // cases are subtypes of protocol-defined type. (Maybe: enforce complete match?)
+  
+            case Assign(lhs,rhs@Channel(_)) => linearityError(lhs,rhs)
+            // ValDef actually covers both val and var definitions
+            case ValDef(_,name,_,rhs@Channel(_)) => linearityError(name,rhs)
+  
+            case If(cond,thenp,elsep) =>
+              pos = thenp.pos
+              //println("enterThen")
+              env = env.enterThen
+              //println("after enterThen, traversing body")
+              traverse(thenp)
+              pos = elsep.pos
+              //println("enterElse")
+              env = env.enterElse
+              //println("after enterElse, traversing body")
+              traverse(elsep)
+              //println("leaveIf")
+              env = env.leaveIf
+              //println("after leaveIf")
+  
+            case DefDef(_,name,tparams,_,_,rhs) =>
+              //println("method def: " + name + ", symbol: " + tree.symbol)
+              val chanNames = sessionChannelNames(tree.symbol.tpe)
+              val sharedChanNames = sharedChannelNames(tree.symbol.tpe)
+              if (!sharedChanNames.isEmpty) {
+                throw new SessionTypeCheckingException(
+                  "Shared channels cannot be used as method parameters")
+              } else if (!chanNames.isEmpty) {
+                if (!tparams.isEmpty) reporter.error(tree.pos,
+                  "Type parameters not supported for session methods")
+                visitSessionMethod(tree.symbol, rhs, chanNames)
+              } else {
+                super.traverse(tree)
+              }
+  
+            case LabelDef(_,_,block) =>
+              env = env.enterLoop
+              traverse(block)
+              env = env.leaveLoop
+  
+            case Function(valdefs, body) =>
+              env = env.enterClosure(getDefNames(valdefs))
+              traverse(body)
+              env = env.leaveClosure
+  
+            // return statements are forbidden inside join blocks / session methods
+            // this could be relaxed in some cases, but added complexity doesn't seem to be worth it for now
+            case Return(_) =>
+              env = env.returnStatement
+  
+            case _ =>
+              super.traverse(tree)
+          }
         }
 
       } catch {
@@ -380,16 +365,14 @@ trait SessionTypeCheckingTraversers {
     def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name])
 
     def isSessionChannelType(t: Type): Boolean = {
-      val function1 = definitions.FunctionClass(1)
-      val sessionChannel = typeRef(function1.owner.tpe, function1,
-              List(definitions.SymbolClass.tpe, participantChannelClass.tpe))
+      val sessionChannel = sessionChannelClass.tpe
       //println(t + " <:< " + sessionChannel + ": " + (t <:< sessionChannel))
       t <:< sessionChannel
     }
 
     def sessionChannelNames(tpe: Type): List[Name] = chanNames(tpe, isSessionChannelType(_))
 
-    def sharedChannelNames(tpe: Type): List[Name] = chanNames(tpe, (_ <:< sharedChannelTrait.tpe))
+    def sharedChannelNames(tpe: Type): List[Name] = chanNames(tpe, (_ <:< addressTrait.tpe))
 
     def chanNames(tpe: Type, predicate: (Type => Boolean)) = tpe match {
       case MethodType(argTypes, _) =>

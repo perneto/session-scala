@@ -8,7 +8,7 @@ import scalaj.collection.Imports._
  */
 
 trait TypeCheckingUtils {
-  self: SessionTypedElementsComponent with ScribbleModelFactories with CommonEnvironments =>
+  self: SessionTypedElementsComponent with ScribbleCompilerUtils with CommonEnvironments =>
   def checkSessionsRemainingSame(sessions1: Sessions, sessions2: Sessions): Unit = sessions1 foreach {
     case (chan, sessElse) =>
       val sessThen = sessions2(chan)

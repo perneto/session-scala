@@ -4,7 +4,7 @@ import org.scribble.common.logging.Journal
 import org.scribble.protocol.projection.impl.ProtocolProjectorImpl
 import org.scribble.protocol.model._
 import scalaj.collection.Imports._
-import uk.ac.ic.doc.sessionscala.ScribbleUtils
+import uk.ac.ic.doc.sessionscala.ScribbleRuntimeUtils
 
 
 /**
@@ -12,7 +12,7 @@ import uk.ac.ic.doc.sessionscala.ScribbleUtils
  */
 
 trait CheckingEnvironments extends TypeCheckingUtils {
-  self: SessionTypedElementsComponent with ScribbleModelFactories
+  self: SessionTypedElementsComponent with ScribbleCompilerUtils
           with CommonEnvironments with ScalaTypeSystemComponent =>
 
 val scribbleJournal: Journal
@@ -23,28 +23,27 @@ val scribbleJournal: Journal
     def this(ste: SessionTypedElements) = this(ste, null)
     def this(infEnv: InferredTypeRegistry) = this(EmptySTE, infEnv)
 
-    override def isSharedChannel(c: Name) = ste.sharedChannels.contains(c)
+    override def isSharedChannel(c: Name) = ste.addresses.contains(c)
 
     override def invite(delegator: SessionTypingEnvironment, sharedChan: Name, roles: List[String]) = {
       //println("invite: " + this + ", delegator: " + delegator + ", delegator.ste: " + delegator.ste)
-      val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
-        val caps = currentSte.currentInviteCapabilities(sharedChan)
-        if (!caps.contains(role))
-          throw new SessionTypeCheckingException("Cannot invite role: " + role + ", another participant was already invited for this role")
-        currentSte.consumeInviteCapability(sharedChan, role)
-      }
-      delegator.updated(newSte)
+//      val newSte = (roles foldLeft delegator.ste) { (currentSte, role) =>
+//        val caps = currentSte.currentInviteCapabilities(sharedChan)
+//        if (!caps.contains(new Role(role)))
+//          throw new SessionTypeCheckingException("Cannot invite role: " + role + ", another participant was already invited for this role")
+//        currentSte.consumeInviteCapability(sharedChan, role)
+//      }
+//      delegator.updated(newSte)
+      delegator
     }
 
-    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment = {
+    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name): SessionTypingEnvironment = {
       //println("enterJoin: " + ste)
-      val role = new Role(roleName)
-      val globalModel = delegator.getGlobalTypeForChannel(sharedChannel)
-      val projector = new ProtocolProjectorImpl
-      val projectedModel = projector.project(globalModel, role, scribbleJournal, null)
+      val (projectedModel, role) = delegator.getLocalTypeForChannel(sharedChannel)
       new InProcessEnv(
-        delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)),
-        delegator, role, sessChan, infEnv)
+        delegator.ste.updated(sessChan, new Session(typeSystem, projectedModel)), 
+        delegator, role, sessChan, infEnv
+      )
     }
 
     override def enterThen(delegator: SessionTypingEnvironment) = new ThenBlockEnv(delegator.ste, delegator)
@@ -68,12 +67,13 @@ val scribbleJournal: Journal
       new WaitForJoinEnv(delegator.ste, delegator)
   }
 
+  /** To properly check bind blocks contained inside session methods. */
   class WaitForJoinEnv(val ste: SessionTypedElements, parent: SessionTypingEnvironment) extends AbstractTopLevelEnv(parent) {
     override def leaveSessionMethod(returnedChans: List[Name]) = parent
     def updated(ste: SessionTypedElements) = new WaitForJoinEnv(ste, parent)
 
-    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name) =
-      parent.enterJoin(delegator, sharedChannel, roleName, sessChan)
+    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name) =
+      parent.enterJoin(delegator, sharedChannel, sessChan)
   }
 
   class RecoverableTypeCheckingException(msg: String, val recoveryEnv: SessionTypingEnvironment)
@@ -115,10 +115,8 @@ val scribbleJournal: Journal
 
     override def send(sessChan: Name, dstRoleName: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = {
       val sess = delegator.ste.sessions(sessChan)
-      val dstRole = new Role(dstRoleName)
-
       val newSess = sess.interaction(
-        joinAsRole, dstRole, msgSig.toScribble)
+        joinAsRole, new Role(dstRoleName), msgSig.toScribble)
       /*println(
         "send: on " + sessChan + " from " + joinAsRole + " to " +
         dstRole + ": " + msgType + ". Updated session: " + newSess

@@ -47,50 +47,11 @@ abstract class BindBlocksPass extends PluginComponent
       globalModel
     }
 
-    lazy val stringType = definitions.StringClass.tpe
-    lazy val function1 = definitions.FunctionClass(1)
-    def isSharedChannelFunction(tpe: Type): Boolean = tpe match {
-      case TypeRef(_, function1, List(paramTpe,_)) if paramTpe <:< addressTrait.tpe =>
-        true
-      case x =>
-        //println("Not shared channel function: " + x)
-        false
-    }
-    def takesSharedChannel(tpe: Type): Boolean = tpe match {
-      case PolyType(
-        _typeParam,
-        MethodType(
-          stringType::_,
-          MethodType(
-            functionParamSymbol::Nil,
-            _)))
-      if isSharedChannelFunction(functionParamSymbol.tpe) =>
-        //println("FOUND SHARED CHANNEL: " + tpe + ", functionParamSymbol: " + functionParamSymbol)
-        true
-      case x =>
-        //println("not shared channel function: " + tpe)
-        false
-    }
-
     override def visitSessionMethod(method: Symbol, body: Tree, chanNames: List[Name]) {
       env = env.enterSessionMethod(method, chanNames)
       //println("@@@@@@@@@@@@ traversing method body: " + method)
       traverse(body)
       env = env.leaveSessionMethod(Nil)
-    }
-
-    def getStringLiteralArg(sym: Symbol, annotation: Symbol) = {
-      val (literal: Literal)::_ = sym.getAnnotation(annotation).get.args
-      literal.value.stringValue
-    }
-
-    def parseProtocol(args: List[Tree], pos: Position) = args match {
-      case Literal(protocol)::_ =>
-        val proto = protocol.stringValue
-        if (file(proto).canRead())
-          parseFile(proto, pos)
-        else
-          parseString(proto, pos)
     }
 
     def getRoles(args: List[Tree]): List[String] = {
@@ -107,46 +68,41 @@ abstract class BindBlocksPass extends PluginComponent
       result
     }
 
-    def visitSharedChanCreation(pos: Position, chanName: Name, body: Tree, args: List[Tree]) {
+    def parseProtocol(proto: Tree, pos: Position): ProtocolModel = proto match {
+      case Literal(protocol) =>
+        val proto = protocol.stringValue
+        if (file(proto).canRead)
+          parseFile(proto, pos)
+        else
+          parseString(proto, pos)
+      case Ident(name) =>
+        parseProtocol(strIdents(name), pos)
+    }
+     
+    def visitSharedChanCreation(pos: Position, chanName: Name, proto: Tree, roleName: String) {
       //println("shared channel creation: " + sym + ", channel name: " + name)
-      val globalModel = parseProtocol(args, pos)
-      env = env.registerSharedChannel(chanName, globalModel)
-      traverse(body)
+      val globalModel = parseProtocol(proto, pos)
+      env = env.registerAddress(chanName, globalModel, roleName)
     }
 
-    var sharedChanBody: Tree = null
-    var sharedChanName: Name = null
-    var syntheticValName: Name = null
+    var strIdents = Map[Name, Literal]()
     override def traverse(tree: Tree) {
       val sym = tree.symbol
       pos = tree.pos
 
       tree match {
-        case ValDef(_,syntheticName,_, f@Function1(name, body))
-        if isSharedChannelFunction(f.tpe) =>
-          //println("FOUND synthetic var: " + syntheticName)
-          sharedChanName = name
-          sharedChanBody = body
-          syntheticValName = syntheticName
-
-        case Apply1(ApplyArgs(args), Function1(name, body))
-        if takesSharedChannel(sym.tpe) =>
-          visitSharedChanCreation(tree.pos, name, body, args)
-
-        case Apply1(ApplyArgs(args), Ident(name)) if syntheticValName != null && name == syntheticValName =>
-          val body = sharedChanBody
-          sharedChanBody = null // can have nested shared channel creations
-          val chanName = sharedChanName
-          sharedChanName = null
-          syntheticValName = null
-          visitSharedChanCreation(tree.pos, chanName, body, args)
-
-        case Apply(Apply(SelectIdent(chanIdent), ApplyArg(StringLit(role))::Nil),
-                   Function1(sessChan, block)::Nil)
-        if sym == joinMethod || sym == bindMethod =>
-          //println("join: " + role + ", sessChan: " + sessChan)
+        case ValDef(_,name,_,l:Literal) if sym.tpe <:< definitions.StringClass.tpe =>
+          strIdents += name -> l
+          
+        case ValDef(_,name,_,Apply(_,proto::SymbolMatcher(roleName)::_)) 
+        if sym.tpe <:< addressTrait.tpe =>  
+          visitSharedChanCreation(pos, name, proto, roleName)
+          
+        case Apply(TypeApply(SelectIdent(chanIdent),_), Function1(sessChan, block)::Nil)
+        if sym == bindMethod =>
+          //println("bind: " + chanIdent + ", sessChan: " + sessChan)
           try {
-            env = env.enterJoin(chanIdent, role, sessChan)
+            env = env.enterJoin(chanIdent, sessChan)
             traverse(block)
             pos = tree.pos
             //println("leaveJoin, env: " + env)
@@ -161,6 +117,7 @@ abstract class BindBlocksPass extends PluginComponent
           }
 
         case Apply(SelectIdent(sharedChan), args) if sym == startSessionMethod =>
+          println("startSession: "+args)
           env = env.invite(sharedChan, getRoles(args))
 
         case _ =>
@@ -172,7 +129,7 @@ abstract class BindBlocksPass extends PluginComponent
   def newPhase(_prev: Phase) = new StdPhase(_prev) {
     def apply(unit: global.CompilationUnit): Unit = {
       //println("   JoinBlockPass starting")
-      val unitPath = new File(unit.source.path).getParent()
+      val unitPath = new File(unit.source.path).getParent
       val typeChecker = new BindBlocksTraverser(unitPath)
       try {
         typeChecker(unit.body)

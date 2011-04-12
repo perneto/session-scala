@@ -8,7 +8,7 @@ import org.scribble.protocol.model._
  */
 
 trait InferenceEnvironments {
-  self: SessionTypedElementsComponent with ScribbleModelFactories with CommonEnvironments with ScalaTypeSystemComponent =>
+  self: SessionTypedElementsComponent with ScribbleCompilerUtils with CommonEnvironments with ScalaTypeSystemComponent =>
 
   val global: Global
   import global._
@@ -27,13 +27,13 @@ trait InferenceEnvironments {
   class MethodSessionTypeInferenceTopLevelEnv(val ste: SessionTypedElements) extends AbstractTopLevelEnv(null) with InferredTypeRegistry {
     def this() = this(EmptySTE)
 
-    override def registerSharedChannel(name: Name, globalType: ProtocolModel, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
+    override def registerAddress(name: Name, globalType: ProtocolModel, roleName: String, delegator: SessionTypingEnvironment): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
 
     def updated(ste: SessionTypedElements) =
       new MethodSessionTypeInferenceTopLevelEnv(ste)
 
-    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, roleName: String, sessChan: Name): SessionTypingEnvironment =
+    override def enterJoin(delegator: SessionTypingEnvironment, sharedChannel: Name, sessChan: Name): SessionTypingEnvironment =
       throw new IllegalStateException("Should not be called")
 
     override def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]): SessionTypingEnvironment = {

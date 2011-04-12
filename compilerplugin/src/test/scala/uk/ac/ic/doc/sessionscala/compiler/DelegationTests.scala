@@ -16,8 +16,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, sendStringModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -33,8 +33,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.registerAddress(sharedChan, choiceProtoModel, "Bob")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -50,8 +50,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.registerAddress(sharedChan, choiceProtoModel, "Bob")
+    env = env.enterJoin(sharedChan, sessChan)
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -69,8 +69,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = env.registerAddress(sharedChan, choiceProtoModel, "Bob")
+    env = env.enterJoin(sharedChan, sessChan)
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -86,8 +86,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, choiceProtoModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -102,8 +102,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, choiceProtoModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -116,8 +116,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, recurModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, recurModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -143,8 +143,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(ymethod, 0)))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, multiRecurModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, multiRecurModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(xmethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -154,8 +154,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, sendStringModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), Nil)
     intercept[SessionTypeCheckingException] {
       env = env.send(sessChan, "Bob", sig(stringT)) // reuse of sessChan not allowed
@@ -167,8 +167,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(List(sessChan))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, sendStringModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     val returnedSessChan = newTermName("returnedChan")
     env = env.delegation(fooMethod, List(sessChan), List(returnedSessChan))
     env = env.send(returnedSessChan, "Bob", sig(stringT))
@@ -184,11 +184,11 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(List(sessChan2, sessChan))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, twoMsgProto)
-    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
+    env = env.registerAddress(sharedChan, twoMsgProto, "Alice")
+    env = env.registerAddress(sharedChan2, twoMsgProto, "Alice")
 
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.enterJoin(sharedChan, "Alice", sessChan2)
+    env = env.enterJoin(sharedChan, sessChan)
+    env = env.enterJoin(sharedChan, sessChan2)
 
     env = env.delegation(fooMethod, List(sessChan, sessChan2), List(retChan2, retChan))
 
@@ -205,8 +205,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan2)
+    env = join(env, sharedChan, sendStringModel, "Alice", sessChan2)
     env = env.delegation(fooMethod, List(sessChan2), Nil)
     env = env.leaveJoin
   }
@@ -217,8 +216,8 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(List(sessChan))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, twoMsgProto)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.registerAddress(sharedChan, twoMsgProto, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.delegation(fooMethod, List(sessChan), List(sessChan2))
     intercept[SessionTypeCheckingException] {
       // sessChan2 still has Int from Bob to Alice
@@ -238,10 +237,10 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, twoMsgProto)
-    env = env.registerSharedChannel(sharedChan2, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
-    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
+    env = env.registerAddress(sharedChan, twoMsgProto, "Alice")
+    env = env.registerAddress(sharedChan2, sendStringModel, "Alice")
+    env = env.enterJoin(sharedChan, sessChan)
+    env = env.enterJoin(sharedChan2, sessChan2)
     env = env.delegation(xmethod, List(sessChan, sessChan2), Nil)
     env = env.leaveJoin
   }

@@ -18,7 +18,7 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("top-level enter join, unregistered channel: error") {
     intercept[SessionTypeCheckingException] {
-      topEnv.enterJoin(sharedChan, "A", sessChan)
+      topEnv.enterJoin(sharedChan, sessChan)
     }
   }
 
@@ -123,8 +123,8 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("interleaved sessions") {
     var env = join(twoMsgProto, "Alice")
-    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
-    env = env.enterJoin(sharedChan2, "Bob", sessChan2)
+    env = join(env, sharedChan2, twoMsgProto, "Bob", sessChan2)
+    
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.receive(sessChan2, "Alice", sig(stringT))
     env = env.send(sessChan2, "Alice", sig(intT))
@@ -135,9 +135,8 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("interleaved sessions, branches receive side") {
     var env = join(choiceProtoModel, "Bob")
-
-    env = env.registerSharedChannel(sharedChan2, twoMsgProto)
-    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
+    env = join(env, sharedChan2, twoMsgProto, "Alice", sessChan2)
+    
     env = env.send(sessChan2, "Bob", sig(stringT))
 
     env = env.enterChoiceReceiveBlock(sessChan, "Alice")
@@ -166,9 +165,9 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
   }
 
   test("session operations on channel defined inside loop are allowed") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel, "Alice")
     env = env.enterLoop
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.leaveJoin
     env.leaveLoop
@@ -183,8 +182,7 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveClosure
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = join(env, sendStringModel, "Alice")
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -253,33 +251,32 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerSharedChannel(sharedChan, choiceProtoModel)
-    env = env.enterJoin(sharedChan, "Bob", sessChan)
+    env = join(env, choiceProtoModel, "Bob")
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
-
+  /*
   test("can invite listed participants") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob", "Alice"))
   }
 
   test("cannot invite for other roles") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Bob", "Foo"))
     }
   }
 
   test("cannot invite twice for the same role") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Bob", "Bob"))
     }
   }
-
+  
   test("cannot invite twice for the same role in separate calls to invite") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob", "Alice"))
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Bob"))
@@ -287,14 +284,14 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
   }
 
   test("can invite listed participants in several calls to invite") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
     env = env.invite(sharedChan, List("Alice"))
   }
 
   test("entering closure doesn't interfere with invites (happy path)", Tag("wip")) {
     var env = topEnv.enterClosure(Nil)
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
     env = env.invite(sharedChan, List("Alice"))
     env = env.leaveClosure
@@ -302,15 +299,15 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("entering closure doesn't interfere with invites (error path)") {
     var env = topEnv.enterClosure(Nil)
-    env = env.registerSharedChannel(sharedChan, sendStringModel)
+    env = env.registerAddress(sharedChan, sendStringModel, "Bob")
     env = env.invite(sharedChan, List("Bob"))
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Foo"))
     }
   }
 
-test("entering if doesn't interfere with invites (happy path)") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+  test("entering if doesn't interfere with invites (happy path)") {
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
     env = env.enterThen
     env = env.invite(sharedChan, List("Alice"))
@@ -320,19 +317,18 @@ test("entering if doesn't interfere with invites (happy path)") {
   }
 
   test("entering if doesn't interfere with invites (error path)") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.invite(sharedChan, List("Bob"))
     env = env.enterThen
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Foo"))
     }
   }
-
+  */
   test("nested leaveJoin in closure") {
     var env = join(sendStringModel, "Alice")
     env = env.enterClosure(Nil)
-    env = env.registerSharedChannel(sharedChan2, sendStringModel)
-    env = env.enterJoin(sharedChan2, "Alice", sessChan2)
+    env = join(env, sharedChan2, sendStringModel, "Alice", sessChan2)
     env = env.send(sessChan2, "Bob", sig(stringT))
     env = env.leaveJoin
     env = env.leaveClosure
@@ -341,9 +337,9 @@ test("entering if doesn't interfere with invites (happy path)") {
   }
 
   test("send in if in closure") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel, "Alice")
     env = env.enterClosure(Nil)
-    env = env.enterJoin(sharedChan, "Alice", sessChan)
+    env = env.enterJoin(sharedChan, sessChan)
     env = env.enterThen
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.enterElse
@@ -353,11 +349,13 @@ test("entering if doesn't interfere with invites (happy path)") {
     env = env.leaveClosure
   }
 
+  /*
   test("closures forbid invites") {
-    var env = topEnv.registerSharedChannel(sharedChan, sendStringModel)
+    var env = topEnv.registerAddress(sharedChan, sendStringModel)
     env = env.enterClosure(Nil)
     intercept[SessionTypeCheckingException] {
       env = env.invite(sharedChan, List("Alice"))
     }
   }
+  */
 }
