@@ -67,11 +67,11 @@ trait CommonEnvironments {
       receive(sessChan, role, msgSig, this)
     def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment): SessionTypingEnvironment = delegator
 
-    def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String): SessionTypingEnvironment = delegator
-    def enterChoiceReceiveBlock(sessChan: Name, srcRole: String): SessionTypingEnvironment =
+    def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: Option[String]): SessionTypingEnvironment = delegator
+    def enterChoiceReceiveBlock(sessChan: Name, srcRole: Option[String]): SessionTypingEnvironment =
       enterChoiceReceiveBlock(this, sessChan, srcRole)
 
-    def enterChoiceReceiveBranch(msgSig: MsgSig): SessionTypingEnvironment = this
+    def enterChoiceReceiveBranch(srcRole: Option[String], msgSig: MsgSig): SessionTypingEnvironment = this
     def leaveChoiceReceiveBranch: SessionTypingEnvironment = this
     def leaveChoiceReceiveBlock: SessionTypingEnvironment = this
 
@@ -141,10 +141,10 @@ trait CommonEnvironments {
     override def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) =
       parent.receive(sessChan, role, msgSig, delegator)
 
-    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) =
+    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: Option[String]) =
       parent.enterChoiceReceiveBlock(delegator, sessChan, srcRole)
-    override def enterChoiceReceiveBranch(msgSig: MsgSig) =
-      parent.enterChoiceReceiveBranch(msgSig)
+    override def enterChoiceReceiveBranch(srcRole: Option[String], msgSig: MsgSig) =
+      parent.enterChoiceReceiveBranch(srcRole, msgSig)
     override def leaveChoiceReceiveBranch = parent.leaveChoiceReceiveBranch
     override def leaveChoiceReceiveBlock = parent.leaveChoiceReceiveBlock
 
@@ -231,7 +231,7 @@ trait CommonEnvironments {
       parent.delegation(function, channels, returnedChannels)
     }
 
-    override def enterChoiceReceiveBlock(sessChan: Name, srcRole: String) = {
+    override def enterChoiceReceiveBlock(sessChan: Name, srcRole: Option[String]) = {
       checkFrozen(sessChan)
       parent.enterChoiceReceiveBlock(sessChan, srcRole)
     }

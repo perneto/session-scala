@@ -27,10 +27,10 @@ class InferenceTests extends FunSuite with SessionTypingEnvironments
   test("method inference, branching, common part before branching") {
     var env = sessionMethod(fooMethod, sessChan)
     env = env.send(sessChan, "Bob", sig(stringT))
-    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Bob"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
@@ -43,11 +43,11 @@ class InferenceTests extends FunSuite with SessionTypingEnvironments
 
   test("method inference, branching, non-empty body, nothing before branch") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Bob"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.send(sessChan, "Alice", sig(intT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
@@ -214,13 +214,13 @@ class InferenceTests extends FunSuite with SessionTypingEnvironments
     env = env.send(sessChan, "Bob", sig(stringT))
     env = env.receive(sessChan2, "Alice", sig(intT))
 
-    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Bob"))
 
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
@@ -240,13 +240,13 @@ class InferenceTests extends FunSuite with SessionTypingEnvironments
   test("method inference, interleaved sessions, choice branches, uneven interleaved session") {
     var env = sessionMethod(fooMethod, sessChan, sessChan2)
 
-    env = env.enterChoiceReceiveBlock(sessChan, "Bob")
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Bob"))
 
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.leaveChoiceReceiveBranch
 
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.receive(sessChan2, "Bob", sig(intT))
     env = env.receive(sessChan2, "Bob", sig(intT))
 

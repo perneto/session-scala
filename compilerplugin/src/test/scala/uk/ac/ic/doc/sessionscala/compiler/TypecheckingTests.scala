@@ -69,10 +69,10 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("protocol with choice, receiver side, complete") {
     var env = join(choiceProtoModel, "Bob")
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveJoin
@@ -91,8 +91,8 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("choice, supertype on receive covers 2 branches: error")  {
     var env = join(choiceProtoModel, "Bob")
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(anyT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(anyT))
     env = env.leaveChoiceReceiveBranch
     intercept[SessionTypeCheckingException] {
       env = env.leaveChoiceReceiveBlock
@@ -102,18 +102,18 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
   test("choice, if branches on receive side, branch label is supertype but covers single branch, complete") {
     var env = join(choiceProtoModel, "Bob")
     env = env.enterThen
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
 
     env = env.enterElse
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(charSequenceT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(charSequenceT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
         
@@ -139,13 +139,13 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
     
     env = env.send(sessChan2, "Bob", sig(stringT))
 
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
 
     env = env.receive(sessChan2, "Bob", sig(intT))
 
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
 
     env = env.receive(sessChan2, "Bob", sig(intT))
 
@@ -189,12 +189,12 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("branch receive with more branches than specified, valid through subtyping") {
     var env = join(choiceProtoModel, "Bob")
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig("quit"))
+    env = env.enterChoiceReceiveBranch(None, sig("quit"))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveJoin
@@ -202,17 +202,17 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("branch receive with more branches than specified, but extra branch has overlapping msigs") {
     var env = join(choiceProtoModel, "Bob")
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-      env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+      env = env.enterChoiceReceiveBranch(None, sig(stringT))
       env = env.leaveChoiceReceiveBranch
-      env = env.enterChoiceReceiveBranch(sig(intT))
+      env = env.enterChoiceReceiveBranch(None, sig(intT))
       env = env.leaveChoiceReceiveBranch
-      env = env.enterChoiceReceiveBranch(sig("quit"))
+      env = env.enterChoiceReceiveBranch(None, sig("quit"))
 
-        env = env.enterChoiceReceiveBlock(sessChan, "Foo")
-          env = env.enterChoiceReceiveBranch(sig(anyT))
+        env = env.enterChoiceReceiveBlock(sessChan, Some("Foo"))
+          env = env.enterChoiceReceiveBranch(None, sig(anyT))
           env = env.leaveChoiceReceiveBranch
-          env = env.enterChoiceReceiveBranch(sig(stringT))
+          env = env.enterChoiceReceiveBranch(None, sig(stringT))
           env = env.leaveChoiceReceiveBranch
       intercept[SessionTypeCheckingException] {
         env = env.leaveChoiceReceiveBlock
@@ -221,17 +221,17 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("branch receive with more branches than specified, but extra branch has overlapping msigs with labels") {
     var env = join(choiceProtoModel, "Bob")
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-      env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+      env = env.enterChoiceReceiveBranch(None, sig(stringT))
       env = env.leaveChoiceReceiveBranch
-      env = env.enterChoiceReceiveBranch(sig(intT))
+      env = env.enterChoiceReceiveBranch(None, sig(intT))
       env = env.leaveChoiceReceiveBranch
-      env = env.enterChoiceReceiveBranch(sig("extra"))
+      env = env.enterChoiceReceiveBranch(None, sig("extra"))
 
-        env = env.enterChoiceReceiveBlock(sessChan, "Foo")
-          env = env.enterChoiceReceiveBranch(sig("label", anyT))
+        env = env.enterChoiceReceiveBlock(sessChan, Some("Foo"))
+          env = env.enterChoiceReceiveBranch(None, sig("label", anyT))
           env = env.leaveChoiceReceiveBranch
-          env = env.enterChoiceReceiveBranch(sig("label", stringT))
+          env = env.enterChoiceReceiveBranch(None, sig("label", stringT))
           env = env.leaveChoiceReceiveBranch
       intercept[SessionTypeCheckingException] {
         env = env.leaveChoiceReceiveBlock
@@ -240,12 +240,12 @@ class TypecheckingTests extends FunSuite with SessionTypingEnvironments
 
   test("inferred branch receive with more branches than specified at point of use") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig("extra"))
+    env = env.enterChoiceReceiveBranch(None, sig("extra"))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)

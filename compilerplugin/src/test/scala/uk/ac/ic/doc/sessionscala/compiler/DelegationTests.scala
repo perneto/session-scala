@@ -24,10 +24,10 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
 
   test("inferred method call, choice proto, receive side") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
@@ -39,19 +39,19 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveJoin
   }
 
-  test("inferred method call, choice proto, wrong role: error") {
+  // Not checking anymore in preparation for generalized choice
+  ignore("inferred method call, choice proto, wrong role: error") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.enterChoiceReceiveBlock(sessChan, "Foo")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Foo"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, choiceProtoModel, "Bob")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, choiceProtoModel, "Bob")
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -59,18 +59,17 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
 
   test("inferred method call, choice proto, wrong body of when branch: error") {
     var env = sessionMethod(fooMethod, sessChan)
-    env = env.enterChoiceReceiveBlock(sessChan, "Alice")
-    env = env.enterChoiceReceiveBranch(sig(stringT))
+    env = env.enterChoiceReceiveBlock(sessChan, Some("Alice"))
+    env = env.enterChoiceReceiveBranch(None, sig(stringT))
     env = env.send(sessChan, "Bar", sig(intT)) // not in protocol: error
     env = env.leaveChoiceReceiveBranch
-    env = env.enterChoiceReceiveBranch(sig(intT))
+    env = env.enterChoiceReceiveBranch(None, sig(intT))
     env = env.leaveChoiceReceiveBranch
     env = env.leaveChoiceReceiveBlock
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, choiceProtoModel, "Bob")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, choiceProtoModel, "Bob")
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -86,8 +85,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, choiceProtoModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, choiceProtoModel, "Alice")
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -102,8 +100,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, choiceProtoModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, choiceProtoModel, "Alice")
     intercept[SessionTypeCheckingException] {
       env = env.delegation(fooMethod, List(sessChan), Nil)
     }
@@ -116,8 +113,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, recurModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, recurModel, "Alice")
     env = env.delegation(fooMethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -143,8 +139,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     assert(notEmpty(env.asInstanceOf[InferredTypeRegistry].inferredSessionType(ymethod, 0)))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, multiRecurModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, multiRecurModel, "Alice")
     env = env.delegation(xmethod, List(sessChan), Nil)
     env = env.leaveJoin
   }
@@ -154,8 +149,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(Nil)
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, sendStringModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, sendStringModel, "Alice")
     env = env.delegation(fooMethod, List(sessChan), Nil)
     intercept[SessionTypeCheckingException] {
       env = env.send(sessChan, "Bob", sig(stringT)) // reuse of sessChan not allowed
@@ -167,8 +161,7 @@ class DelegationTests extends FunSuite with SessionTypingEnvironments
     env = env.leaveSessionMethod(List(sessChan))
 
     env = new ProcessBlocksPassTopLevelEnv(env.asInstanceOf[InferredTypeRegistry])
-    env = env.registerAddress(sharedChan, sendStringModel, "Alice")
-    env = env.enterJoin(sharedChan, sessChan)
+    env = join(env, sendStringModel, "Alice")
     val returnedSessChan = newTermName("returnedChan")
     env = env.delegation(fooMethod, List(sessChan), List(returnedSessChan))
     env = env.send(returnedSessChan, "Bob", sig(stringT))

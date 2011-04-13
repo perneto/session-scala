@@ -29,6 +29,12 @@ trait SessionTypeCheckingTraversers {
         case Select(Ident(name), _) => name
       }
     }
+    
+    object SessionIdent {
+      def unapply(t: Tree) = condOpt(t) {
+        case SelectIdent(session) if env.isSessionChannel(session) => session
+      }
+    }
 
     object Apply1 {
       def unapply(t: Tree) = condOpt(t) {
@@ -76,6 +82,12 @@ trait SessionTypeCheckingTraversers {
     object SymbolMatcher {
       def unapply(t: Tree) = condOpt(t) {
         case Apply1(_, StringLit(role)) if t.symbol == symbolApplyMethod => role
+      }
+    }
+    
+    object SymbolUnapply {
+      def unapply(t: Tree) = condOpt(t) {
+        case UnApply1(m, StringLit(name)) if m.symbol == symbolUnapplyMethod => name
       }
     }
 
@@ -156,7 +168,6 @@ trait SessionTypeCheckingTraversers {
 
     object RoleArrow {
       def unapply(t: Tree): Option[(String,Tree)] = condOpt(t) {
-        //case Apply1(TypeApply(Select(Apply(_,Apply1(_,StringLit(role))), _), _), arg) => 
         case Apply1(TypeApply(Select(Apply(_,Apply1(_,StringLit(role))::_),_), _), arg) => 
           (role, arg)
       }
@@ -171,16 +182,16 @@ trait SessionTypeCheckingTraversers {
           // message send. Without label: s ! 'Buyer -> 2000
           // with label: s ! 'Buyer -> ('Quote, 2000)
           // or: s ! 'Buyer -> 'Quote
-          case Apply1(SelectIdent(session), RoleArrow(role, arg))
-          if sym == bangMethod && env.isSessionChannel(session) =>
+          case Apply1(SessionIdent(session), RoleArrow(role, arg))
+          if sym == bangMethod =>
             //println("!!!!!!! bangMethod, arg: " + arg + ", arg.tpe: " + arg.tpe + ", session: " + session + ", role: " + role)
             val (lbl,tpe) = getLabelAndArgType(arg)
             env = env.send(session, role, MsgSig(lbl, tpe))
             traverse(arg)
           
           // message receive, no label: s.?[Int]('Alice)
-          case Apply1(TypeApply(SelectIdent(session), _), SymbolMatcher(role))
-          if qmarkMethods.alternatives.contains(sym) && env.isSessionChannel(session) =>
+          case Apply1(TypeApply(SessionIdent(session), _), SymbolMatcher(role))
+          if qmarkMethods.alternatives.contains(sym) =>
             if (tree.tpe == definitions.getClass("scala.Nothing").tpe)
               reporter.error(tree.pos, "Method ? needs to be annotated with explicit type")
             //println("????? qmarkMethod, tree.tpe:"+tree.tpe+", session: "+session+", role: "+role)
@@ -188,8 +199,8 @@ trait SessionTypeCheckingTraversers {
             super.traverse(tree)
 
           // message receive, with label: s.?[Int]('Alice, 'label)
-          case Apply(TypeApply(SelectIdent(session), _), SymbolMatcher(role)::SymbolMatcher(label)::Nil)
-          if qmarkMethods.alternatives.contains(sym) && env.isSessionChannel(session) =>
+          case Apply(TypeApply(SessionIdent(session), _), SymbolMatcher(role)::SymbolMatcher(label)::Nil)
+          if qmarkMethods.alternatives.contains(sym) =>
             println("?????????? message receive, session: " + session + ", role: "
                     + role+", msg type: " + sym.tpe + ", label: " + label)
             val unitSymbol = definitions.getClass("scala.Unit")
@@ -203,49 +214,29 @@ trait SessionTypeCheckingTraversers {
           case x => x match {
               
             // receive/react: single role
-            // s.receive('Alice) { case ... }  
+            // s.receive('Alice) { case i: Int => ... case 'label => ... }  
             case Apply1(
-                   Apply1(TypeApply(SelectIdent(session), _),
+                   Apply1(TypeApply(SessionIdent(session), _),
                           SymbolMatcher(role)),
                    f@Function(_,Match(_,cases)))
-            if (sym == receiveMethod || sym == reactMethod) && env.isSessionChannel(session) =>
+            if (sym == receiveMethod || sym == reactMethod) =>
               //println("receive/react, session: " + session + ", role: " + role
               //        + ", cases: " + cases)
-              env = env.enterChoiceReceiveBlock(session, role)
-              cases foreach { c: CaseDef =>
-                if (! c.guard.isEmpty) {
-                  reporter.error(c.guard.pos,
-                    "Receive clauses on session channels (branching) do not support guards yet")
-                } else {
-                  c.pat match {
-                    // Bind is for case s: String
-                    // Ident and Select both needed to use objects:
-                    // case OK is Ident
-                    // case pkg.foo.OK is Select
-                    // fixme: make sure Select and Ident don't fit other kinds of patterns that will not always match,
-                    // breaking typesafety
-                    case Select(_,_) | Ident(_) | Bind(_,_) =>
-                      val t = c.pat.tpe
+              visitCases(session, Some(role), cases, f) { msgMatcher => {
+                case x => msgMatcher(None)(x)
+              }}
 
-                      val msgTpe = realType(t)
-                      visitBranch(c, sig(msgTpe))
-
-                    case UnApply1(fun, StringLit(label)) if fun.symbol == symbolUnapplyMethod =>
-                      visitBranch(c, sig(label))
-
-                    case Apply(tpt, List(UnApply1(fun, StringLit(label)), bind:Bind)) if fun.symbol == symbolUnapplyMethod =>
-                      visitBranch(c, sig(label, bind.symbol.tpe))
-
-                    case _ =>
-                      reporter.error(c.pat.pos,
-                        "Receive clauses on session channels (branching) do not support complex patterns yet")
-                  }
-
-                }
-              }
-              pos = f.pos
-              env = env.leaveChoiceReceiveBlock
-
+            // mreceive/mreact
+            case Apply1(
+                   TypeApply(SessionIdent(session), _),
+                   f@Function(_,Match(_,cases)))
+            if (sym == mreceiveMethod || sym == mreactMethod) =>
+              //println("mreceive/mreact: "+tree)
+              visitCases(session, None, cases, f) { msgMatcher => {
+                case Apply(arrowConstr, SymbolUnapply(srcRole)::msg::Nil) =>
+                  msgMatcher(Some(srcRole))(msg)
+              }}
+              
             // delegation, more than 1 session channel. Desugars into match + assignments to each channel val
             // 1. actual method call and match statement
             case ValDef(mods, synValName, tpt, Match(Typed(app@Apply(_,args),_),
@@ -353,9 +344,52 @@ trait SessionTypeCheckingTraversers {
       case ValDef(_, name, _, _) => name
     }
 
-    def visitBranch(c: CaseDef, msgSig: MsgSig) {
+    def visitCases(sessChan: Name, srcRole: Option[String], cases: List[CaseDef], f: Tree)(matchFun: (Option[String] => PartialFunction[Tree,Unit]) => PartialFunction[Tree, Unit]) {
+      env = env.enterChoiceReceiveBlock(sessChan, srcRole)
+      cases foreach { c: CaseDef =>
+        if (! c.guard.isEmpty) {
+          reporter.error(c.guard.pos,
+            "Receive clauses on session channels (branching) do not support guards yet")
+        } else {
+          val msgMatcher: Option[String] => PartialFunction[Tree, Unit] = { src =>
+            val realSrc = srcRole.orElse(src) ;      
+            { x => x match {
+              // Bind is for case s: String
+              // Ident and Select both needed to use objects:
+              // case OK is Ident
+              // case pkg.foo.OK is Select
+              // fixme: make sure Select and Ident don't fit other kinds of patterns that will not always match,
+              // breaking typesafety
+              case Select(_,_) | Ident(_) | Bind(_,_) =>
+                val t = x.tpe
+                val msgTpe = realType(t)
+                visitBranch(c, realSrc, sig(msgTpe))
+  
+              case SymbolUnapply(label) =>
+                visitBranch(c, realSrc, sig(label))
+  
+              case Apply(tpt, List(SymbolUnapply(label), bind:Bind)) =>
+                visitBranch(c, realSrc, sig(label, bind.symbol.tpe))
+
+              case _ =>
+                reporter.error(x.pos,
+                  "Receive clauses on session channels (branching) do not support complex patterns yet")          
+            }}
+          }
+          val default: PartialFunction[Tree, Unit] = { case x =>
+            reporter.error(x.pos, "Incorrect session branch receive pattern")
+            //println("no match: "+x)
+          } 
+          (matchFun(msgMatcher) orElse default)(c.pat)
+        }
+      }
+      pos = f.pos
+      env = env.leaveChoiceReceiveBlock
+    }
+    
+    def visitBranch(c: CaseDef, src: Option[String], msgSig: MsgSig) {
       pos = c.pat.pos
-      env = env.enterChoiceReceiveBranch(msgSig)
+      env = env.enterChoiceReceiveBranch(src, msgSig)
       pos = c.body.pos
       traverse(c.body)
       pos = c.body.pos

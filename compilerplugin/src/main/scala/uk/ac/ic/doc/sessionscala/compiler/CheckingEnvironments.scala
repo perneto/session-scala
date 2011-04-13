@@ -67,10 +67,10 @@ val scribbleJournal: Journal
     override def send(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("send")
     override def receive(sessChan: Name, role: String, msgSig: MsgSig, delegator: SessionTypingEnvironment) = notYet("receive")
 
-    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) = notYet("choice receive")
+    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: Option[String]) = notYet("choice receive")
     override def leaveChoiceReceiveBlock = notLeavingYet("choice receive")
 
-    override def enterChoiceReceiveBranch(msgSig: MsgSig) = notYet("choice receive branch")
+    override def enterChoiceReceiveBranch(srcRole: Option[String], msgSig: MsgSig) = notYet("choice receive branch")
     override def leaveChoiceReceiveBranch = notLeavingYet("choice receive branch")
 
     override def enterSessionMethod(delegator: SessionTypingEnvironment, fun: Symbol, sessChans: List[Name]) =
@@ -145,7 +145,7 @@ val scribbleJournal: Journal
       delegator.updated(sessChan, newSess)
     }
 
-    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) =
+    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: Option[String]) =
       new ChoiceReceiveBlockEnv(delegator.ste, delegator, sessChan, srcRole, Nil, None)
 
     def retrieveInferred(method: Symbol, delegatedChans: List[Name], returnedChans: List[Name]):
@@ -248,10 +248,10 @@ val scribbleJournal: Journal
     override def returnStatement(delegator: SessionTypingEnvironment) = illegalReturn()
   }
 
-  class ChoiceReceiveBlockEnv(val ste: SessionTypedElements,
-                              parent: SessionTypingEnvironment,
+  case class ChoiceReceiveBlockEnv(ste: SessionTypedElements,
+                              override val parent: SessionTypingEnvironment,
                               chanChoice: Name,
-                              choiceSrc: String,
+                              choiceSrc: Option[String],
                               branches: List[MsgSig],
                               lastBranchSte: Option[SessionTypedElements])
   extends AbstractDelegatingEnv(parent) {
@@ -260,18 +260,19 @@ val scribbleJournal: Journal
 
     def parentSession = ste.sessions(chanChoice)
 
-    override def enterChoiceReceiveBranch(msgSig: MsgSig) = {
+    override def enterChoiceReceiveBranch(srcRole: Option[String], msgSig: MsgSig) = {
       // The choice activity at the beginning
       // of parentSession will only be removed when all branches
       // have been visited and correctly typechecked.
       val labelSignature = msgSig.toScribble
+      val branchSrc = choiceSrc.orElse(srcRole).get
+      println("enterChoiceReceiveBranch, src:"+branchSrc+", sig:"+labelSignature)
       val sessBranch = parentSession.branchReceive(
         labelSignature,
-        new Role(choiceSrc))
+        new Role(branchSrc))
       val newSte = ste.updated(chanChoice, sessBranch)
 
-      val updatedThis = new ChoiceReceiveBlockEnv(ste, parent, chanChoice,
-        choiceSrc, msgSig :: branches, lastBranchSte)
+      val updatedThis = copy(branches = msgSig :: branches)
       new ChoiceReceiveBranchEnv(newSte, updatedThis, chanChoice,
           branches, msgSig, lastBranchSte)
     }

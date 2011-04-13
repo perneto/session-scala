@@ -100,7 +100,7 @@ trait InferenceEnvironments {
       delegator.updated(newSte)
     }
 
-    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: String) =
+    override def enterChoiceReceiveBlock(delegator: SessionTypingEnvironment, sessChan: Name, srcRole: Option[String]) =
       new InfChoiceReceiveBlockEnv(delegator.ste, delegator, method, sessChan, srcRole, None)
 
     // here we create a new ste so that each branch only gives out contents of the branch at the end
@@ -237,14 +237,15 @@ trait InferenceEnvironments {
                               parent: SessionTypingEnvironment,
                               method: Symbol,
                               chanChoice: Name,
-                              choiceSrc: String,
+                              choiceSrc: Option[String],
                               lastBranchSte: Option[SessionTypedElements])
   extends AbstractDelegatingEnv(parent) {
 
-    override def enterChoiceReceiveBranch(msgSig: MsgSig) = {
+    override def enterChoiceReceiveBranch(srcRole: Option[String], msgSig: MsgSig) = {
       // create a fresh STE for the new branch
       // this will then be merged with lastBranchSte in InfChoiceReceiveBranchEnv.leaveChoiceReceiveBranch
-      new InfChoiceReceiveBranchEnv(ste.clearAllButLabelsAndChanRanks, this, method, choiceSrc, chanChoice, msgSig, lastBranchSte)
+      val branchSrc = choiceSrc.orElse(srcRole).get
+      new InfChoiceReceiveBranchEnv(ste.clearAllButLabelsAndChanRanks, this, method, branchSrc, chanChoice, msgSig, lastBranchSte)
     }
 
     def updated(ste: SessionTypedElements): SessionTypingEnvironment =

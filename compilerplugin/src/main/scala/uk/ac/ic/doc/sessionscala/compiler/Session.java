@@ -131,21 +131,23 @@ public class Session {
         if (specSrcRole == null)
             throw new SessionTypeCheckingException("Protocol had: " + choice +
                     ", but implementation tried to receive choice from: " + srcRole);
-        if (!specSrcRole.equals(srcRole))
-            throw new SessionTypeCheckingException("Protocol had choice receive from " + specSrcRole
-                    + ", but implementation tried to receive choice from: " + srcRole);
-
+        // not checking that specSrcRole.equals(srcRole)
+	    // with new choice, can receive from several roles
+	    // (including non-specified role, by subtyping)
         List<When> whens = choice.getWhens();
         for (When w: whens) {
             // The labels in user code can be supertypes of the protocol labels,
             // but there should be no ambiguity - a label can only cover one branch.
             // This is dealt with in checkBranchesSeen()
-            if (isMessageSignatureSubtype(w.getMessageSignature(), label))
-                return new Session(hostTypeSystem, imports, getRemaining(w));
+            if (isMessageSignatureSubtype(w.getMessageSignature(), label)) {
+                System.out.println("Found matching msg sig:"+w);
+	            return new Session(hostTypeSystem, imports, getRemaining(w));
+            }
         }
         // it's legal to have more branch receives than specified in the protocol.
         // In that case, all activities in that branch are unchecked
-        return new UncheckedSession(this);
+        System.out.println("Unchecked session:"+label);
+	    return new UncheckedSession(this);
     }
 
     protected Choice getChoice() {

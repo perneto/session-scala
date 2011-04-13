@@ -19,10 +19,15 @@ trait SessionDefinitions {
   //lazy val receiveWithinMethod = definitions.getMember(sessionChannelClass, "receiveWithin")
   lazy val reactMethod = definitions.getMember(sessionChannelClass, "react")
   //lazy val reactWithinMethod = definitions.getMember(sessionChannelClass, "reactWithin")
+  lazy val mreceiveMethod = definitions.getMember(sessionChannelClass, "mreceive")
+  lazy val mreactMethod = definitions.getMember(sessionChannelClass, "mreact")
   
   lazy val symbolObject = definitions.getModule("scala.Symbol")
   lazy val symbolApplyMethod = definitions.getMember(symbolObject, "apply")
   lazy val symbolUnapplyMethod = definitions.getMember(symbolObject, "unapply")
+  
+  lazy val arrowObject = definitions.getModule("uk.ac.ic.doc.sessionscala.Address.->")
+  lazy val arrowUnapplyMethod = definitions.getMember(arrowObject, "unapply")
 }
 
 
