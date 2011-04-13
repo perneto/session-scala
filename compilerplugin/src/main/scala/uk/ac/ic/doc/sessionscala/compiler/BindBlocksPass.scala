@@ -75,6 +75,23 @@ abstract class BindBlocksPass extends PluginComponent
       env = env.registerAddress(chanName, globalModel, roleName)
     }
 
+    def visitBind(chanIdent: Name, sessChan: Name, block: Tree, tree: Tree) {
+      try {
+        env = env.enterJoin(chanIdent, sessChan)
+        traverse(block)
+        pos = tree.pos
+        //println("leaveJoin, env: " + env)
+        env = env.leaveJoin
+      } catch {
+        case rex: RecoverableTypeCheckingException =>
+          reporter.error(pos, rex.getMessage)
+          env = rex.recoveryEnv
+        case e: SessionTypeCheckingException =>
+          reporter.error(pos, e.getMessage)
+        //e.printStackTrace()
+      }
+    }
+
     var strIdents = Map[Name, Literal]()
     override def traverse(tree: Tree) {
       val sym = tree.symbol
@@ -88,23 +105,14 @@ abstract class BindBlocksPass extends PluginComponent
         if sym.tpe <:< addressTrait.tpe =>  
           visitSharedChanCreation(pos, name, proto, roleName)
           
-        case Apply(TypeApply(SelectIdent(chanIdent),_), Function1(sessChan, block)::Nil)
+        case Apply1(TypeApply(SelectIdent(chanIdent),_), Function1(sessChan, block))
         if sym == bindMethod =>
           //println("bind: " + chanIdent + ", sessChan: " + sessChan)
-          try {
-            env = env.enterJoin(chanIdent, sessChan)
-            traverse(block)
-            pos = tree.pos
-            //println("leaveJoin, env: " + env)
-            env = env.leaveJoin
-          } catch {
-            case rex: RecoverableTypeCheckingException =>
-              reporter.error(pos, rex.getMessage)
-              env = rex.recoveryEnv
-            case e: SessionTypeCheckingException =>
-              reporter.error(pos, e.getMessage)
-              //e.printStackTrace()
-          }
+          visitBind(chanIdent, sessChan, block, tree)
+
+        case Apply1(Apply(TypeApply(SelectIdent(chanIdent),_), _), Function1(sessChan, block))
+        if sym == bindWithinMethod =>
+          visitBind(chanIdent, sessChan, block, tree)
 
         case Apply(_, args) if sym == startSessionMethod =>
           //println("startSession: "+args)

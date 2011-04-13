@@ -12,6 +12,7 @@ trait SessionDefinitions {
   lazy val addressObject = definitions.getModule("uk.ac.ic.doc.sessionscala.Address")
   lazy val sessionChannelClass = definitions.getClass("uk.ac.ic.doc.sessionscala.SessionChannel")
   lazy val bindMethod = definitions.getMember(addressTrait, "bind")
+  lazy val bindWithinMethod = definitions.getMember(addressTrait, "bindWithin")
   lazy val startSessionMethod = definitions.getMember(addressObject, "startSession")
   lazy val qmarkMethods = definitions.getMember(sessionChannelClass, "$qmark")
   lazy val bangMethod = definitions.getMember(sessionChannelClass, "$bang")
