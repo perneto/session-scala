@@ -31,15 +31,6 @@ object Projector {
   def error(msg: String) = throw new IllegalArgumentException(msg)
   def notMergeable(a: Local, b: Local) = error("not mergeable: "+a+" and "+b)
   
-  import PartialFunction.cond
-  def contains(global: Global, role: String): Boolean = cond(global) {
-    case Message(from, to, _) => from == role || to == role
-    case Recursion(x, body) => contains(body, role)
-    case Parallel(g1, g2) => contains(g1, role) || contains(g2, role)
-    case Or(choiceRole, g1, g2) => choiceRole == role || contains(g1, role) || contains(g2, role)
-    case Seq(gs) => gs exists (contains(_, role))
-  }
-  
   def heads(global: Global): Set[Global] = global match {
     case i: Message => Set(i)
     case Recursion(x, body) => heads(body)
@@ -66,6 +57,7 @@ object Projector {
     case Parallel(g1,g2) => freeRoles(g1) union freeRoles(g2)
     case Seq(l) => (l foldLeft Set.empty[String])(_ union freeRoles(_))
   }
+  def contains(global: Global, role: String) = freeRoles(global).contains(role)    
   
   def invites(g: Global): Set[(String,String)] = g match {
     case Invitation(from,to) => Set((from,to))
