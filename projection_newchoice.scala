@@ -36,7 +36,7 @@ object Projector {
     case Recursion(x, body) => heads(body)
     case label: RecursionLabel => Set(label)
     case Invitation(_,_)  => Set.empty
-    case Parallel(g1, g2) => Set.empty // cannot count contents as heads as order is non-deterministic
+    case Parallel(g1, g2) => heads(g1) union heads(g2) // unnecessary for now but may be useful if we relax the Parallel rules
     case Or(_, g1, g2) => heads(g1) union heads(g2)
     case Seq(gs) => 
       if (gs.isEmpty) Set.empty
