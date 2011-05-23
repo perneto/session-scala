@@ -7,7 +7,7 @@ object Projector {
   case class Or(choiceRole: String, g1: Global, g2: Global) extends Global
   case class Recursion(label: String, body: Global) extends Global
   case class Parallel(g1: Global, g2: Global) extends Global
-  case class Invitation(from: String, to: String) extends Global
+  case class Invitation(from: String, to: String, body: Global) extends Global
   case class Seq(seq: List[Global]) extends Global
   def Seq(gs: Global*): Seq = Seq(List(gs: _*))
   case class RecursionLabel(label: String) extends Global with Local
@@ -25,8 +25,8 @@ object Projector {
     case (l1, l2) => LSeq(List(l1, l2))
   }
   val Eps = LocalSeq(Nil)
-  case class InviteSend(to: String) extends Local
-  case class InviteReceive(from: String) extends Local
+  case class InviteSend(to: String, body: Local) extends Local
+  case class InviteReceive(from: String, body: Local) extends Local
   
   def error(msg: String) = throw new IllegalArgumentException(msg)
   def notMergeable(a: Local, b: Local) = error("not mergeable: "+a+" and "+b)
@@ -35,15 +35,12 @@ object Projector {
     case i: Message => Set(i)
     case Recursion(x, body) => heads(body)
     case label: RecursionLabel => Set(label)
-    case Invitation(_,_)  => Set.empty
+    case Invitation(_,_,body)  => heads(body)
     case Parallel(g1, g2) => heads(g1) union heads(g2) // unnecessary for now but may be useful if we relax the Parallel rules
     case Or(_, g1, g2) => heads(g1) union heads(g2)
     case Seq(gs) => 
       if (gs.isEmpty) Set.empty
-      else gs.head match {
-        case Invitation(_,_) => heads(Seq(gs.tail))
-        case x => heads(x)
-      }
+      else heads(gs.head)
   }
   
   def senders(g: Global) = heads(g) map (_.asInstanceOf[Message].from)
@@ -53,14 +50,14 @@ object Projector {
     case Or(choiceRole, g1,g2) => Set(choiceRole) union freeRoles(g1) union freeRoles(g2)
     case Recursion(x,g) => freeRoles(g)
     case RecursionLabel(x) => Set.empty
-    case Invitation(from,to) => Set(from,to)
+    case Invitation(from,to,body) => Set(from,to) union freeRoles(body)
     case Parallel(g1,g2) => freeRoles(g1) union freeRoles(g2)
     case Seq(l) => (l foldLeft Set.empty[String])(_ union freeRoles(_))
   }
   def contains(global: Global, role: String) = freeRoles(global).contains(role)    
   
   def invites(g: Global): Set[(String,String)] = g match {
-    case Invitation(from,to) => Set((from,to))
+    case Invitation(from,to,body) => Set((from,to)) union invites(body)
     case Recursion(_,g) => invites(g)
     case Parallel(g1,g2) => invites(g1) union invites(g2)
     case Or(_,g1,g2) => invites(g1) union invites(g2)
@@ -87,7 +84,8 @@ object Projector {
     }
     
     global match {
-      case Message(_,_,_) | RecursionLabel(_) | Invitation(_,_) | Eps => true
+      case Message(_,_,_) | RecursionLabel(_) | Eps => true
+      case Invitation(_,_,body) => wellformed(body, scopeChooser)
       case Recursion(x,body) =>
         !heads(body).exists(_.isInstanceOf[RecursionLabel]) &&
                 wellformed(body, scopeChooser)
@@ -138,10 +136,11 @@ object Projector {
     case Parallel(p1, p2) if contains(p2, projRole) && !contains(p1, projRole) => project(p2, projRole)
     case Parallel(p1, p2) if !contains(p1, projRole) && !contains(p2, projRole) => Eps
 
-    case Invitation(from, to) => 
-      if (from == projRole) InviteSend(to)
-      else if (to == projRole) InviteReceive(from)
-      else Eps
+    case Invitation(from, to, body) => 
+      val projBody = project(body, projRole)
+      if (from == projRole) InviteSend(to, projBody)
+      else if (to == projRole) InviteReceive(from, projBody)
+      else projBody
 
     case Seq(gs) => LSeq(gs map (g => project(g, projRole)))
       
@@ -235,6 +234,12 @@ object Projector {
       case LocalRecursion(x, l) =>
         print("rec "+x+" ")
         pretty(l)
+      case InviteSend(role,body) =>
+        print("invitesend "+role+ " ")
+        pretty(body)
+      case InviteReceive(role,body) =>
+        print("inviterecv "+role+ " ")
+        pretty(body)
       case x => println(x)
     }
   }
@@ -290,11 +295,10 @@ object Projector {
     Message("Cli", "Mid", "request"),
     Or(
       "Mid",
-      Seq(
-        Invitation("Mid", "Serv"),
+      Invitation("Mid", "Serv", Seq(
         Message("Mid", "Serv", "subreq"),
         Message("Serv", "Cli", "reply1")
-      ),
+      )),
       Message("Mid", "Cli", "reply2")
     )
   )
