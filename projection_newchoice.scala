@@ -206,9 +206,19 @@ object Projector {
         )
     }
   
-    if (mergeBody.isDefinedAt((l1, l2))) mergeBody((l1, l2))
-    else if (mergeBody.isDefinedAt((l2, l1))) mergeBody(l2, l1)
-    else notMergeable(l1,l2)
+    l1 match {
+      case LocalSeq(List(single)) => 
+        merge(single, l2)
+      case _ => l2 match {
+        case LocalSeq(List(single)) =>
+          merge(l1, single)
+        case _ =>
+          if (mergeBody.isDefinedAt((l1, l2))) mergeBody((l1, l2))
+          else if (mergeBody.isDefinedAt((l2, l1))) mergeBody(l2, l1)
+          else notMergeable(l1,l2)
+      }
+    }
+
   }
   
   def pretty(local: Local) {
@@ -252,6 +262,26 @@ object Projector {
         Seq(
           Message("A","B","M3"),
           Message("B","C","M2")
+        )
+      )
+    )
+  
+  val testMerge2 = 
+    Or(
+      "A",
+      Seq(
+        Message("A","B","M3"),
+        Message("B","C","M2")
+      ),
+      Or(
+        "A",
+        Seq(
+          Message("A","B","M2"),
+          Message("B","C","M2")
+        ),
+        Seq(
+          Message("A","B","M1"),
+          Message("B","C","M1")  
         )
       )
     )
