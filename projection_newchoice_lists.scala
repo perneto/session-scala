@@ -1,6 +1,17 @@
+import collection.mutable.ListBuffer
+
 def all[A, S >: A](c: collection.TraversableLike[A, _])(predicate: S => Boolean) = 
   !c.exists((e:S) => !predicate(e))
 
+def partCollect[A, S >: A, B](c: List[A])(f: S => (Boolean, B)): (List[B],List[B]) = {
+  var l, r = new ListBuffer[B]()
+  for (x <- c) {
+    val (cond, value) = f(x)
+    (if (cond) l else r) += value
+  }
+  (l.result, r.result)    
+}
+  
 object Projector {
 
   sealed trait Global
@@ -77,11 +88,13 @@ object Projector {
   def wellformed(g: Global): Boolean = wellformed(g, None)
   def wellformed(global: Global, scopeChooser: Option[String]): Boolean = {
     def consistentHeads(g: Global, chooser: String): Boolean = {
+      println("consistentHeads, g: "+g+", heads(g): "+heads(g))
       for (h <- heads(g)) {
         if (!h.isInstanceOf[Message]) return false
         val m = h.asInstanceOf[Message]
         if (m.from != chooser) return false
         for (h2 <- heads(g) if h != h2) {
+          println("h: "+h+", h2: "+h2)
           if (!h2.isInstanceOf[Message]) return false
           val m2 = h2.asInstanceOf[Message]
           if (m.from == m2.from && m.msgSig == m2.msgSig) return false
@@ -110,7 +123,7 @@ object Projector {
         (scopeChooser map (_ == chooser)).getOrElse(true) &&
         (for (g1 <- gs ; g2 <- gs if !(g1 eq g2)) 
           yield (invitedRoles(g1) intersect freeRoles(g2)).isEmpty).reduce(_ && _) &&
-        all(gs) { g => (inviters(g) diff Set(chooser)).isEmpty } &&
+        all(gs) { g => all(inviters(g)) { _ == chooser } } &&
         all(gs) { consistentHeads(_, chooser) } &&
         all(gs) { wellformed(_, Some(chooser)) }
 
@@ -129,7 +142,10 @@ object Projector {
       invited match {
         case Some((_, i:Int)) => projs(i)
         case None => if (choiceRole == projRole) LocalOr(projs)
-                     else mergeAll(projs)
+                     else {
+                       //println("merging all: "+projs)
+                       mergeAll(projs)
+                     }
       }
       
     case Recursion(x, contents) => 
@@ -158,7 +174,7 @@ object Projector {
   def mergeAll(toMerge: List[Local]): Local = toMerge reduce { merge(_, _) }
   
   def merge(l1: Local, l2: Local): Local = {
-    
+    //println("merge, l1:"+l1+", l2:"+l2)
     def seqSimple(seq: Local, l: List[Local], simple: Local) = {
       if (l.isEmpty) notMergeable(seq, simple)
       val h = l.head
@@ -169,16 +185,17 @@ object Projector {
     }
   
     def orSimple(or: Local, ls: List[Local], simple: Local) = {
-      val (merging, notMerging) = ls partition {l => 
-        merge(l,simple) match {
-          case LocalOr(`l` :: `simple` :: Nil) => false
-          case merged => true
+      val (merged, notMerging) = partCollect(ls) { l =>
+        merge(l, simple) match {
+          case res@LocalOr(`l` :: `simple` :: Nil) => (false, l)
+          case merged => (true, merged)
         }
       }
-      if (merging.isEmpty) LocalOr(simple :: ls)
+      assert(merged.length <= 1, "At most one branch should merge with simple, since the or branches should already be disjoint by wellformedness")
+      if (merged.isEmpty)
+        LocalOr(simple :: notMerging)
       else {
-        val m = merge(merging(0), simple)
-        LocalOr(m :: notMerging)  
+        LocalOr(merged(0) :: notMerging)
       }
     }
   
@@ -205,18 +222,18 @@ object Projector {
       case (seq@LocalSeq(lSeq), or@LocalOr(lOr)) =>
         if (lSeq.isEmpty) notMergeable(seq, or)
         assert(!lOr.isEmpty)
-        val seqHead = lSeq.head
-        val (merging, notMerging) = lOr partition { orBranch =>
-          merge(seqHead, orBranch) match {
-            case LocalOr(`seqHead` :: `orBranch` :: Nil) => false
-            case merged => true
+        val (merged, notMerging) = partCollect(lOr) { orBranch =>
+          merge(seq, orBranch) match {
+            case res@LocalOr(`seq` :: `orBranch` :: Nil) => (false, orBranch)
+            case merged => (true, merged)
           }
         }
-        if (merging.isEmpty)
+        //println("seq/or, merged: "+merged+", notMerging: "+notMerging)
+        assert(merged.length <= 1, "At most one branch should merge with seq, since the or branches should already be disjoint by wellformedness")
+        if (merged.isEmpty)
           LocalOr(seq :: notMerging)
         else {
-          val m = merge(merging(0), seqHead)
-          LocalOr(LSeq(m :: lSeq.tail) :: notMerging)
+          LocalOr(merged(0) :: notMerging)
         }
   
       case (seq1@LocalSeq(l), r2: Receive) => seqSimple(seq1, l, r2)
@@ -239,8 +256,16 @@ object Projector {
         case LocalSeq(List(single)) =>
           merge(l1, single)
         case _ =>
-          if (mergeBody.isDefinedAt((l1, l2))) mergeBody((l1, l2))
-          else if (mergeBody.isDefinedAt((l2, l1))) mergeBody(l2, l1)
+          if (mergeBody.isDefinedAt((l1, l2))) {
+            val m = mergeBody((l1, l2))
+            //println("merged: "+m)
+            m
+          }
+          else if (mergeBody.isDefinedAt((l2, l1))) {
+            val m = mergeBody((l2, l1))
+            //println("merged: "+m)
+            m
+          }
           else notMergeable(l1,l2)
       }
     }
@@ -252,7 +277,7 @@ object Projector {
       case LocalSeq(l) =>
         println("{")
         l foreach pretty
-        print("}")
+        println("};")
       case LocalOr(ls) =>
         pretty(ls.head) // ls is never empty
         ls.tail foreach {l =>
@@ -268,7 +293,7 @@ object Projector {
       case InviteReceive(role,body) =>
         print("inviterecv "+role+ " ")
         pretty(body)
-      case x => println(x)
+      case x => println(x + ";")
     }
   }
 
@@ -346,6 +371,73 @@ object Projector {
         )
       )
     )
+
+  val testMerge4 =
+    Or(
+      "A",
+      List(
+        Seq(
+          Message("A","B","M3"),
+          Message("B","C","M2")
+        ),
+        Seq(
+          Message("A","B","M1"),
+          Message("B","C","M1"),
+          Message("C","B","M12")
+        ), 
+        Seq(
+          Message("A","B","M2"),
+          Message("B","C","M2"),
+          Message("C","B","M22")
+        )
+      )
+    )
+  
+  val testMerge5 = // Shouldn't this be projectable/mergable @ C, as first and third paths are equivalent
+    Or(
+      "A",
+      List(
+        Seq(
+          Message("A","B","M3"),
+          Message("B","C","M2"),
+          Message("C","B","M22")
+        ),
+        Seq(
+          Message("A","B","M1"),
+          Message("B","C","M1"),
+          Message("C","B","M12")
+        ), 
+        Seq(
+          Message("A","B","M2"),
+          Message("B","C","M2"),
+          Message("C","B","M22")
+        )
+      )
+    )
+  
+  val testMerge6 =
+    Or(
+      "A",
+      List(
+        Seq(
+          Message("A","B","M3"),
+          Message("B","C","M2"),
+          Message("B","C","M21")
+        ),
+        Seq(
+          Message("A","B","M1"),
+          Message("B","C","M1"),
+          Message("C","B","M12")
+        ), 
+        Seq(
+          Message("A","B","M2"),
+          Message("B","C","M2"),
+          Message("B","C","M22")
+        )
+      )
+    )
+
+  
       
   val testCliMidServ = Seq(
     Message("Cli", "Mid", "request"),
@@ -361,7 +453,7 @@ object Projector {
     )
   )
   
-  val testPrefix =
+  val testPrefixNotWF =
     Or(
       "A",
       List(
