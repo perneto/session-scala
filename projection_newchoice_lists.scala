@@ -1,16 +1,25 @@
-import collection.mutable.ListBuffer
-
 def all[A, S >: A](c: collection.TraversableLike[A, _])(predicate: S => Boolean) = 
   !c.exists((e:S) => !predicate(e))
 
 def partCollect[A, S >: A, B](c: List[A])(f: S => (Boolean, B)): (List[B],List[B]) = {
-  var l, r = new ListBuffer[B]()
+  var l, r = new collection.mutable.ListBuffer[B]()
   for (x <- c) {
     val (cond, value) = f(x)
     (if (cond) l else r) += value
   }
   (l.result, r.result)    
 }
+
+def removeFirst[A](l: List[A], elem: A): List[A] = {
+  var removed = false
+  val b = new collection.mutable.ListBuffer[A]()
+  for (x <- l) {
+    if (!removed && x == elem) removed = true
+    else b += x
+  }
+  b.result
+}
+  
   
 object Projector {
 
@@ -49,19 +58,20 @@ object Projector {
   def error(msg: String) = throw new IllegalArgumentException(msg)
   def notMergeable(a: Local, b: Local) = error("not mergeable: "+a+" and "+b)
   
-  def heads(global: Global): Set[Global] = global match {
-    case i: Message => Set(i)
+  def heads(global: Global): List[Global] = global match {
+    case m: Message => List(m)
     case Recursion(x, body) => heads(body)
-    case label: RecursionLabel => Set(label)
+    case label: RecursionLabel => List(label)
     case Invitation(_,_,body)  => heads(body)
-    case Parallel(g1, g2) => heads(g1) union heads(g2) // unnecessary for now but may be useful if we relax the Parallel rules
-    case Or(_, gs) =>  (gs foldLeft Set[Global]())(_ union heads(_))
+    case Parallel(g1, g2) => heads(g1) ::: heads(g2) // unnecessary for now but may be useful if we relax the Parallel rules
+    case Or(_, gs) => 
+      (gs foldLeft List[Global]())(_ ::: heads(_))
     case Seq(gs) => 
-      if (gs.isEmpty) Set()
+      if (gs.isEmpty) Nil
       else heads(gs.head)
   }
   
-  def senders(g: Global) = heads(g) map (_.asInstanceOf[Message].from)
+  def senders(g: Global) = Set(heads(g) map (_.asInstanceOf[Message].from): _*)
   
   def freeRoles(g: Global): Set[String] = g match {
     case Message(from,to,msgSig) => Set(from, to)
@@ -88,13 +98,15 @@ object Projector {
   def wellformed(g: Global): Boolean = wellformed(g, None)
   def wellformed(global: Global, scopeChooser: Option[String]): Boolean = {
     def consistentHeads(g: Global, chooser: String): Boolean = {
-      println("consistentHeads, g: "+g+", heads(g): "+heads(g))
-      for (h <- heads(g)) {
+      val hds = heads(g)
+      //println("consistentHeads, g: "+g+", heads(g): "+heads(g))
+      for (h <- hds) {
         if (!h.isInstanceOf[Message]) return false
         val m = h.asInstanceOf[Message]
         if (m.from != chooser) return false
-        for (h2 <- heads(g) if h != h2) {
-          println("h: "+h+", h2: "+h2)
+        val others = removeFirst(hds, h)
+        for (h2 <- others) {
+          //println("h: "+h+", h2: "+h2)
           if (!h2.isInstanceOf[Message]) return false
           val m2 = h2.asInstanceOf[Message]
           if (m.from == m2.from && m.msgSig == m2.msgSig) return false
@@ -107,7 +119,7 @@ object Projector {
       case Message(_,_,_) | RecursionLabel(_) | Eps => true
       case Invitation(_,_,body) => wellformed(body, scopeChooser)
       case Recursion(x,body) =>
-        !heads(body).exists(_.isInstanceOf[RecursionLabel]) &&
+        all(heads(body)) { ! _.isInstanceOf[RecursionLabel] } &&
                 wellformed(body, scopeChooser)
       case Parallel(g1,g2) =>
         (freeRoles(g1) intersect freeRoles(g2)).isEmpty &&
@@ -124,7 +136,7 @@ object Projector {
         (for (g1 <- gs ; g2 <- gs if !(g1 eq g2)) 
           yield (invitedRoles(g1) intersect freeRoles(g2)).isEmpty).reduce(_ && _) &&
         all(gs) { g => all(inviters(g)) { _ == chooser } } &&
-        all(gs) { consistentHeads(_, chooser) } &&
+        consistentHeads(global, chooser) &&
         all(gs) { wellformed(_, Some(chooser)) }
 
     }
@@ -393,7 +405,7 @@ object Projector {
       )
     )
   
-  val testMerge5 = // Shouldn't this be projectable/mergable @ C, as first and third paths are equivalent
+  val testMerge5 = 
     Or(
       "A",
       List(
@@ -415,7 +427,29 @@ object Projector {
       )
     )
   
-  val testMerge6 =
+  val testMerge6NotMergeable =
+    Or(
+      "A",
+      List(
+        Seq(
+          Message("A","B","M3"),
+          Message("B","C","M2"),
+          Message("C","C","M21")
+        ),
+        Seq(
+          Message("A","B","M1"),
+          Message("B","C","M1"),
+          Message("C","B","M12")
+        ), 
+        Seq(
+          Message("A","B","M2"),
+          Message("B","C","M2"),
+          Message("C","B","M22")
+        )
+      )
+    )
+
+  val testMerge7 =
     Or(
       "A",
       List(
@@ -427,7 +461,7 @@ object Projector {
         Seq(
           Message("A","B","M1"),
           Message("B","C","M1"),
-          Message("C","B","M12")
+          Message("B","C","M12")
         ), 
         Seq(
           Message("A","B","M2"),
@@ -436,8 +470,6 @@ object Projector {
         )
       )
     )
-
-  
       
   val testCliMidServ = Seq(
     Message("Cli", "Mid", "request"),
